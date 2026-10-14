@@ -47,6 +47,9 @@ files = ["app", "tests", "alembic"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+# One event loop for the whole run, so DB tests can share one engine (asyncpg connections are
+# bound to the loop that opened them; reconnecting to the hosted DB costs seconds per test).
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 markers = ["db: needs a real Postgres (TEST_DATABASE_URL); run with `make test-db`"]

@@ -36,11 +36,22 @@ DB_REQUIRED_MESSAGE = (
 
 
 @pytest.fixture(autouse=True)
-async def _fresh_settings_and_engine() -> AsyncIterator[None]:
+async def _fresh_settings_and_engine(request: pytest.FixtureRequest) -> AsyncIterator[None]:
+    """Offline tests get a fresh engine; DB tests share one (all point at TEST_DATABASE_URL)."""
+    shared = request.node.get_closest_marker("db") is not None
     get_settings.cache_clear()
+    if not shared:
+        await dispose_engine()  # never hand an offline test the shared test-DB engine
+    yield
+    if not shared:
+        await dispose_engine()
+    get_settings.cache_clear()
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def _dispose_shared_engine() -> AsyncIterator[None]:
     yield
     await dispose_engine()
-    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)

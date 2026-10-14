@@ -7,7 +7,7 @@ Each slice should work end to end before starting the next.
 | # | Spec | Done when |
 |---|---|---|
 | 001 | **Scaffold**: monorepo (backend/ frontend/ content/), hosted Supabase Postgres, `make dev`, real `make check`, CI on GitHub Actions | `make check` passes on an empty app; CI runs on PRs |
-| 002 | **Auth & tenancy**: managed auth, orgs, roles, classes, enrolment, invite-by-code, org-scoped query dependency | Teacher in school A cannot see anything in school B (tested) |
+| 002 | **Auth & tenancy**: managed auth, orgs, roles, classes, enrolment, teacher-created student accounts, admin-invited teachers, org-scoped query dependency | Teacher in school A cannot see anything in school B (tested) |
 | 003 | **Content model & importer**: course → chapter → concept → KP → item; prerequisite edges with encompassing weights; key prerequisites per KP; answer specs (numeric/expression/mcq/multistep/code), `params`, misconception tags, `expected_minutes`, Bloom tags; validator + import CLI; a sample of ~3 concepts per subject (CBSE 9–10 maths, physics, Python) | `make content-check` validates (incl. cycle check); import is idempotent |
 
 ## Phase 1: Student core loop

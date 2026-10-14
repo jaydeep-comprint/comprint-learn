@@ -1,0 +1,23 @@
+# Claude Code (personal)
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Deps / builds (common stacks)
+node_modules/
+dist/
+build/
+.next/
+__pycache__/
+.venv/
+*.pyc
+coverage/

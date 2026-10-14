@@ -68,7 +68,8 @@ Build order and spec numbers: docs/ROADMAP.md.
   review before the pilot.
 - Every school's data is isolated from every other school (multi-tenant).
 - AI cost must stay low per student per month: use a small model by default, rate-limit, and cache.
-- Budget / timeline: <fill in>
+- **Budget: ~$50 total for the POC/MVP** (hosting + AI API). Use free tiers everywhere, set a hard spend limit in the
+  Anthropic console, and cap tutor messages per student per day. See the cost table in docs/ARCHITECTURE.md.
 
 ## Decided (Oct 2026)
 - Board/grades: **CBSE Classes 9–10**. Language: **English only**.
@@ -76,6 +77,7 @@ Build order and spec numbers: docs/ROADMAP.md.
 - Leaderboards: personal stats by default; teachers see everyone; class leaderboards are opt-in per class.
 - Teacher control: assign targets with due dates; never cap students who are ahead.
 
+- Content review: light self-review for the POC (no formal subject-teacher review yet).
+
 ## Open questions
-- Budget and pilot timeline; how many pilot schools and classes?
-- Who reviews content for accuracy (a subject teacher per subject)?
+- Pilot timeline; how many pilot schools and classes?

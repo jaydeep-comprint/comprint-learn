@@ -16,10 +16,22 @@
 | Auth | Managed auth (Supabase Auth or Clerk) issuing JWTs; FastAPI verifies them | Don't build password, reset and invite flows ourselves |
 | Maths answer checking | SymPy (server side) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs) | Modern scheduler with fewer reviews than SM-2 |
-| AI | Anthropic API: Haiku for tutor chat, Sonnet for teacher summaries | Low cost per student; better reasoning where needed |
+| AI | Anthropic API: Claude Haiku 5.5 (`claude-haiku-5-5`) for tutor chat, Claude Sonnet 5.5 (`claude-sonnet-5-5`) for teacher summaries | Low cost per student; better reasoning where needed |
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
 | JS tooling | pnpm, eslint, prettier, vitest, Playwright (e2e) | Standard |
-| Hosting | <decide: e.g. Render/Fly/Railway for API + Vercel/Netlify for SPA + managed Postgres> | |
+| Hosting | Free tiers: Supabase (DB + Auth), Cloudflare Pages or Vercel (SPA), Render free or Fly.io/Railway (~$5/mo) for the API, GitHub Actions, Sentry free | POC budget ~$50 total (see Cost budget) |
+
+## Cost budget (POC, ~$50 total)
+| Item | Plan | Est. cost |
+|---|---|---|
+| Database + auth | Supabase free (2 projects: dev + test). Pauses after ~1 week idle; restore in the dashboard | $0 |
+| Frontend | Cloudflare Pages / Vercel free | $0 |
+| API | Render free (sleeps; ~30–60 s cold start) for demos, or Fly.io/Railway when it must stay awake | $0–5 / month |
+| AI tutor | Claude Haiku 5.5 ($0.10 in / $0.50 out per 1M tokens). ~3k in + 300 out per message ≈ $0.00045. 50 students × 20 msgs/day × 30 days ≈ **$14/month**; less with prompt caching | ~$5–15 / month |
+| Teacher summaries | Claude Sonnet 5.5 ($2 / $10 per 1M). ~10k in + 1k out ≈ $0.03 each; 10 teachers × weekly ≈ $1.20/month | ~$1–2 / month |
+| Domain (optional) | | ~$10 / year |
+Guards: a monthly spend limit in the Anthropic console (e.g. $20), a per-student daily tutor cap (e.g. 20 messages), prompt caching on the
+tutor's system prompt + item content, and logging token usage per request (`tutor_message`).
 
 ## Repo layout
 ```

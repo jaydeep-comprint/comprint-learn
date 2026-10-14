@@ -105,8 +105,9 @@ fast, offline quality gate (lint, types, tests for both apps), and GitHub Action
 - Triggers: `pull_request`, and `push` to `main`.
 - One job on `ubuntu-latest`: checkout → `astral-sh/setup-uv` (Python 3.13, cache) → `pnpm/action-setup` +
   `actions/setup-node` (Node 24, pnpm cache) → `make install` → `make check`.
-- Then a `make test-db` step with `env: TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}` and
-  `if: env.TEST_DATABASE_URL != ''` (secrets can't be used directly in `if`). Absent secret → step is skipped, job green.
+- Then a `make test-db` step with `env: TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}`, gated by a prior step
+  that writes `present=${{ secrets.TEST_DATABASE_URL != '' }}` to `$GITHUB_OUTPUT` (secrets can't be used directly in
+  `if`, and a step's own `env` isn't visible to its `if`). Absent secret → step is skipped, job green.
 - Concurrency group per ref with `cancel-in-progress: true`.
 
 ## UI / UX

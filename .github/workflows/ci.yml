@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: make install
+
+      - run: make check
+
+      # Secrets can't be used in `if`, and a step's own `env` isn't visible to its `if`,
+      # so a gate step records whether the secret exists (without exposing it to other steps).
+      - name: Check for TEST_DATABASE_URL secret
+        id: dbsecret
+        run: echo "present=${{ secrets.TEST_DATABASE_URL != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: make test-db
+        if: steps.dbsecret.outputs.present == 'true'
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: make test-db

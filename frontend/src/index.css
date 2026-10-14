@@ -90,3 +90,26 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Login slips: 8 per A4 page (2 x 4) with dashed cut lines. */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+  .slip-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .slip {
+    height: 69mm;
+    break-inside: avoid;
+    border: 1px dashed #888;
+    margin: -0.5px;
+  }
+}

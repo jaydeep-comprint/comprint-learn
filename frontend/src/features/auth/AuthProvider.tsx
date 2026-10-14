@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { slipsStore } from "@/features/slips/store";
 import { getSupabase, signOut as supabaseSignOut } from "@/lib/supabase";
 
 type AuthContextValue = {
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOut() {
         await supabaseSignOut();
         queryClient.clear();
+        slipsStore.clear(); // temp passwords must not outlive the session on a shared computer
       },
     }),
     [session, loading, queryClient],

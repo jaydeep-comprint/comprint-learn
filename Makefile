@@ -1,7 +1,24 @@
-# `make check` is the single "is it working?" command. The Stop hook runs it before Claude finishes.
-# Replace the echo with your stack's typecheck + lint + test commands once chosen, e.g.:
-#   check: ; pnpm typecheck && pnpm lint && pnpm test
-#   check: ; ruff check . && mypy . && pytest -q
-.PHONY: check
-check:
-	@echo "make check: no checks configured yet (edit Makefile once the stack is chosen)"
+# Repo-level commands. `make check` is the offline quality gate (the Claude Stop hook and CI run it).
+BACKEND := backend
+
+.PHONY: check check-api test-db migrate fmt fmt-api
+
+check: check-api
+
+check-api:
+	cd $(BACKEND) && uv run ruff check .
+	cd $(BACKEND) && uv run ruff format --check .
+	cd $(BACKEND) && uv run mypy
+	cd $(BACKEND) && uv run pytest -q -m "not db"
+
+# Real-database tests against TEST_DATABASE_URL (a separate Supabase project). Fails if it is unset.
+test-db:
+	cd $(BACKEND) && REQUIRE_DB=1 uv run pytest -q -m db
+
+migrate:
+	cd $(BACKEND) && uv run alembic upgrade head
+
+fmt: fmt-api
+
+fmt-api:
+	cd $(BACKEND) && uv run ruff format . && uv run ruff check --fix .

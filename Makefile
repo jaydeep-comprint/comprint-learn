@@ -2,7 +2,21 @@
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: check check-api check-web test-db migrate fmt fmt-api fmt-web
+.PHONY: install dev dev-api dev-web check check-api check-web test-db migrate fmt fmt-api fmt-web
+
+install:
+	cd $(BACKEND) && uv sync
+	cd $(FRONTEND) && pnpm install --frozen-lockfile
+
+# API on :8000 and web on :5173 together; Ctrl-C stops both.
+dev:
+	$(MAKE) -j2 dev-api dev-web
+
+dev-api:
+	cd $(BACKEND) && uv run fastapi dev app/main.py --port 8000
+
+dev-web:
+	cd $(FRONTEND) && pnpm dev
 
 check: check-api check-web
 

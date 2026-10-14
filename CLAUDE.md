@@ -4,13 +4,14 @@ Context: @docs/PRD.md · @docs/ARCHITECTURE.md · Build order: docs/ROADMAP.md �
 Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/), content-as-code (content/).
 
 ## Commands
-<!-- Fill these in once the stack is chosen. .claude/hooks/verify.sh runs `make check` if present. -->
-- Dev: `<cmd>`
-- Test (single file): `<cmd> path/to/test`
-- Test (all): `<cmd>`
-- Typecheck: `<cmd>`
-- Lint/format: `<cmd>`
-- Full check (what the Stop hook runs): `make check`
+- Setup: `make install` (uv sync + pnpm install). Backend config: copy `backend/.env.example` to `backend/.env`.
+- Dev: `make dev` (API :8000 + web :5173; Vite proxies `/api`)
+- Test (single file): `cd backend && uv run pytest path/to/test` · `cd frontend && pnpm vitest run path/to/test`
+- Test (all): `make check` (offline) + `make test-db` (needs `TEST_DATABASE_URL`, a separate Supabase project)
+- Typecheck: `cd backend && uv run mypy` · `cd frontend && pnpm typecheck`
+- Lint/format: `make fmt`
+- Migrate: `make migrate` (alembic upgrade head against `DATABASE_URL`)
+- Full check (what the Stop hook and CI run): `make check`
 
 ## Workflow
 - New features start from a spec in docs/specs/ (use `/spec`). Implement in a fresh session, plan first.

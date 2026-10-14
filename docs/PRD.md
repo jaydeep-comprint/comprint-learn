@@ -10,18 +10,22 @@ understands, so help arrives late and is generic.
 ## Users
 | Persona | Need | Current alternative |
 |---|---|---|
-| **Student** (school syllabus: maths, physics, Python) | Short theory, lots of practice, help when stuck, clear progress | Textbooks, YouTube, worksheets |
+| **Student** (CBSE Classes 9–10: maths, physics, Python) | Short theory, lots of practice, help when stuck, clear progress | Textbooks, YouTube, worksheets |
 | **Teacher** | See who is stuck on which concept and act on it quickly | Test marks, gut feel |
 | **School admin** | Onboard teachers, classes and students | Spreadsheets |
 
 ## Core ideas
-- **Knowledge graph**: each course is a graph of concepts with prerequisite edges. Mastery is tracked per student, per
-  concept, per **Bloom level** (Remember → Understand → Apply → Analyze → Evaluate → Create).
+- **Knowledge graph**: each course is a graph of concepts with prerequisite edges. Each concept is broken into
+  **3–4 knowledge points (KPs)**, each a worked example followed by 2–5 questions. A concept counts as **learned** when all of its KPs pass.
+  Every question is tagged with a **Bloom level** (Remember → Create) so teachers can see the *depth* of understanding.
 - **Two layers per concept**:
-  1. **Learn (theory, kept short)**: visual + text lesson, an AI tutor to chat with, a quick quiz (Remember/Understand).
-  2. **Practice (the main focus)**: maths/physics problems and Python implementations (Apply → Create).
-- **Retention**: spaced repetition schedules reviews, and review sessions **interleave** concepts.
-- **Gamification**: XP weighted by Bloom level. Theory earns little; practice and implementations earn the most.
+  1. **Learn (theory, kept short)**: an intro, a worked example per KP, and one misconception check.
+  2. **Practice (the main focus)**: KP questions, multi-step problems and Python implementations.
+- **Retention**: spaced repetition per concept, where practising an advanced concept also counts as review of its prerequisites.
+  Reviews **interleave** concepts, and a timed mixed quiz runs every ~150 XP.
+- **Gamification**: **1 XP ≈ 1 minute of focused work**, scaled by performance. Implementations earn the most because they take
+  longest, and rushing or guessing earns nothing or a small penalty. Progress = concepts learned.
+- Research behind these choices: [docs/research/COMPETITOR-INSIGHTS.md](research/COMPETITOR-INSIGHTS.md) (Math Academy, PhysicsGraph, Vizuara).
 
 ## Goals & success metrics (pilot)
 - Students spend **≥ 60% of their time in practice**, not theory → measured from activity logs.
@@ -33,21 +37,29 @@ understands, so help arrives late and is generic.
 Build order and spec numbers: docs/ROADMAP.md.
 0. Foundations: monorepo scaffold, `make dev` / `make check`, CI ([spec 001](specs/001-scaffold.md)).
 1. Multi-school accounts: schools → teachers → classes → students, with roles.
-2. Pre-authored courses (content-as-code): concepts, prerequisite graph, lessons, quizzes, practice items.
-3. Student **Learn** layer: lesson viewer (text, images, diagrams, maths), quiz.
-4. Student **Practice** layer: numeric/expression answers for maths/physics; in-browser Python editor with test cases.
-5. Mastery engine (Bloom levels per concept) and a visual knowledge graph for the student.
-6. Spaced repetition and interleaved review sessions.
-7. XP, levels, streaks.
-8. AI tutor in lessons and practice (hints, never hands over the answer).
-9. Teacher dashboard: class overview, per-student knowledge graph, weakest concepts, students at risk.
-10. Teacher AI assist: class/student summaries and suggested notes for re-teaching.
+2. Pre-authored courses (content-as-code): concepts, KPs, prerequisite graph, items. First content is a **6–8 concept slice
+   of each of** CBSE Class 9–10 Maths (algebra), Physics (motion and force) and Python basics.
+3. Student **Learn** layer: intro + worked examples (text, images, diagrams, maths) + misconception check.
+4. Student **Practice** layer, with these formats: numeric + units (exact / significant figures / tolerance, randomised numbers),
+   SymPy expressions, limited multiple choice (misconception-tagged), multi-step problems, and Python code with tests.
+5. Mastery: the KP flow (fail → retry later → remediate key prerequisites), the knowledge frontier, and a visual knowledge graph.
+6. Spaced repetition per concept with implicit credit, a daily review cap, and a mixed timed quiz every ~150 XP.
+7. XP (minutes × performance), daily goal, streaks. **Class leaderboards are opt-in, switched on by the teacher**, and ranked by XP, never time spent.
+8. Placement: the teacher marks the chapters already covered, then a **short adaptive diagnostic within that range**.
+9. AI tutor, scoped to the current lesson or question: it points to the worked example, the prerequisite, or an experiment to try.
+   It never gives answers or steps; hints are capped and reduce XP.
+10. Teacher dashboard: class overview, per-student knowledge graph, weakest concepts, misconception spread, at-risk students,
+    and **assigned targets** (concept/chapter + due date). Assignments set priority but **never cap**: students can still learn
+    anything whose prerequisites are learned.
+11. Teacher AI assist: class/student summaries and suggested notes for re-teaching.
 
 ## Non-goals (NOT in v1)
 - A content authoring UI (our team authors content in the repo).
 - Languages other than Python for code; arbitrary file/project uploads.
 - Native mobile apps (responsive web only).
 - Parent accounts, payments, public signup, cross-school leaderboards.
+- Languages other than English (the content format should allow translations later).
+- Voice or screen-watching AI; uploading your own material.
 - Live classes or video hosting (embedding YouTube links is fine).
 
 ## Constraints
@@ -58,9 +70,12 @@ Build order and spec numbers: docs/ROADMAP.md.
 - AI cost must stay low per student per month: use a small model by default, rate-limit, and cache.
 - Budget / timeline: <fill in>
 
+## Decided (Oct 2026)
+- Board/grades: **CBSE Classes 9–10**. Language: **English only**.
+- Devices: **both school labs and phones**. Responsive UI; code tasks are designed for desktop but usable on tablets.
+- Leaderboards: personal stats by default; teachers see everyone; class leaderboards are opt-in per class.
+- Teacher control: assign targets with due dates; never cap students who are ahead.
+
 ## Open questions
-- Which boards and grades come first (CBSE / ICSE / state; classes 8–12)? → decides the first course.
-- Medium of instruction: English only, or also Hindi or regional languages?
-- Main devices: school computer labs, or students' phones? (Code practice on phones is limited.)
-- Are leaderboards wanted, or only personal XP? (Competition can demotivate weaker students.)
-- Can teachers assign specific concepts or reviews, or does everyone follow the graph freely?
+- Budget and pilot timeline; how many pilot schools and classes?
+- Who reviews content for accuracy (a subject teacher per subject)?

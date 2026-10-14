@@ -48,6 +48,17 @@ describe("HealthStatus", () => {
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 
+  it("shows API unreachable when the dev proxy answers 502 (API process down)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => Promise.resolve(new Response("", { status: 502 }))),
+    );
+    renderHealth();
+
+    expect(await screen.findByText("API: unreachable")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
   it("shows API unreachable with a Retry button that refetches", async () => {
     const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
     vi.stubGlobal("fetch", fetchMock);

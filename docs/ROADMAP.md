@@ -6,7 +6,7 @@ Each slice should work end to end before starting the next.
 ## Phase 0: Foundations
 | # | Spec | Done when |
 |---|---|---|
-| 001 | **Scaffold**: monorepo (backend/ frontend/ content/), docker-compose Postgres, `make dev`, real `make check`, CI on GitHub Actions | `make check` passes on an empty app; CI runs on PRs |
+| 001 | **Scaffold**: monorepo (backend/ frontend/ content/), hosted Supabase Postgres, `make dev`, real `make check`, CI on GitHub Actions | `make check` passes on an empty app; CI runs on PRs |
 | 002 | **Auth & tenancy**: managed auth, orgs, roles, classes, enrolment, invite-by-code, org-scoped query dependency | Teacher in school A cannot see anything in school B (tested) |
 | 003 | **Content model & importer**: schema for course/concept/prereq/lesson/item, validator + import CLI, one sample course (e.g. "Python basics" with 6–8 concepts) | `make content-check` validates; import is idempotent |
 

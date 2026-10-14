@@ -21,3 +21,9 @@ __pycache__/
 .venv/
 *.pyc
 coverage/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.tsbuildinfo

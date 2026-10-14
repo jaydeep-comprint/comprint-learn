@@ -12,7 +12,7 @@
 | Code editor | CodeMirror 6 | Lighter than Monaco, works on mobile |
 | Python execution | **Pyodide in a Web Worker** (in-browser) | No server sandbox needed; safe and free to run |
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2 (async), Alembic | Team choice (Python); typed |
-| Database | PostgreSQL | Relational data (orgs/classes) + JSONB for content |
+| Database | PostgreSQL (hosted Supabase, Session pooler, port 5432) | Relational data (orgs/classes) + JSONB for content. Test DB = a separate Supabase project (`TEST_DATABASE_URL`), used only by `make test-db` and CI |
 | Auth | Managed auth (Supabase Auth or Clerk) issuing JWTs; FastAPI verifies them | Don't build password, reset and invite flows ourselves |
 | Maths answer checking | SymPy (server side) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs) | Modern scheduler with fewer reviews than SM-2 |

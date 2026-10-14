@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import time
 import uuid
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
@@ -20,7 +21,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.auth import Unauthenticated, get_token_verifier
+from app.core.auth import Unauthenticated, VerifiedToken, get_token_verifier
 from app.core.config import get_settings
 from app.db.session import dispose_engine, get_sessionmaker
 from app.main import create_app
@@ -76,13 +77,14 @@ def migrated_test_db() -> str:
 
 
 class FakeVerifier:
-    """Tokens are `ok-<user id>`; anything else is rejected."""
+    """Tokens are `ok-<user id>` (issued now) or `ok-<user id>@<iat>`; anything else is rejected."""
 
-    async def verify(self, token: str) -> uuid.UUID:
+    async def verify(self, token: str) -> VerifiedToken:
         if not token.startswith("ok-"):
             raise Unauthenticated
+        user_id, _, iat = token[3:].partition("@")
         try:
-            return uuid.UUID(token[3:])
+            return VerifiedToken(uuid.UUID(user_id), int(iat) if iat else int(time.time()))
         except ValueError as exc:
             raise Unauthenticated from exc
 

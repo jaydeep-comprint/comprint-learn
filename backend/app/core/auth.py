@@ -10,6 +10,7 @@ import logging
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
@@ -29,6 +30,12 @@ JWKS_TIMEOUT_S = 5.0
 ASYMMETRIC_ALGORITHMS = frozenset({"ES256", "RS256", "EdDSA"})
 
 JwksFetcher = Callable[[], Awaitable[dict[str, Any]]]
+
+
+@dataclass(frozen=True)
+class VerifiedToken:
+    user_id: uuid.UUID
+    issued_at: int  # `iat`, seconds since the epoch
 
 
 class Unauthenticated(Exception):  # noqa: N818 - reads better at call sites
@@ -68,8 +75,8 @@ class TokenVerifier:
         self._forced_at: float | None = None
         self._lock = asyncio.Lock()
 
-    async def verify(self, token: str) -> uuid.UUID:
-        """Return the user id (`sub`) of a valid access token."""
+    async def verify(self, token: str) -> VerifiedToken:
+        """The user id (`sub`) and issue time (`iat`) of a valid access token."""
         if self._hs256_secret:
             claims = self._decode(token, self._hs256_secret, ["HS256"])
         else:
@@ -85,8 +92,8 @@ class TokenVerifier:
                 raise Unauthenticated
             claims = self._decode(token, key.key, [alg])
         try:
-            return uuid.UUID(str(claims["sub"]))
-        except (KeyError, ValueError) as exc:
+            return VerifiedToken(uuid.UUID(str(claims["sub"])), int(claims["iat"]))
+        except (KeyError, TypeError, ValueError) as exc:
             raise Unauthenticated from exc
 
     def _decode(self, token: str, key: Any, algorithms: list[str]) -> dict[str, Any]:
@@ -98,7 +105,7 @@ class TokenVerifier:
                 audience=AUDIENCE,
                 issuer=self._issuer,
                 leeway=LEEWAY_S,
-                options={"require": ["exp", "sub", "aud", "iss"]},
+                options={"require": ["exp", "iat", "sub", "aud", "iss"]},
             )
         except jwt.InvalidTokenError as exc:
             raise Unauthenticated from exc
@@ -122,6 +129,9 @@ class TokenVerifier:
 
     async def _refresh(self, *, forced: bool) -> None:
         async with self._lock:
+            fresh = self._fetched_at is not None and self._clock() - self._fetched_at < JWKS_TTL_S
+            if not forced and fresh:
+                return  # another request refreshed while we waited for the lock
             if forced:
                 self._forced_at = self._clock()
             try:

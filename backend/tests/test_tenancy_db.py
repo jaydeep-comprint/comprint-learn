@@ -1,6 +1,7 @@
 """Tenancy business rules against a real database (Supabase admin API faked)."""
 
 import re
+import time
 import uuid
 
 import pytest
@@ -8,6 +9,7 @@ from sqlalchemy import func, select
 
 from app.cli import CliError, create_org
 from app.models import AppUser, Enrollment, Organization, Role, UserStatus
+from app.services import tenancy
 from app.services.tenancy import BULK_CREATE_FAILED, LAST_ADMIN, ONLY_ACTIVE_STUDENTS
 from tests.conftest import DbApp
 from tests.db_seed import School, seed_school, staff, student
@@ -453,3 +455,63 @@ async def test_staff_email_unique_across_schools_at_db_level(db_app: DbApp) -> N
         session.add(staff(other.org_id, f"ADMIN@{s.code.lower()}.in"))
         with pytest.raises(Exception, match="uq_app_user_email"):
             await session.commit()
+
+
+async def test_old_session_cannot_claim_account_after_reset(db_app: DbApp) -> None:
+    s = await _school(db_app)
+    sid = s.student_ids[0]
+    before_reset = f"ok-{sid}@{int(time.time()) - 600}"  # a token from 10 minutes ago
+    reset = await db_app.client.post(
+        f"/api/v1/students/{sid}/reset-password", headers=db_app.auth(s.teacher_id)
+    )
+    assert reset.status_code == 200
+    stolen = {"Authorization": f"Bearer {before_reset}"}
+    takeover = await db_app.client.post(
+        "/api/v1/me/password", json={"new_password": "attacker-pass"}, headers=stolen
+    )
+    assert takeover.status_code == 401
+    assert (await db_app.client.get("/api/v1/me", headers=stolen)).status_code == 401
+    # Signing in with the new slip (a fresh token) works.
+    assert (await db_app.client.get("/api/v1/me", headers=db_app.auth(sid))).status_code == 200
+
+
+async def test_unarchive_into_name_clash_is_409(db_app: DbApp) -> None:
+    s = await _school(db_app)
+    h, cid = db_app.auth(s.teacher_id), s.class_ids[0]
+    name = (await db_app.client.get(f"/api/v1/classes/{cid}", headers=h)).json()["name"]
+    await db_app.client.patch(f"/api/v1/classes/{cid}", json={"archived": True}, headers=h)
+    again = await db_app.client.post(
+        "/api/v1/classes", json={"name": name, "subject": "maths", "grade": 9}, headers=h
+    )
+    assert again.status_code == 201
+    clash = await db_app.client.patch(f"/api/v1/classes/{cid}", json={"archived": False}, headers=h)
+    assert clash.status_code == 409
+    assert clash.json() == {
+        "code": "class_name_taken",
+        "message": f"A class named {name} already exists.",
+    }
+
+
+async def test_concurrent_invite_loser_keeps_winners_auth_user(
+    db_app: DbApp, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    s = await _school(db_app)
+    winner = uuid.uuid4()
+    async with db_app.sessions() as session:
+        session.add(staff(s.org_id, "race@x.in", id=winner, status=UserStatus.invited))
+        await session.commit()
+    db_app.admin.users[winner] = {"email": "race@x.in", "password": None, "banned": False}
+
+    # Simulate the race: the loser passed the email check before the winner committed.
+    async def not_taken(*_a: object) -> bool:
+        return False
+
+    monkeypatch.setattr(tenancy, "email_taken", not_taken)
+    resp = await db_app.client.post(
+        "/api/v1/teachers/invite",
+        json={"email": "race@x.in", "display_name": "Loser"},
+        headers=db_app.auth(s.admin_id),
+    )
+    assert resp.status_code == 409
+    assert db_app.admin.deleted == []
+    assert winner in db_app.admin.users

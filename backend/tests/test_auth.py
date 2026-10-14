@@ -68,7 +68,7 @@ def _verifier(fetch: FakeJwks, clock: Clock | None = None, **kw: Any) -> TokenVe
 
 async def test_valid_token_returns_sub() -> None:
     fetch = FakeJwks(JWK_A)
-    assert await _verifier(fetch).verify(_token()) == USER_ID
+    assert (await _verifier(fetch).verify(_token())).user_id == USER_ID
 
 
 async def test_jwks_cached_then_refreshed_after_ttl() -> None:
@@ -85,7 +85,7 @@ async def test_jwks_cached_then_refreshed_after_ttl() -> None:
 async def test_expired_token_rejected_with_leeway() -> None:
     v = _verifier(FakeJwks(JWK_A))
     now = int(time.time())
-    assert await v.verify(_token(exp=now - 10)) == USER_ID  # within 30 s leeway
+    assert (await v.verify(_token(exp=now - 10))).user_id == USER_ID  # within 30 s leeway
     with pytest.raises(Unauthenticated):
         await v.verify(_token(exp=now - 120))
 
@@ -98,6 +98,7 @@ async def test_expired_token_rejected_with_leeway() -> None:
         {"exp": None},
         {"sub": None},
         {"sub": "not-a-uuid"},
+        {"iat": None},
     ],
 )
 async def test_bad_claims_rejected(overrides: dict[str, Any]) -> None:
@@ -128,7 +129,7 @@ async def test_rotated_key_found_on_refetch() -> None:
     v = _verifier(fetch)
     await v.verify(_token())
     fetch.keys.append(JWK_B)
-    assert await v.verify(_token(key=KEY_B, kid="key-b")) == USER_ID
+    assert (await v.verify(_token(key=KEY_B, kid="key-b"))).user_id == USER_ID
 
 
 @pytest.mark.parametrize("token", ["", "garbage", "a.b.c"])
@@ -156,7 +157,7 @@ async def test_jwks_unreachable_uses_stale_cache() -> None:
     await v.verify(_token())
     fetch.fail = True
     clock.t += 601
-    assert await v.verify(_token()) == USER_ID
+    assert (await v.verify(_token())).user_id == USER_ID
 
 
 async def test_legacy_hs256_secret() -> None:
@@ -164,7 +165,7 @@ async def test_legacy_hs256_secret() -> None:
     fetch = FakeJwks()
     v = _verifier(fetch, hs256_secret=secret)
     token = jwt.encode(_claims(), secret, algorithm="HS256")
-    assert await v.verify(token) == USER_ID
+    assert (await v.verify(token)).user_id == USER_ID
     assert fetch.calls == 0
     with pytest.raises(Unauthenticated):
         await v.verify(jwt.encode(_claims(), "wrong-secret-" + "y" * 32, algorithm="HS256"))

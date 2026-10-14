@@ -1,7 +1,9 @@
 """Auth dependencies, offline: a fake token verifier and a fake session hold the users."""
 
+import time
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -9,7 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.api.deps import AnyUser, CurrentUser, Scope, get_current_user, require_admin
-from app.core.auth import AuthUnavailable, Unauthenticated, get_token_verifier
+from app.core.auth import AuthUnavailable, Unauthenticated, VerifiedToken, get_token_verifier
 from app.db.session import get_session
 from app.main import create_app
 from app.models import AppUser, Role, UserStatus
@@ -34,12 +36,13 @@ def _user(role: Role = Role.teacher, **kw: Any) -> AppUser:
 class FakeVerifier:
     unavailable = False
 
-    async def verify(self, token: str) -> uuid.UUID:
+    async def verify(self, token: str) -> VerifiedToken:
         if self.unavailable:
             raise AuthUnavailable
         if not token.startswith("ok-"):
             raise Unauthenticated
-        return uuid.UUID(token[3:])
+        user_id, _, iat = token[3:].partition("@")
+        return VerifiedToken(uuid.UUID(user_id), int(iat) if iat else int(time.time()))
 
 
 class FakeSession:
@@ -181,3 +184,15 @@ async def test_admin_passes_admin_check_and_scope_uses_user_org() -> None:
 async def test_api_routes_require_a_token(path: str) -> None:
     app, _ = _app([])
     assert (await _get(app, path, None)).status_code == 401
+
+
+async def test_tokens_issued_before_sessions_valid_after_are_rejected() -> None:
+    cutoff = datetime.now(UTC)
+    student = _user(Role.student, username="a12", sessions_valid_after=cutoff)
+    app, _ = _app([student])
+    old = int((cutoff - timedelta(minutes=10)).timestamp())
+    stale = await _get(app, "/t/any", None, token=f"ok-{student.id}@{old}")
+    assert stale.status_code == 401
+    # A sign-in a moment after (within clock skew) is fine.
+    fresh = await _get(app, "/t/any", None, token=f"ok-{student.id}@{int(cutoff.timestamp())}")
+    assert fresh.status_code == 200

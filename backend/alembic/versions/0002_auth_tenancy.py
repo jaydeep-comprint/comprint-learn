@@ -83,6 +83,7 @@ def upgrade() -> None:
         sa.Column(
             "must_change_password", sa.Boolean(), server_default=sa.text("false"), nullable=False
         ),
+        sa.Column("sessions_valid_after", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),

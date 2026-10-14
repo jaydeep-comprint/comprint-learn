@@ -105,6 +105,9 @@ class AppUser(TenantMixin, Base):
     must_change_password: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # Access tokens issued before this are rejected (set on reset, password change, deactivation):
+    # Supabase revokes refresh tokens, but an issued access token lives until it expires.
+    sessions_valid_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

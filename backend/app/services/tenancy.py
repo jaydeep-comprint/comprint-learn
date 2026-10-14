@@ -92,6 +92,7 @@ async def change_own_password(scope: OrgScope, admin: SupabaseAdmin, new_passwor
     except SupabaseAdminError as exc:
         raise auth_service_down() from exc
     user.must_change_password = False
+    user.sessions_valid_after = func.now()  # other devices' access tokens stop working now
     await scope.session.commit()
 
 
@@ -153,7 +154,10 @@ async def invite_teacher(
         await scope.session.commit()
     except IntegrityError as exc:
         await scope.session.rollback()
-        await _delete_auth_users(admin, [auth_id])
+        # A concurrent invite of the same email may have committed this very auth user: only
+        # delete it if no app_user row owns it.
+        if await scope.session.get(AppUser, auth_id) is None:
+            await _delete_auth_users(admin, [auth_id])
         raise conflict("email_taken", EMAIL_TAKEN) from exc
     except Exception:
         await scope.session.rollback()
@@ -178,15 +182,10 @@ async def _lock_active_admins(scope: OrgScope) -> list[uuid.UUID]:
     stmt = (
         scope.select(AppUser)
         .where(AppUser.is_admin.is_(True), AppUser.status == UserStatus.active)
+        .order_by(AppUser.id)
         .with_for_update()
     )
     return [u.id for u in (await scope.session.scalars(stmt)).all()]
-
-
-async def _ensure_not_last_admin(scope: OrgScope, user: AppUser) -> None:
-    admins = await _lock_active_admins(scope)
-    if user.id in admins and len(admins) <= 1:
-        raise conflict("last_admin", LAST_ADMIN)
 
 
 async def _set_status(
@@ -200,6 +199,8 @@ async def _set_status(
     except SupabaseAdminError as exc:
         raise auth_service_down() from exc
     user.status = status
+    if status == UserStatus.deactivated:
+        user.sessions_valid_after = func.now()
     logger.info("User %s status -> %s", user.id, status.value)
 
 
@@ -211,11 +212,14 @@ async def patch_teacher(
     is_admin: bool | None,
     status: UserStatus | None,
 ) -> AppUser:
+    # Lock order: all active admins (by id), then the target. Same order in every request, so two
+    # admins demoting each other can't deadlock.
+    admins = await _lock_active_admins(scope) if is_admin is False or status else []
     user = await _get_teacher(scope, user_id, for_update=True)
     demoting = is_admin is False and user.is_admin
     deactivating = status == UserStatus.deactivated and user.status != UserStatus.deactivated
-    if demoting or deactivating:
-        await _ensure_not_last_admin(scope, user)
+    if (demoting or deactivating) and user.id in admins and len(admins) <= 1:
+        raise conflict("last_admin", LAST_ADMIN)
     if status is not None:
         await _set_status(scope, admin, user, status)
     if is_admin is not None:
@@ -311,6 +315,7 @@ async def reset_student_password(
     except SupabaseAdminError as exc:
         raise auth_service_down() from exc
     student.must_change_password = True
+    student.sessions_valid_after = func.now()  # old access tokens can't claim the account
     await scope.session.commit()
     assert student.username is not None
     return TempPasswordOut(username=student.username, temp_password=password)
@@ -502,11 +507,12 @@ async def patch_class(
         school_class.archived_at = datetime.now(UTC)
     elif archived is False:
         school_class.archived_at = None
+    shown_name = school_class.name  # read before commit: rollback expires the instance
     try:
         await scope.session.commit()
     except IntegrityError as exc:
         await scope.session.rollback()
-        raise _class_name_taken(name or school_class.name) from exc
+        raise _class_name_taken(shown_name) from exc
     return await get_class(scope, class_id)
 
 

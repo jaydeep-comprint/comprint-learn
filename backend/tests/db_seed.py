@@ -57,14 +57,14 @@ def student(org_id: uuid.UUID, username: str, **kw: object) -> AppUser:
 
 
 async def seed_school(session: AsyncSession, code: str) -> School:
+    """One flush per dependency level (no ORM relationships, so we order the inserts ourselves)."""
     org = Organization(id=uuid.uuid4(), name=f"School {code}", code=code)
-    session.add(org)
-    await session.flush()
     admin = staff(org.id, f"admin@{code.lower()}.in", is_admin=True)
     teacher = staff(org.id, f"teacher@{code.lower()}.in")
-    session.add_all([admin, teacher])
-    await session.flush()
     school = School(org.id, code, admin.id, teacher.id)
+    classes: list[SchoolClass] = []
+    students: list[AppUser] = []
+    links: list[ClassTeacher | Enrollment] = []
     for i, subject in enumerate([Subject.maths, Subject.physics]):
         cls = SchoolClass(
             id=uuid.uuid4(),
@@ -74,15 +74,16 @@ async def seed_school(session: AsyncSession, code: str) -> School:
             grade=9,
             created_by=teacher.id,
         )
-        session.add(cls)
-        await session.flush()
-        session.add(ClassTeacher(org_id=org.id, class_id=cls.id, user_id=teacher.id))
+        classes.append(cls)
+        links.append(ClassTeacher(org_id=org.id, class_id=cls.id, user_id=teacher.id))
         school.class_ids.append(cls.id)
         for j in range(3):
             s = student(org.id, f"{code.lower()}{i}{j}")
-            session.add(s)
-            await session.flush()
-            session.add(Enrollment(org_id=org.id, class_id=cls.id, student_id=s.id))
+            students.append(s)
+            links.append(Enrollment(org_id=org.id, class_id=cls.id, student_id=s.id))
             school.student_ids.append(s.id)
+    for level in ([org], [admin, teacher, *students], classes, links):
+        session.add_all(level)
+        await session.flush()
     await session.commit()
     return school

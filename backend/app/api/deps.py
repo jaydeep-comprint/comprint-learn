@@ -23,6 +23,10 @@ from app.models import AppUser, Role, TenantMixin, UserStatus
 
 T = TypeVar("T", bound=TenantMixin)
 
+# Supabase (token `iat`) and Postgres (`now()`) clocks can differ a little; a fresh sign-in right
+# after a password change must not be rejected.
+TOKEN_CLOCK_SKEW_S = 5
+
 _bearer = HTTPBearer(auto_error=False)
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -53,15 +57,20 @@ async def get_current_user_allow_password_change(
     if creds is None:
         raise unauthenticated()
     try:
-        user_id = await verifier.verify(creds.credentials)
+        token = await verifier.verify(creds.credentials)
     except Unauthenticated as exc:
         raise unauthenticated() from exc
     except AuthUnavailable as exc:
         raise ApiProblem(503, "auth_unavailable", "Sign-in is unavailable; try again.") from exc
 
     # Identity lookup by the verified token's `sub` (the only by-id query outside OrgScope).
-    user = await session.get(AppUser, user_id)
+    user = await session.get(AppUser, token.user_id)
     if user is None or user.status == UserStatus.deactivated:
+        raise unauthenticated()
+    if user.sessions_valid_after is not None and token.issued_at < (
+        user.sessions_valid_after.timestamp() - TOKEN_CLOCK_SKEW_S
+    ):
+        # Issued before a password reset/change or deactivation: that session is over.
         raise unauthenticated()
     if user.status == UserStatus.invited:
         # First authenticated request after accepting the invite.

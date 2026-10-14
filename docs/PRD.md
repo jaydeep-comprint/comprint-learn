@@ -31,6 +31,7 @@ understands, so help arrives late and is generic.
 
 ## MVP scope (v1)
 Build order and spec numbers: docs/ROADMAP.md.
+0. Foundations: monorepo scaffold, `make dev` / `make check`, CI ([spec 001](specs/001-scaffold.md)).
 1. Multi-school accounts: schools → teachers → classes → students, with roles.
 2. Pre-authored courses (content-as-code): concepts, prerequisite graph, lessons, quizzes, practice items.
 3. Student **Learn** layer: lesson viewer (text, images, diagrams, maths), quiz.

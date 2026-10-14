@@ -35,9 +35,14 @@ jobs:
 
       - run: make check
 
-      # Secrets can't be used directly in `if`, so expose it as env and test that.
+      # Secrets can't be used in `if`, and a step's own `env` isn't visible to its `if`,
+      # so a gate step records whether the secret exists (without exposing it to other steps).
+      - name: Check for TEST_DATABASE_URL secret
+        id: dbsecret
+        run: echo "present=${{ secrets.TEST_DATABASE_URL != '' }}" >> "$GITHUB_OUTPUT"
+
       - name: make test-db
-        if: env.TEST_DATABASE_URL != ''
+        if: steps.dbsecret.outputs.present == 'true'
         env:
           TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
         run: make test-db

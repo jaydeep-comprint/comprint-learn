@@ -51,7 +51,13 @@ def normalize_db_url(raw: str) -> tuple[str, dict[str, Any]]:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE,
+        env_file_encoding="utf-8",
+        extra="ignore",
+        # Validation errors must never echo DATABASE_URL (it contains the password).
+        hide_input_in_errors=True,
+    )
 
     database_url: str = ""
     test_database_url: str | None = None
@@ -80,7 +86,10 @@ class Settings(BaseSettings):
         return normalize_db_url(self.database_url)
 
     def db_port(self) -> int | None:
-        return urlsplit(self.database_url).port
+        try:
+            return urlsplit(self.database_url).port
+        except ValueError:  # non-numeric port: connecting will report it
+            return None
 
 
 @lru_cache

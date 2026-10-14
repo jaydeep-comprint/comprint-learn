@@ -15,7 +15,8 @@ export function HealthStatus() {
     return <p className="text-slate-600">Checking API…</p>;
   }
 
-  if (data) {
+  // Check errors before data: after a failed refetch, TanStack Query keeps the last good `data`.
+  if (!error && data) {
     return <p className="font-medium text-green-700">API: ok · Database: ok</p>;
   }
 

@@ -75,6 +75,13 @@ def test_settings_reject_bad_scheme(monkeypatch: pytest.MonkeyPatch) -> None:
         Settings()
 
 
+def test_bad_url_error_does_not_echo_password(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "mysql://user:SuperSecretPw@host/db")
+    with pytest.raises(ValidationError) as exc_info:
+        Settings()
+    assert "SuperSecretPw" not in str(exc_info.value)
+
+
 def test_missing_database_url_gives_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "")
     with pytest.raises(RuntimeError) as exc_info:

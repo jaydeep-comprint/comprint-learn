@@ -1,4 +1,4 @@
-# <PRODUCT NAME>
+# Learning App (MVP)
 
 Built with Claude Code. See `CLAUDE-CODE-PLAYBOOK.md` for the full workflow and research.
 

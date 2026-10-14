@@ -78,7 +78,7 @@ async def list_orgs() -> list[tuple[str, str, int, int]]:
                 .group_by(Organization.id)
                 .order_by(Organization.code)
             )
-            return [(c, n, t, st) for c, n, t, st in (await session.execute(stmt)).tuples()]
+            return [(c, n, t, st) for c, n, t, st in (await session.execute(stmt)).all()]
     finally:
         await dispose_engine()
 

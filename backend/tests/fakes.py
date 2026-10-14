@@ -23,6 +23,10 @@ class FakeSupabaseAdmin:
                 raise SupabaseAdminError(op, 500)
             self.fail_after -= 1
 
+    def _user(self, user_id: uuid.UUID) -> dict[str, object]:
+        """Users seeded straight into the DB exist in "Supabase" too."""
+        return self.users.setdefault(user_id, {"email": None, "password": None, "banned": False})
+
     def _by_email(self, email: str) -> uuid.UUID | None:
         return next((i for i, u in self.users.items() if u["email"] == email), None)
 
@@ -46,11 +50,11 @@ class FakeSupabaseAdmin:
 
     async def update_password(self, user_id: uuid.UUID, password: str) -> None:
         self._maybe_fail("update_password")
-        self.users[user_id]["password"] = password
+        self._user(user_id)["password"] = password
 
     async def set_banned(self, user_id: uuid.UUID, banned: bool) -> None:
         self._maybe_fail("set_banned")
-        self.users[user_id]["banned"] = banned
+        self._user(user_id)["banned"] = banned
 
     async def delete_user(self, user_id: uuid.UUID) -> None:
         self._maybe_fail("delete_user")

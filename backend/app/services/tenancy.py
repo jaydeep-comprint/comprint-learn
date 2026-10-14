@@ -413,7 +413,7 @@ async def _class_out(scope: OrgScope, classes: Sequence[SchoolClass]) -> list[Cl
             .where(Enrollment.org_id == scope.org_id, Enrollment.class_id.in_(ids))
             .group_by(Enrollment.class_id)
         )
-        counts = {cid: n for cid, n in (await scope.session.execute(count_stmt)).tuples()}
+        counts = {cid: n for cid, n in (await scope.session.execute(count_stmt)).all()}
         teacher_stmt = (
             select(ClassTeacher.class_id, AppUser.id, AppUser.display_name)
             .join(
@@ -423,7 +423,7 @@ async def _class_out(scope: OrgScope, classes: Sequence[SchoolClass]) -> list[Cl
             .where(ClassTeacher.org_id == scope.org_id, ClassTeacher.class_id.in_(ids))
             .order_by(func.lower(AppUser.display_name))
         )
-        for cid, uid, name in (await scope.session.execute(teacher_stmt)).tuples():
+        for cid, uid, name in (await scope.session.execute(teacher_stmt)).all():
             teachers.setdefault(cid, []).append(TeacherRef(id=uid, display_name=name))
     return [
         ClassOut(

@@ -5,6 +5,10 @@ from collections.abc import AsyncIterator, Iterator
 # Env vars win over backend/.env, so a developer's real DATABASE_URL is never used by offline tests.
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test"
 os.environ.setdefault("ENVIRONMENT", "test")
+os.environ["SUPABASE_URL"] = "https://test-project.supabase.co"
+# Empty = unset, and it overrides a legacy secret in a developer's backend/.env.
+os.environ["SUPABASE_JWT_SECRET"] = ""
+os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "test-service-role-key"
 
 import pytest
 

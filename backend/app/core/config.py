@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
@@ -14,6 +14,10 @@ MISSING_DATABASE_URL = (
     "DATABASE_URL is not set. Copy backend/.env.example to backend/.env and fill it in."
 )
 BAD_SCHEME = "DATABASE_URL must be a postgres URL (postgresql://...)"
+MISSING_SUPABASE_URL = "SUPABASE_URL is not set. Add it to backend/.env (see backend/.env.example)."
+MISSING_SERVICE_ROLE_KEY = (
+    "SUPABASE_SERVICE_ROLE_KEY is not set. Add it to backend/.env (see backend/.env.example)."
+)
 
 _ASYNC_SCHEME = "postgresql+asyncpg"
 _SCHEME_MAP = {"postgres": _ASYNC_SCHEME, "postgresql": _ASYNC_SCHEME, _ASYNC_SCHEME: _ASYNC_SCHEME}
@@ -62,6 +66,12 @@ class Settings(BaseSettings):
     database_url: str = ""
     test_database_url: str | None = None
     supabase_url: str | None = None
+    # Secret: bypasses Supabase RLS and can manage auth users. Never log it.
+    supabase_service_role_key: SecretStr | None = None
+    # Legacy projects only: HS256 shared secret. Unset = verify with the project's JWKS.
+    supabase_jwt_secret: SecretStr | None = None
+    # Public URL of the web app, used for invite / password-reset redirects.
+    app_url: str = "http://localhost:5173"
     environment: Literal["development", "test", "production"] = "development"
     cors_origins: Annotated[list[str], NoDecode] = []
     db_pool_size: int = 5
@@ -74,6 +84,11 @@ class Settings(BaseSettings):
             normalize_db_url(v)
         return v
 
+    @field_validator("supabase_service_role_key", "supabase_jwt_secret", mode="before")
+    @classmethod
+    def _empty_secret_is_unset(cls, v: object) -> object:
+        return None if v == "" else v
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors_origins(cls, v: object) -> object:
@@ -84,6 +99,17 @@ class Settings(BaseSettings):
     def db_connection(self) -> tuple[str, dict[str, Any]]:
         """Normalised (url, connect_args) for `DATABASE_URL`."""
         return normalize_db_url(self.database_url)
+
+    def require_supabase_url(self) -> str:
+        """`SUPABASE_URL` without a trailing slash; raises if unset (checked only when used)."""
+        if not self.supabase_url:
+            raise RuntimeError(MISSING_SUPABASE_URL)
+        return self.supabase_url.rstrip("/")
+
+    def require_service_role_key(self) -> str:
+        if self.supabase_service_role_key is None:
+            raise RuntimeError(MISSING_SERVICE_ROLE_KEY)
+        return self.supabase_service_role_key.get_secret_value()
 
     def db_port(self) -> int | None:
         try:

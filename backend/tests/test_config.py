@@ -99,3 +99,23 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings(_env_file=None)
     assert settings.cors_origins == []
     assert (settings.db_pool_size, settings.db_max_overflow) == (5, 5)
+
+
+def test_supabase_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://abc.supabase.co/")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "")
+    s = Settings()
+    assert s.require_supabase_url() == "https://abc.supabase.co"
+    assert s.supabase_jwt_secret is None
+    assert s.require_service_role_key() == "test-service-role-key"
+    assert "test-service-role-key" not in repr(s)
+
+
+def test_missing_supabase_settings_raise_clear_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    s = Settings()
+    with pytest.raises(RuntimeError, match="SUPABASE_URL is not set"):
+        s.require_supabase_url()
+    with pytest.raises(RuntimeError, match="SUPABASE_SERVICE_ROLE_KEY is not set"):
+        s.require_service_role_key()

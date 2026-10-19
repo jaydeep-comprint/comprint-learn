@@ -78,7 +78,7 @@ fast, offline quality gate (lint, types, tests for both apps), and GitHub Action
 | Target | Does |
 |---|---|
 | `make install` | `uv sync` in backend, `pnpm install --frozen-lockfile` in frontend |
-| `make dev` | Runs `dev-api` (`uv run fastapi dev app/main.py --port 8000`) and `dev-web` (`pnpm dev`) in parallel via `make -j2`; Ctrl-C stops both |
+| `make dev` | Runs `dev-api` (`uv run uvicorn app.main:app --reload --port 8000`) and `dev-web` (`pnpm dev`) in parallel via `make -j2`; Ctrl-C stops both |
 | `make check` | `check-api` + `check-web`; **offline, no DB** |
 | `check-api` | `ruff check .`, `ruff format --check .`, `mypy` (strict), `pytest -q -m "not db"` |
 | `check-web` | `eslint .`, `prettier --check .`, `tsc -b --noEmit` (or `tsc --noEmit -p`), `vitest run` |

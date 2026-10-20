@@ -392,3 +392,19 @@ def _read_markdown(
     except (OSError, UnicodeDecodeError) as exc:
         bundle.error(concept.yaml_path, f"can't read {name!r}: {exc}", field=field_name, id=id_)
     return None
+
+
+# --- Markdown references --------------------------------------------------------------------------
+
+IMAGE_REF = re.compile(r"!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+LINK_REF = re.compile(r"(?<!!)\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+HTML_IMG = re.compile(r"<img\b[^>]*\bsrc\s*=\s*[\"']([^\"']+)[\"']", re.IGNORECASE)
+
+
+def image_refs(markdown: str) -> list[str]:
+    """Image paths used in Markdown (`![alt](path)` and `<img src>`), in order, deduplicated."""
+    return list(dict.fromkeys(IMAGE_REF.findall(markdown) + HTML_IMG.findall(markdown)))
+
+
+def link_refs(markdown: str) -> list[str]:
+    return list(dict.fromkeys(LINK_REF.findall(markdown)))

@@ -1,5 +1,15 @@
 """All models are imported here so `Base.metadata` (and Alembic) sees every table."""
 
+from app.models.content import (
+    Chapter,
+    Concept,
+    ConceptPrereq,
+    Course,
+    Item,
+    KnowledgePoint,
+    KpKeyPrereq,
+    Misconception,
+)
 from app.models.tenancy import (
     AppUser,
     ClassTeacher,
@@ -14,8 +24,16 @@ from app.models.tenancy import (
 
 __all__ = [
     "AppUser",
+    "Chapter",
     "ClassTeacher",
+    "Concept",
+    "ConceptPrereq",
+    "Course",
     "Enrollment",
+    "Item",
+    "KnowledgePoint",
+    "KpKeyPrereq",
+    "Misconception",
     "Organization",
     "Role",
     "SchoolClass",

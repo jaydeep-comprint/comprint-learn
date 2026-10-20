@@ -9,6 +9,7 @@ import typer
 from sqlalchemy import case, func, select
 
 from app.api.deps import OrgScope
+from app.content.importer import ImportReport, import_tree
 from app.content.loader import ContentBundle, Issue, load
 from app.content.validate import has_errors, validate
 from app.core.errors import ApiProblem
@@ -157,6 +158,30 @@ def content_check(
         raise typer.Exit(1)
     warnings = f" ({len(issues)} warnings)" if issues else ""
     typer.echo(f"content OK: {summary(bundle)}{warnings}")
+
+
+async def import_content(root: Path, *, dry_run: bool) -> tuple[list[Issue], ImportReport | None]:
+    try:
+        return await import_tree(root, get_sessionmaker(), dry_run=dry_run)
+    finally:
+        await dispose_engine()
+
+
+@content_app.command("import")
+def content_import(
+    root: RootOpt = DEFAULT_CONTENT_ROOT,
+    dry_run: Annotated[bool, typer.Option(help="Show what would change; write nothing")] = False,
+) -> None:
+    """Validate, then import content/ into DATABASE_URL in one transaction (idempotent)."""
+    issues, report = asyncio.run(import_content(root, dry_run=dry_run))
+    print_issues(issues)
+    if report is None:
+        errors = sum(i.level == "error" for i in issues)
+        typer.echo(f"{errors} errors, {len(issues) - errors} warnings; nothing imported.", err=True)
+        raise typer.Exit(1)
+    for line in report.lines():
+        typer.echo(line)
+    typer.echo("Dry run, nothing written." if dry_run else "Imported.")
 
 
 def main() -> None:

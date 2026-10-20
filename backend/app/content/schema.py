@@ -3,7 +3,6 @@
 Shapes and types only; cross-field and cross-file rules live in `app.content.validate`.
 """
 
-import enum
 import keyword
 from typing import Annotated, Any, Literal
 
@@ -16,6 +15,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.models.content import Bloom, ItemKind, ItemType
 from app.models.tenancy import Subject
 
 SLUG_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
@@ -27,28 +27,7 @@ ConceptRef = Annotated[str, StringConstraints(pattern=REF_PATTERN, max_length=12
 Text = Annotated[str, StringConstraints(min_length=1)]
 Number = int | float
 
-
-class Bloom(enum.StrEnum):
-    remember = "remember"
-    understand = "understand"
-    apply = "apply"
-    analyze = "analyze"
-    evaluate = "evaluate"
-    create = "create"
-
-
-class ItemType(enum.StrEnum):
-    numeric = "numeric"
-    expression = "expression"
-    mcq = "mcq"
-    multistep = "multistep"
-    code = "code"
-
-
-class ItemKind(enum.StrEnum):
-    kp_question = "kp_question"
-    practice = "practice"
-    misconception_check = "misconception_check"
+__all__ = ["Bloom", "ItemKind", "ItemType"]  # DB enums, re-exported for content code
 
 
 class _Strict(BaseModel):

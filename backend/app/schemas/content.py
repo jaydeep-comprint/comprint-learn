@@ -2,7 +2,9 @@
 
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.models import Subject
 
 
 class _Public(BaseModel):
@@ -55,3 +57,60 @@ class ItemPublic(_Public):
     @classmethod
     def from_row(cls, row: _HasPublic) -> "ItemPublic":
         return cls.model_validate(row.public)
+
+
+# --- courses and the concept graph ----------------------------------------------------------------
+
+
+class CourseSummary(BaseModel):
+    slug: str
+    title: str
+    subject: Subject
+    chapter_count: int
+    concept_count: int
+
+
+class CourseRef(BaseModel):
+    slug: str
+    title: str
+    subject: Subject
+
+
+class ChapterOut(BaseModel):
+    slug: str
+    title: str
+    grade: int | None
+    position: int
+
+
+class ConceptNode(BaseModel):
+    id: str  # "<course>/<slug>"
+    title: str
+    summary: str
+    chapter: str
+    position: int
+    kp_count: int
+
+
+class Edge(BaseModel):
+    """`from` is the prerequisite, `to` the concept that requires it."""
+
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    from_: str = Field(alias="from")
+    to: str
+    weight: float
+
+
+class ExternalConcept(BaseModel):
+    id: str
+    title: str
+    course: str
+
+
+class CourseGraph(BaseModel):
+    course: CourseRef
+    chapters: list[ChapterOut]
+    concepts: list[ConceptNode]
+    edges: list[Edge]
+    external: list[ExternalConcept]

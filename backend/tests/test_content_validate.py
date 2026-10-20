@@ -179,7 +179,7 @@ def test_unparsable_unit(tmp_path: Path) -> None:
     t = fx.tree()
     _concept(t)["kps"][0]["items"][3]["answer"]["numeric"]["unit"] = "mps"
     assert _issues(tmp_path, t) == [
-        f"{CONCEPT}: kps[0].items[3] (kp1-q4): can't parse unit 'mps': unknown name 'mps'"
+        f"{CONCEPT}: kps[0].items[3] (kp1-q4): can't parse unit 'mps': unknown unit 'mps'"
     ]
 
 
@@ -252,6 +252,11 @@ def _absolute(d: Path) -> str:
     return "https://example.com/x.png"
 
 
+def _outside_img(d: Path) -> str:
+    (d / "diagram.svg").write_text("<svg/>")
+    return "diagram.svg"
+
+
 def _scripted(d: Path) -> str:
     (d / "img").mkdir()
     (d / "img" / "x.svg").write_text('<svg onload="alert(1)"></svg>')
@@ -268,6 +273,10 @@ def _scripted(d: Path) -> str:
             "image 'https://example.com/x.png' must be a relative path inside the concept folder",
         ),
         (_scripted, "image 'img/x.svg' contains scripts or event handlers"),
+        (
+            _outside_img,
+            "image 'diagram.svg' must live in the concept's img/ folder (names: A-Z a-z 0-9 . _ -)",
+        ),
     ],
 )
 def test_bad_images(tmp_path: Path, setup: ImageSetup, message: str) -> None:
@@ -277,6 +286,27 @@ def test_bad_images(tmp_path: Path, setup: ImageSetup, message: str) -> None:
     (d / "intro.md").write_text(f"# Intro\n\n![diagram]({ref})\n")
     errors = [str(i) for i in validate(load(content)) if i.level == "error"]
     assert errors == [f"content/maths/01-ch1/c1/intro.md: {message}"]
+
+
+@pytest.mark.parametrize(
+    "svg",
+    [
+        '<svg><a href="https://x.example"><text>x</text></a></svg>',
+        '<svg><use href="jav&#x61;script:alert(1)"/></svg>',
+        '<svg><animate attributeName="href" to="x"/></svg>',
+        "<svg><script>alert(1)</script></svg>",
+    ],
+)
+def test_unreferenced_active_svgs_are_errors(tmp_path: Path, svg: str) -> None:
+    content = fx.write(tmp_path, fx.tree())
+    img = fx.concept_dir(content) / "img"
+    img.mkdir()
+    (img / "unused.svg").write_text(svg)
+    (img / "ok.svg").write_text('<svg><use href="#dot"/><circle id="dot" r="2"/></svg>')
+    assert [str(i) for i in validate(load(content))] == [
+        "content/maths/01-ch1/c1/img/unused.svg: "
+        "SVG contains scripts, links, event handlers or entities"
+    ]
 
 
 def test_external_links_must_be_youtube(tmp_path: Path) -> None:

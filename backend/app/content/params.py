@@ -42,12 +42,22 @@ FUNCTIONS: dict[str, Callable[..., Any]] = {
 CONSTANTS: dict[str, sympy.Expr] = {"pi": sympy.pi, "E": sympy.E}
 RESERVED = frozenset(FUNCTIONS) | frozenset(CONSTANTS)
 
+# Bounds so a short input can't stall the process on bignum work (later specs may parse
+# student input with this): exponent size, result size, literal size and AST size.
 MAX_EXPONENT = 1000
+MAX_RESULT_BITS = 10_000
+MAX_LITERAL_DIGITS = 30
+MAX_NODES = 200
 
 
 def _pow(base: Any, exponent: Any) -> Any:
-    if getattr(exponent, "is_number", False) and abs(exponent) > MAX_EXPONENT:
-        raise ExpressionError(f"exponents above {MAX_EXPONENT} aren't allowed")
+    if getattr(exponent, "is_number", False):
+        if abs(exponent) > MAX_EXPONENT:
+            raise ExpressionError(f"exponents above {MAX_EXPONENT} aren't allowed")
+        if getattr(base, "is_number", False) and base != 0:
+            bits = abs(float(sympy.log(abs(base), 2).evalf(15))) * abs(float(exponent))
+            if bits > MAX_RESULT_BITS:
+                raise ExpressionError("that power is too large")
     return base**exponent
 
 
@@ -95,8 +105,12 @@ def parse(
         tree = ast.parse(text.strip().replace("^", "**"), mode="eval")
     except SyntaxError as exc:
         raise ExpressionError(f"can't parse {text!r}") from exc
+    if sum(1 for _ in ast.walk(tree)) > MAX_NODES:
+        raise ExpressionError("expression is too long")
     try:
         return _Walker(names, functions).visit(tree.body)
+    except (RecursionError, MemoryError) as exc:
+        raise ExpressionError(f"can't evaluate {text!r}: too complex") from exc
     except (TypeError, ValueError, ZeroDivisionError, AttributeError) as exc:
         if isinstance(exc, ExpressionError):
             raise
@@ -122,6 +136,8 @@ class _Walker:
             case ast.Constant(value=bool()):
                 raise ExpressionError("True/False aren't allowed")
             case ast.Constant(value=int() | float() as n):
+                if len(str(n)) > MAX_LITERAL_DIGITS:
+                    raise ExpressionError("numbers can have at most 30 digits")
                 return _number(n)
             case ast.Name(id=name):
                 if name in self.names:

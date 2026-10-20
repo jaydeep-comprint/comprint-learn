@@ -56,7 +56,14 @@ MAX_MCQ_SHARE = 0.3
 IMAGE_EXTENSIONS = {".svg", ".png", ".webp", ".jpg"}
 MAX_IMAGE_BYTES = 500 * 1024
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
-SVG_ACTIVE = re.compile(r"<script|\son[a-z]+\s*=|javascript:|<foreignObject", re.IGNORECASE)
+# SVGs ship same-origin, so anything that can run script or navigate is rejected: scripts, event
+# handlers, links/hrefs other than #fragments, animation that can rewrite attributes, embedded
+# HTML and character entities (which can hide `javascript:`).
+SVG_ACTIVE = re.compile(
+    r"<script|\son[a-z]+\s*=|javascript:|<foreignObject|<a[\s>]|<animate|<set[\s>]|<iframe|<embed"
+    r"|<object|&#|href\s*=\s*[\"'](?!#)",
+    re.IGNORECASE,
+)
 BLOCKED_MODULES = {
     "os",
     "sys",
@@ -102,6 +109,7 @@ class _Validator:
     run_code: bool
     issues: list[Issue] = field(default_factory=list)
     code_jobs: list[_CodeJob] = field(default_factory=list)
+    checked_images: set[Path] = field(default_factory=set)
 
     def report(
         self, level: Literal["error", "warning"], where: _Where | Path, message: str
@@ -234,6 +242,7 @@ def _check_concept(
     # Rule 2: Markdown references.
     for name, text in concept.markdown.items():
         _check_refs(v, concept.dir / name, concept, text)
+    _check_asset_folder(v, concept)
 
 
 def _course_misconceptions(bundle: ContentBundle, course_id: str) -> set[str]:
@@ -268,22 +277,52 @@ def _check_refs(v: _Validator, where: _Where | Path, concept: LoadedConcept, tex
         target = (concept.dir / ref).resolve()
         if not target.is_relative_to(root):
             v.error(where, f"image {ref!r} must stay inside the concept folder")
+        elif not _served_path(target.relative_to(root).as_posix()):
+            # frontend/vite/content-assets.ts serves only these paths.
+            v.error(
+                where,
+                f"image {ref!r} must live in the concept's img/ folder (names: A-Z a-z 0-9 . _ -)",
+            )
         elif target.suffix.lower() not in IMAGE_EXTENSIONS:
             v.error(where, f"image {ref!r} must be .svg, .png, .webp or .jpg")
         elif not target.is_file():
             v.error(where, f"image {ref!r} not found")
-        elif target.stat().st_size > MAX_IMAGE_BYTES:
-            v.error(where, f"image {ref!r} is larger than 500 KB")
-        elif target.suffix.lower() == ".svg" and SVG_ACTIVE.search(
-            target.read_text(errors="replace")
-        ):
-            v.error(where, f"image {ref!r} contains scripts or event handlers")
+        else:
+            v.checked_images.add(target)  # the img/ folder scan skips it
+            if target.stat().st_size > MAX_IMAGE_BYTES:
+                v.error(where, f"image {ref!r} is larger than 500 KB")
+            elif target.suffix.lower() == ".svg" and SVG_ACTIVE.search(
+                target.read_text(errors="replace")
+            ):
+                v.error(where, f"image {ref!r} contains scripts or event handlers")
     for ref in link_refs(text):
         parsed = urlparse(ref)
         if not parsed.scheme:
             continue
         if parsed.scheme != "https" or parsed.hostname not in YOUTUBE_HOSTS:
             v.error(where, f"link {ref!r}: external links must be https YouTube links")
+
+
+SERVED_ASSET = re.compile(r"img(/[A-Za-z0-9_-][A-Za-z0-9._-]*)+")
+
+
+def _served_path(rel: str) -> bool:
+    return SERVED_ASSET.fullmatch(rel) is not None
+
+
+def _check_asset_folder(v: _Validator, concept: LoadedConcept) -> None:
+    """Every image under img/ ships to the CDN (vite/content-assets.ts), referenced or not."""
+    for path in sorted((concept.dir / "img").rglob("*")):
+        if (
+            not path.is_file()
+            or path.suffix.lower() not in IMAGE_EXTENSIONS
+            or path.resolve() in v.checked_images
+        ):
+            continue
+        if path.stat().st_size > MAX_IMAGE_BYTES:
+            v.error(path, "image is larger than 500 KB")
+        elif path.suffix.lower() == ".svg" and SVG_ACTIVE.search(path.read_text(errors="replace")):
+            v.error(path, "SVG contains scripts, links, event handlers or entities")
 
 
 # --- graph ----------------------------------------------------------------------------------------

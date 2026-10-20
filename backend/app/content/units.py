@@ -3,6 +3,7 @@
 Only the units in `UNITS` are accepted, so a typo (`mps`) is an error rather than a new symbol.
 """
 
+import ast
 from typing import Any
 
 import sympy
@@ -47,8 +48,31 @@ class UnitError(ValueError):
     pass
 
 
+def _shape_problem(text: str) -> str | None:
+    """Units are products/quotients of unit names with integer powers: no +, -, numbers or pi."""
+    try:
+        tree = ast.parse(text.strip().replace("^", "**"), mode="eval")
+    except SyntaxError:
+        return None  # parse() reports it
+    exponents = {
+        id(n.right)
+        for n in ast.walk(tree)
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Pow)
+    }
+    for node in ast.walk(tree):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add | ast.Sub):
+            return "units can't be added or subtracted"
+        if isinstance(node, ast.Name) and node.id not in UNITS:
+            return f"unknown unit {node.id!r}"
+        if isinstance(node, ast.Constant) and id(node) not in exponents and node.value != 1:
+            return "numbers are only allowed as powers (or 1/...)"
+    return None
+
+
 def parse_unit(text: str) -> sympy.Expr:
     """`"m/s^2"` → `meter/second**2`. Products, quotients, integer powers and parentheses only."""
+    if (problem := _shape_problem(text)) is not None:
+        raise UnitError(f"can't parse unit {text!r}: {problem}")
     try:
         expr = parse(text, UNITS, functions={})
     except ExpressionError as exc:

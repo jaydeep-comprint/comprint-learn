@@ -182,7 +182,11 @@ async def _all[R: ContentMixin](session: AsyncSession, model: type[R]) -> list[R
 async def import_bundle(
     session: AsyncSession, bundle: ContentBundle, *, dry_run: bool = False
 ) -> ImportReport:
-    """Imports a validated bundle in one transaction; `dry_run` rolls it back at the end."""
+    """Imports a bundle in one transaction; `dry_run` rolls it back at the end.
+
+    Callers must run `validate` first and stop on errors (`import_tree` does); only load errors
+    are re-checked here.
+    """
     if any(i.level == "error" for i in bundle.issues):
         raise ValueError("refusing to import content with load errors; run `app content check`")
     try:

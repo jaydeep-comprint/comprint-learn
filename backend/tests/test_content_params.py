@@ -148,6 +148,10 @@ def test_caret_is_power() -> None:
         "Symbol('x')",
         "sqrt(x=1)",
         "2 ** 100000",
+        "((9**999)**999)**999",
+        "(10**900) * (10**900) ** 10",
+        "1" * 40,
+        "+".join(["x"] * 150),
         "True",
         "x if x else 1",
         "unknown + 1",
@@ -169,7 +173,9 @@ def test_unit_precedence() -> None:
     assert parse_unit("m/s^2") == u.meter / u.second**2
 
 
-@pytest.mark.parametrize("text", ["mps", "m s", "pi", "2", "m^0.5", "sqrt(m)", "m.real"])
+@pytest.mark.parametrize(
+    "text", ["mps", "m s", "pi", "2", "m^0.5", "sqrt(m)", "m.real", "m + s", "pi*m", "2*m"]
+)
 def test_bad_units_rejected(text: str) -> None:
     with pytest.raises(UnitError):
         parse_unit(text)

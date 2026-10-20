@@ -1,6 +1,6 @@
 # Spec 003: Content model & importer
 
-Status: draft
+Status: implemented (feat/003-content-model)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 2; Phase 0 of docs/ROADMAP.md)
 
 ## Summary
@@ -281,30 +281,48 @@ No student/teacher screens in this spec (Learn layer is 004, graph view is 005).
 - Item-level analytics, attempt references (005+).
 - Importing a single course (`--course`); import always processes the whole tree.
 
+## Deviations (recorded during the build)
+- Expressions are parsed by a whitelisted Python `ast` walk that builds SymPy objects directly, not `sympy.parse_expr`
+  (which `eval`s internally). Same syntax for authors (`^` is a power); stricter and never evaluates code.
+- Stdout code tests: the harness feeds `stdin`, calls `entry(*args)` (`args` default `[]`) and compares printed lines
+  (trailing whitespace ignored). `entry` is therefore required for stdout tasks too.
+- `content_hash` covers authored content only (not position or parent). Derived columns (`public`/`answer`, position,
+  `chapter_id`, `kp_id`, `kind`) are refreshed without a version bump when they differ; such rows count as "updated"
+  without a `(vN)` label.
+- Link rows are diffed (delete stale, insert new, update weights) rather than deleted and re-inserted, so an unchanged
+  import writes nothing at all.
+- "A retired slug reappears in another course" needs the database, so the importer reports it as a warning line;
+  the offline validator can't.
+- Extra validator checks beyond the spec: duplicate YAML keys, the correct MCQ option can't carry a misconception,
+  SVGs with scripts/event handlers are rejected (they are served same-origin), code may import only standard-library
+  modules outside an I/O denylist, and `exact` / `sigfig` / `tolerance` fields that don't apply to the mode are errors.
+- Every content table has `position` (spec listed it for most); misconceptions keep their file order.
+- Imports take a transaction-scoped advisory lock so two concurrent imports can't interleave.
+
 ## Verification (end-to-end)
-- [ ] `make content-check` passes on the sample (3 courses, 9 concepts) and is part of `make check`; output pasted.
-- [ ] `tests/test_content_schema.py`: valid fixture parses; unknown key, bad slug, wrong enum each fail with the path.
-- [ ] `tests/test_content_validate.py`: one minimal broken fixture per rule (cycle incl. cross-course, missing
+- [x] `make content-check` passes on the sample (3 courses, 9 concepts) and is part of `make check`; output pasted.
+- [x] `tests/test_content_schema.py`: valid fixture parses; unknown key, bad slug, wrong enum each fail with the path.
+- [x] `tests/test_content_validate.py`: one minimal broken fixture per rule (cycle incl. cross-course, missing
       misconception, key prereq not a direct prereq, 2 KPs, pool weight 5, MCQ with two correct, sigfig without
       sigfigs, unsatisfiable constraints, division by zero for some seed, oversize/escaping image, unparsable unit) —
       each asserts the exact message line; plus warnings (unused param, pool < 8, unreferenced .md).
-- [ ] `tests/test_content_params.py`: `sample(item, 42)` is identical across runs (golden values); constraints honoured
+- [x] `tests/test_content_params.py`: `sample(item, 42)` is identical across runs (golden values); constraints honoured
       over 1,000 seeds; `render` formatting rules; malicious expressions (`__import__('os')`, attribute access) rejected.
-- [ ] `tests/test_content_code_runner.py`: passing solution, failing test (index reported), exception, timeout, stdout task.
-- [ ] `tests/test_content_split.py`: for every sample item, `public` contains no `correct`, `misconception`,
+- [x] `tests/test_content_code_runner.py`: passing solution, failing test (index reported), exception, timeout, stdout task.
+- [x] `tests/test_content_split.py`: for every sample item, `public` contains no `correct`, `misconception`,
       `solution`, `derived`, `constraints`, `explanation` or hidden test, and `ItemPublic.from_row` output equals
       `public` only.
-- [ ] `tests/test_content_import_db.py` (`-m db`): import sample → counts match; import again → all unchanged and every
+- [x] `tests/test_content_import_db.py` (`-m db`): import sample → counts match; import again → all unchanged and every
       `updated_at` identical; edit one prompt → that item `version == 2`, nothing else changes; remove an item → it is
       retired; restore it → un-retired; a validation error → zero rows written; `--dry-run` → zero rows written;
       forced failure mid-import → rollback.
-- [ ] `tests/test_courses_api_db.py` (`-m db`): student and teacher from different schools both get the same 3 courses;
+- [x] `tests/test_courses_api_db.py` (`-m db`): student and teacher from different schools both get the same 3 courses;
       graph for `physics-9-10` has 3 concepts, the edges, and `maths-9-10/linear-equations-two-variables` in `external`;
       no response contains the keys listed above; unknown slug → 404; unauthenticated → 401.
-- [ ] `tests/test_route_scoping.py` passes with the two routes in `GLOBAL_CONTENT` only; `test_rls_db.py` covers all
+- [x] `tests/test_route_scoping.py` passes with the two routes in `GLOBAL_CONTENT` only; `test_rls_db.py` covers all
       new tables.
-- [ ] Frontend: `pnpm build` output contains `content-assets/physics-9-10/…/img/*.svg` and no `.yaml`/`.md`; vitest for
+- [x] Frontend: `pnpm build` output contains `content-assets/physics-9-10/…/img/*.svg` and no `.yaml`/`.md`; vitest for
       the plugin's allowlist.
 - [ ] Manual: `make migrate && make content-import` against the dev DB (paste output), run again (all unchanged),
       `curl` both endpoints with a teacher token and paste trimmed responses.
-- [ ] `cd backend && uv run mypy` and `cd frontend && pnpm typecheck` clean; `make check` green.
+- [x] `cd backend && uv run mypy` and `cd frontend && pnpm typecheck` clean; `make check` green.

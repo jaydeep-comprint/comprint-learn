@@ -1,0 +1,249 @@
+id: distance-and-displacement
+title: Distance and displacement
+summary: Distance is the length of the path travelled; displacement is the straight-line change in position, with a direction.
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    Which of these quantities has a direction as well as a size?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: Displacement, correct: true}
+        - {id: b, text: Distance, misconception: displacement-equals-distance}
+        - {id: c, text: "Both distance and displacement"}
+  explanation: |
+    Displacement is a vector (size and direction). Distance is a scalar: it only says how much path was covered.
+
+kps:
+  - id: kp1
+    title: Distance versus displacement along a straight road
+    worked_example: kp-1-worked.md
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A student walks {{a}} m east along a straight road and then {{b}} m west.
+          What total distance does she cover?
+        params:
+          a: {min: 10, max: 100, step: 10}
+          b: {min: 10, max: 100, step: 10}
+        answer:
+          numeric: {value: "a + b", unit: m, mode: exact}
+        explanation: |
+          Distance adds every part of the path: {{a}} m + {{b}} m.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A student walks {{a}} m east along a straight road and then {{b}} m west.
+          How far east of her starting point does she end up (the size of her displacement)?
+        params:
+          a: {min: 30, max: 120, step: 10}
+          b: {min: 10, max: 100, step: 10}
+        constraints: ["a > b"]
+        answer:
+          numeric: {value: "a - b", unit: m, mode: exact}
+        explanation: |
+          Displacement compares the end point with the start: {{a}} m − {{b}} m east.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A runner completes {{n}} full laps of a {{L}} m track and stops exactly at the starting line.
+          What distance does she cover?
+        params:
+          n: {min: 1, max: 5, step: 1}
+          L: {choices: [200, 400]}
+        answer:
+          numeric: {value: "n * L", unit: m, mode: exact}
+        explanation: |
+          Distance = {{n}} × {{L}} m. (Her displacement is 0 m, because she ends where she started.)
+      - id: kp1-q4
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A ball is thrown 5 m straight up and falls back into the thrower's hand.
+          What is the size of its displacement?
+        answer:
+          numeric: {value: 0, unit: m, mode: exact}
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          Which statement is **always** true for a moving object?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: The distance covered is greater than or equal to the size of the displacement., correct: true}
+              - {id: b, text: The size of the displacement is greater than the distance covered., misconception: displacement-equals-distance}
+              - {id: c, text: "If the displacement is zero, the object did not move.", misconception: zero-displacement-means-no-motion}
+
+  - id: kp2
+    title: Displacement with a sign (direction)
+    worked_example: kp-2-worked.md
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Take east as positive. A car moves from x = {{x1}} m to x = {{x2}} m along a straight road.
+          What is its displacement? (Include a minus sign if it points west.)
+        params:
+          x1: {min: -50, max: 50, step: 10}
+          x2: {min: -50, max: 50, step: 10}
+        constraints: ["x1 != x2"]
+        answer:
+          numeric: {value: "x2 - x1", unit: m, mode: exact}
+        explanation: |
+          Displacement = final − initial = ({{x2}}) − ({{x1}}).
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A cyclist starts at x = 0, rides east to x = {{p}} m, then turns back and stops at x = {{q}} m.
+          What total distance does the cyclist cover?
+        params:
+          p: {min: 30, max: 90, step: 10}
+          q: {min: 0, max: 25, step: 5}
+        constraints: ["p > q"]
+        answer:
+          numeric: {value: "p + (p - q)", unit: m, mode: exact}
+        explanation: |
+          {{p}} m out, then {{p}} − {{q}} m back.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Take east as positive. A cyclist starts at x = 0, rides east to x = {{p}} m, then turns back
+          and stops at x = {{q}} m. What is the cyclist's displacement?
+        params:
+          p: {min: 40, max: 90, step: 10}
+          q: {min: -30, max: 30, step: 5}
+        constraints: ["p > q", "q != 0"]
+        answer:
+          numeric: {value: "q", unit: m, mode: exact}
+        explanation: |
+          Only the start (0) and the end ({{q}} m) matter; the turning point at {{p}} m does not.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A lift goes up 24 m from the ground floor and then comes down 9 m.
+          Taking up as positive, what is its displacement from the ground floor?
+        answer:
+          numeric: {value: 15, unit: m, mode: exact}
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          Taking east as positive, a car's displacement is −40 m. What does the minus sign tell you?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: The car ended up 40 m west of where it started., correct: true}
+              - {id: b, text: The car was slowing down., misconception: negative-means-decreasing}
+              - {id: c, text: The car covered a negative distance., misconception: displacement-equals-distance}
+
+  - id: kp3
+    title: Paths at right angles and around circles
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A girl walks {{a}} m north and then {{b}} m east. What is the size of her displacement?
+          Give your answer to 3 significant figures.
+        params:
+          a: {min: 3, max: 12, step: 1}
+          b: {min: 4, max: 15, step: 1}
+        answer:
+          numeric: {value: "sqrt(a^2 + b^2)", unit: m, mode: sigfig, sigfigs: 3}
+        explanation: |
+          The two legs are at right angles, so displacement = √({{a}}² + {{b}}²) m.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A girl walks {{a}} m north and then {{b}} m east. What distance does she cover?
+        params:
+          a: {min: 3, max: 12, step: 1}
+          b: {min: 4, max: 15, step: 1}
+        answer:
+          numeric: {value: "a + b", unit: m, mode: exact}
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A child runs exactly halfway round a circular track of radius {{r}} m.
+          What distance does the child cover? (Use π ≈ 3.14 or your calculator's π.)
+        params:
+          r: {choices: [7, 10, 14, 21, 28, 35]}
+        answer:
+          numeric: {value: "pi * r", unit: m, mode: tolerance, rel_tol: 0.01}
+        explanation: |
+          Half the circumference: ½ × 2πr = π × {{r}} m. (The displacement is the diameter, 2 × {{r}} m.)
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A boy walks 6 m east and then 8 m north. What is the size of his displacement?
+        answer:
+          numeric: {value: 10, unit: m, mode: exact}
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          An athlete runs once around a circular track and stops where she started. Which is correct?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Distance = the track's circumference; displacement = 0", correct: true}
+              - {id: b, text: "Distance = displacement = the track's circumference", misconception: displacement-equals-distance}
+              - {id: c, text: "Distance = 0 because she is back at the start", misconception: zero-displacement-means-no-motion}
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: analyze
+    expected_minutes: 4
+    prompt: |
+      A delivery rider goes {{a}} km east and then {{b}} km north to reach a customer.
+    params:
+      a: {min: 3, max: 9, step: 1}
+      b: {min: 4, max: 12, step: 1}
+    answer:
+      multistep:
+        steps:
+          - prompt: What distance does the rider cover?
+            answer:
+              numeric: {value: "a + b", unit: km, mode: exact}
+          - prompt: What is the size of the rider's displacement? Give 3 significant figures.
+            answer:
+              numeric: {value: "sqrt(a^2 + b^2)", unit: km, mode: sigfig, sigfigs: 3}
+          - prompt: The rider returns home along the same roads. What is the size of the displacement for the whole round trip?
+            answer:
+              numeric: {value: 0, unit: km, mode: exact}
+    explanation: |
+      Distance {{a}} + {{b}} km; displacement √({{a}}² + {{b}}²) km; a round trip ends at the start, so 0 km.

@@ -1,0 +1,285 @@
+id: linear-equations-two-variables
+title: Linear equations in two variables
+summary: Equations of the form ax + by + c = 0, their infinitely many solutions, and their straight-line graphs.
+prereqs: []
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    How many solutions does the equation $2x + 3y = 12$ have?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "Exactly one", misconception: unique-solution}
+        - {id: b, text: "Exactly two"}
+        - {id: c, text: "Infinitely many", correct: true}
+        - {id: d, text: "None"}
+  explanation: |
+    For every value of $x$ there is a matching $y$: $(6, 0)$, $(3, 2)$, $(0, 4)$, … Every point on the line is a solution.
+
+kps:
+  - id: kp1
+    title: The form ax + by + c = 0
+    worked_example: kp-1-worked.md
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Write ${{a}}x = {{b}}y + {{c}}$ in the form $ax + by + c = 0$, keeping the coefficient of $x$ as {{a}}.
+          What is the value of $b$?
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 20, step: 1}
+        answer:
+          numeric: {value: "-b", mode: exact}
+        explanation: |
+          Move every term to the left: ${{a}}x - {{b}}y - {{c}} = 0$, so $b = -{{b}}$.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Write ${{a}}x + {{b}}y = {{c}}$ in the form $ax + by + c = 0$, keeping the coefficient of $x$ as {{a}}.
+          What is the value of $c$?
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 30, step: 1}
+        answer:
+          numeric: {value: "-c", mode: exact}
+        explanation: |
+          Subtract {{c}} from both sides: ${{a}}x + {{b}}y - {{c}} = 0$, so $c = -{{c}}$.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $x = {{p}}$, $y = {{q}}$ is a solution of $kx + {{b}}y = {{c}}$. Find $k$.
+        params:
+          k: {min: 1, max: 9, step: 1}
+          p: {min: 1, max: 6, step: 1}
+          q: {min: 1, max: 6, step: 1}
+          b: {min: 2, max: 9, step: 1}
+        derived:
+          c: "k * p + b * q"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Substitute: ${{p}}k + {{b}} \times {{q}} = {{c}}$, so ${{p}}k = {{c}} - {{b}} \times {{q}}$ and $k = {{k}}$.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Write $y = 3x - 5$ in the form $ax + by + c = 0$ with $a = 3$. What is the value of $c$?
+        answer:
+          numeric: {value: -5, mode: exact}
+        explanation: |
+          Move $y$ to the right: $0 = 3x - y - 5$, i.e. $3x - y - 5 = 0$, so $c = -5$.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          Which of these is a linear equation in two variables?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$x^2 + y = 4$", misconception: any-equation-is-linear}
+              - {id: b, text: "$2x + 5y = 7$", correct: true}
+              - {id: c, text: "$xy = 6$", misconception: any-equation-is-linear}
+              - {id: d, text: "$x + 1 = 0$"}
+        explanation: |
+          Each variable must appear only to the first power and never multiplied together. $x + 1 = 0$ has only one variable.
+
+  - id: kp2
+    title: Solutions of a linear equation
+    worked_example: kp-2-worked.md
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          For ${{a}}x + {{b}}y = {{c}}$, find $y$ when $x = {{x0}}$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 6, step: 1}
+          x0: {min: 0, max: 6, step: 1}
+          y0: {min: 0, max: 9, step: 1}
+        derived:
+          c: "a * x0 + b * y0"
+        answer:
+          numeric: {value: "y0", mode: exact}
+        explanation: |
+          ${{a}} \times {{x0}} + {{b}}y = {{c}}$, so ${{b}}y = {{c}} - {{a}} \times {{x0}}$ and $y = {{y0}}$.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          For ${{a}}x + {{b}}y = {{c}}$, find $x$ when $y = {{y0}}$.
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          x0: {min: 0, max: 9, step: 1}
+          y0: {min: 0, max: 6, step: 1}
+        derived:
+          c: "a * x0 + b * y0"
+        answer:
+          numeric: {value: "x0", mode: exact}
+        explanation: |
+          ${{a}}x + {{b}} \times {{y0}} = {{c}}$, so ${{a}}x = {{c}} - {{b}} \times {{y0}}$ and $x = {{x0}}$.
+      - id: kp2-q3
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Write $y$ in terms of $x$ for ${{a}}x + {{b}}y = {{c}}$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 30, step: 1}
+        answer:
+          expression: {value: "(c - a*x) / b", variables: [x], sympy_mode: equivalent}
+        explanation: |
+          ${{b}}y = {{c}} - {{a}}x$, so $y = \dfrac{ {{c}} - {{a}}x }{ {{b}} }$. Divide both terms by {{b}}.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The point $(2, -1)$ lies on the line $3x + ky = 4$. Find $k$.
+        answer:
+          numeric: {value: 2, mode: exact}
+        explanation: |
+          $3(2) + k(-1) = 4$, so $6 - k = 4$ and $k = 2$.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          Which point is a solution of $x + 2y = 6$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$(4, 1)$", correct: true}
+              - {id: b, text: "$(1, 4)$", misconception: swaps-coordinates}
+              - {id: c, text: "$(6, 3)$"}
+              - {id: d, text: "$(2, 3)$"}
+        explanation: |
+          $(4, 1)$: $4 + 2(1) = 6$ ✓. $(1, 4)$ gives $1 + 8 = 9$: the first number is always $x$.
+
+  - id: kp3
+    title: The graph and its intercepts
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Where does the line ${{a}}x + {{b}}y = {{c}}$ cross the x-axis? Give the x-coordinate.
+        params:
+          p: {min: 1, max: 9, step: 1}
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 9, step: 1}
+        derived:
+          c: "a * p"
+        answer:
+          numeric: {value: "p", mode: exact}
+        explanation: |
+          On the x-axis $y = 0$: ${{a}}x = {{c}}$, so $x = {{p}}$.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Where does the line ${{a}}x + {{b}}y = {{c}}$ cross the y-axis? Give the y-coordinate.
+        params:
+          q: {min: 1, max: 9, step: 1}
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 6, step: 1}
+        derived:
+          c: "b * q"
+        answer:
+          numeric: {value: "q", mode: exact}
+        explanation: |
+          On the y-axis $x = 0$: ${{b}}y = {{c}}$, so $y = {{q}}$.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The point $({{x0}}, k)$ lies on the graph of $y = {{m}}x + {{k0}}$. Find $k$.
+        params:
+          x0: {min: 0, max: 6, step: 1}
+          m: {min: 2, max: 5, step: 1}
+          k0: {min: 1, max: 9, step: 1}
+        answer:
+          numeric: {value: "m * x0 + k0", mode: exact}
+        explanation: |
+          Substitute $x = {{x0}}$: $k = {{m}} \times {{x0}} + {{k0}}$.
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          At what y-value does the line $2x + y = 6$ cut the y-axis?
+        answer:
+          numeric: {value: 6, mode: exact}
+        explanation: |
+          Put $x = 0$: $y = 6$.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          To find where $3x + 2y = 12$ meets the **x-axis**, you should…
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "put $y = 0$ and solve for $x$", correct: true}
+              - {id: b, text: "put $x = 0$ and solve for $y$", misconception: intercept-swap}
+              - {id: c, text: "put $x = y$ and solve"}
+        explanation: |
+          Every point on the x-axis has $y = 0$, so $3x = 12$ and the line meets it at $(4, 0)$.
+
+practice:
+  - id: practice-taxi
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A taxi charges a fixed ₹{{f}} plus ₹{{r}} for every kilometre. Let $x$ be the distance in km and $y$ the total fare in ₹.
+    params:
+      f: {min: 20, max: 60, step: 5}
+      r: {min: 8, max: 15, step: 1}
+      d: {min: 2, max: 10, step: 1}
+      D: {min: 11, max: 20, step: 1}
+    derived:
+      T: "f + r * D"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write $y$ in terms of $x$.
+            answer:
+              expression: {value: "f + r*x", variables: [x], sympy_mode: equivalent}
+          - prompt: |
+              What is the fare, in ₹, for a {{d}} km ride?
+            answer:
+              numeric: {value: "f + r * d", mode: exact}
+          - prompt: |
+              A ride cost ₹{{T}}. How many kilometres was it?
+            answer:
+              numeric: {value: "D", mode: exact}
+    explanation: |
+      $y = {{f}} + {{r}}x$. For {{d}} km: ${{f}} + {{r}} \times {{d}}$. For ₹{{T}}: ${{r}}x = {{T}} - {{f}}$, so $x = {{D}}$ km.

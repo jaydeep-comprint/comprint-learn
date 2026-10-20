@@ -1,0 +1,330 @@
+id: variables-and-types
+title: Variables and types
+summary: Store values in named variables, update them, and tell ints, floats, strings and booleans apart.
+prereqs: []
+intro: intro.md
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    What does the line `x = 5` do in Python?
+  answer:
+    mcq:
+      options:
+        - id: a
+          text: It stores the value 5 in the variable x.
+          correct: true
+        - id: b
+          text: It checks whether x is equal to 5.
+          misconception: assign-vs-compare
+        - id: c
+          text: It prints 5 on the screen.
+  explanation: |
+    `=` is assignment: the value on the right is stored in the name on the left. Checking equality uses `==`.
+kps:
+  - id: kp1
+    title: Creating and updating variables
+    worked_example: kp-1-worked.md
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = {{a}}
+          x = x + {{b}}
+          print(x)
+          ```
+        params:
+          a: {min: 2, max: 20, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        answer:
+          numeric: {value: "a + b", mode: exact}
+        explanation: |
+          x starts at {{a}}, then becomes {{a}} + {{b}}.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          a = {{p}}
+          b = {{q}}
+          a = b
+          b = a + 1
+          print(a + b)
+          ```
+        params:
+          p: {min: 1, max: 9, step: 1}
+          q: {min: 10, max: 30, step: 1}
+        answer:
+          numeric: {value: "2 * q + 1", mode: exact}
+        explanation: |
+          After `a = b`, a is {{q}} (the old {{p}} is gone). Then b = {{q}} + 1, so a + b = 2 × {{q}} + 1.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          count = {{a}}
+          count += {{b}}
+          count *= {{c}}
+          print(count)
+          ```
+        params:
+          a: {min: 1, max: 10, step: 1}
+          b: {min: 1, max: 5, step: 1}
+          c: {min: 2, max: 4, step: 1}
+        answer:
+          numeric: {value: "(a + b) * c", mode: exact}
+      - id: kp1-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write a function `swap(a, b)` that returns the two values in the opposite order, as a list `[b, a]`.
+        answer:
+          code:
+            entry: swap
+            starter: |
+              def swap(a, b):
+                  # return [b, a]
+                  pass
+            solution: |
+              def swap(a, b):
+                  return [b, a]
+            tests:
+              - {args: [1, 2], expected: [2, 1], visible: true}
+              - {args: ["x", "y"], expected: ["y", "x"]}
+              - {args: [5, 5], expected: [5, 5]}
+      - id: kp1-q5
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          Which of these is a valid Python variable name?
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: "`score_2`"
+                correct: true
+              - id: b
+                text: "`my-score`"
+                misconception: names-can-be-anything
+              - id: c
+                text: "`2nd_score`"
+                misconception: names-can-be-anything
+              - id: d
+                text: "`class`"
+                misconception: names-can-be-anything
+  - id: kp2
+    title: Types and converting between them
+    worked_example: kp-2-worked.md
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = {{a}}
+          y = "{{b}}"
+          print(x + int(y))
+          ```
+        params:
+          a: {min: 2, max: 30, step: 1}
+          b: {min: 10, max: 60, step: 1}
+        answer:
+          numeric: {value: "a + b", mode: exact}
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          print(int("{{a}}") + int({{b}}.{{c}}))
+          ```
+        params:
+          a: {min: 1, max: 50, step: 1}
+          b: {min: 1, max: 20, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        answer:
+          numeric: {value: "a + b", mode: exact}
+        explanation: |
+          `int({{b}}.{{c}})` cuts off the decimal part, giving {{b}} (it does not round).
+      - id: kp2-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = str({{a}})
+          print(len(x * {{b}}))
+          ```
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 2, max: 6, step: 1}
+        answer:
+          numeric: {value: "2 * b", mode: exact}
+        explanation: |
+          `str({{a}})` is the 2-character text "{{a}}". Repeating it {{b}} times gives 2 × {{b}} characters.
+      - id: kp2-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `type_name(value)` that returns the name of the value's type as a string,
+          for example `type_name(5)` returns `"int"` and `type_name("hi")` returns `"str"`.
+        answer:
+          code:
+            entry: type_name
+            starter: |
+              def type_name(value):
+                  pass
+            solution: |
+              def type_name(value):
+                  return type(value).__name__
+            tests:
+              - {args: [5], expected: "int", visible: true}
+              - {args: [2.5], expected: "float"}
+              - {args: ["hi"], expected: "str"}
+              - {args: [true], expected: "bool"}
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What happens when Python runs `print("5" + 3)`?
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: It stops with a TypeError.
+                correct: true
+              - id: b
+                text: It prints 8.
+                misconception: string-number-concat
+              - id: c
+                text: It prints 53.
+                misconception: string-number-concat
+  - id: kp3
+    title: Arithmetic operators
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does `print({{a}} // {{b}})` print?
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "floor(a / b)", mode: exact}
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does `print({{a}} % {{b}})` print?
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "a % b", mode: exact}
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does `print({{a}} ** {{b}} - {{c}})` print?
+        params:
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 3, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        answer:
+          numeric: {value: "a ** b - c", mode: exact}
+        explanation: |
+          `**` is done before `-`: {{a}} to the power {{b}}, then subtract {{c}}.
+      - id: kp3-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `to_hours(minutes)` that returns `[hours, leftover_minutes]`.
+          For example `to_hours(200)` returns `[3, 20]`.
+        answer:
+          code:
+            entry: to_hours
+            starter: |
+              def to_hours(minutes):
+                  pass
+            solution: |
+              def to_hours(minutes):
+                  return [minutes // 60, minutes % 60]
+            tests:
+              - {args: [200], expected: [3, 20], visible: true}
+              - {args: [59], expected: [0, 59]}
+              - {args: [120], expected: [2, 0]}
+      - id: kp3-q5
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What does `print(7 / 2)` print in Python 3?
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: "3.5"
+                correct: true
+              - id: b
+                text: "3"
+                misconception: slash-gives-int
+              - id: c
+                text: "4"
+practice:
+  - id: practice-1
+    type: code
+    bloom: create
+    expected_minutes: 8
+    prompt: |
+      Write `clock(seconds)` that turns a number of seconds into `[hours, minutes, seconds]`.
+      For example `clock(3725)` returns `[1, 2, 5]` (1 hour, 2 minutes, 5 seconds).
+    answer:
+      code:
+        entry: clock
+        starter: |
+          def clock(seconds):
+              hours = 0
+              minutes = 0
+              # work out the hours, minutes and leftover seconds
+              return [hours, minutes, seconds]
+        solution: |
+          def clock(seconds):
+              hours = seconds // 3600
+              minutes = (seconds % 3600) // 60
+              return [hours, minutes, seconds % 60]
+        tests:
+          - {args: [3725], expected: [1, 2, 5], visible: true}
+          - {args: [59], expected: [0, 0, 59], visible: true}
+          - {args: [3600], expected: [1, 0, 0]}
+          - {args: [86399], expected: [23, 59, 59]}

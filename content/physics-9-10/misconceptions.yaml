@@ -1,0 +1,24 @@
+- id: displacement-equals-distance
+  title: Displacement is the same as distance
+  description: Treats displacement as the total path length, ignoring that it is the straight-line change in position with a direction.
+- id: zero-displacement-means-no-motion
+  title: Zero displacement means the object didn't move
+  description: Thinks an object that returns to its start covered no distance.
+- id: negative-means-decreasing
+  title: A minus sign means "getting smaller"
+  description: Reads a negative displacement, velocity or acceleration as slowing down or shrinking, instead of pointing in the negative direction.
+- id: speed-is-average-of-speeds
+  title: Average speed is the mean of the speeds
+  description: Averages the speeds of each part of a trip instead of dividing total distance by total time.
+- id: velocity-same-as-speed
+  title: Velocity is just another word for speed
+  description: Ignores direction, so thinks constant speed always means constant velocity.
+- id: kmh-to-ms-multiply
+  title: Multiplies by 3.6 to get m/s
+  description: Converts km/h to m/s by multiplying by 3.6 instead of dividing (1 m/s = 3.6 km/h).
+- id: rearranges-formula-wrongly
+  title: Inverts the ratio when rearranging
+  description: Rearranges s = vt as t = v/s (or a = t/(v − u)) instead of isolating the unknown correctly.
+- id: zero-velocity-means-zero-acceleration
+  title: At rest means no acceleration
+  description: Thinks an object momentarily at rest (like a ball at the top of its flight) has zero acceleration.

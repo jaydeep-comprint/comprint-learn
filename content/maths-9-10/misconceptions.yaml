@@ -1,0 +1,27 @@
+- id: unique-solution
+  title: One equation, one answer
+  description: Thinks a linear equation in two variables has exactly one solution, when it has infinitely many.
+- id: any-equation-is-linear
+  title: Every equation in x and y is linear
+  description: Treats equations with x², xy or 1/x terms as linear equations in two variables.
+- id: swaps-coordinates
+  title: Swaps x and y
+  description: Reads the point (x, y) the wrong way round, substituting the y-value for x.
+- id: intercept-swap
+  title: Swaps the intercept rule
+  description: Puts x = 0 to find where a line crosses the x-axis (and y = 0 for the y-axis).
+- id: parallel-means-coincident
+  title: Parallel means the same line
+  description: Confuses parallel lines (no solution) with coincident lines (infinitely many solutions).
+- id: ratio-test-confusion
+  title: Misreads the ratio test
+  description: Thinks a1/a2 = b1/b2 means the pair has a unique solution.
+- id: sign-error
+  title: Sign slip
+  description: Loses or flips a sign when moving a term across the equals sign or removing brackets.
+- id: substitutes-coefficient
+  title: Substitutes only part of the expression
+  description: When substituting y = 2x, replaces y by 2 instead of the whole expression 2x.
+- id: reverse-translation
+  title: Reverses "more than"
+  description: Writes "A is 5 more than B" as A + 5 = B instead of A = B + 5.

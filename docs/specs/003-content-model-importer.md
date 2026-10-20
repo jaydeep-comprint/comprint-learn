@@ -323,6 +323,12 @@ No student/teacher screens in this spec (Learn layer is 004, graph view is 005).
       new tables.
 - [x] Frontend: `pnpm build` output contains `content-assets/physics-9-10/…/img/*.svg` and no `.yaml`/`.md`; vitest for
       the plugin's allowlist.
-- [ ] Manual: `make migrate && make content-import` against the dev DB (paste output), run again (all unchanged),
+- [x] Manual: `make migrate && make content-import` against the dev DB (paste output), run again (all unchanged),
       `curl` both endpoints with a teacher token and paste trimmed responses.
+      Done 2026-10-20 against the dev DB: `make migrate` ran 0002 → 0003; the first import created every row
+      (per course: 1 course, 9/8/8 misconceptions, 3 concepts, 9 KPs, 51 items; 20 prerequisite links); the second
+      reported every level `unchanged` and no link changes. As a teacher: `GET /courses` returned the 3 courses
+      (2/1/1 chapters, 3 concepts each); `GET /courses/physics-9-10/graph` returned the 3 concepts in order
+      (3 KPs each), edges distance→speed 0.7, speed→acceleration 0.7, maths linear-equations→speed 0.2, and
+      `maths-9-10/linear-equations-two-variables` in `external`. No item, prompt or answer keys in either response.
 - [x] `cd backend && uv run mypy` and `cd frontend && pnpm typecheck` clean; `make check` green.

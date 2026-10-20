@@ -92,7 +92,8 @@ async def change_own_password(scope: OrgScope, admin: SupabaseAdmin, new_passwor
     except SupabaseAdminError as exc:
         raise auth_service_down() from exc
     user.must_change_password = False
-    user.sessions_valid_after = func.now()  # other devices' access tokens stop working now
+    # Other devices' access tokens stop working now.
+    user.sessions_valid_after = func.clock_timestamp()
     await scope.session.commit()
 
 
@@ -200,7 +201,7 @@ async def _set_status(
         raise auth_service_down() from exc
     user.status = status
     if status == UserStatus.deactivated:
-        user.sessions_valid_after = func.now()
+        user.sessions_valid_after = func.clock_timestamp()
     logger.info("User %s status -> %s", user.id, status.value)
 
 
@@ -315,7 +316,8 @@ async def reset_student_password(
     except SupabaseAdminError as exc:
         raise auth_service_down() from exc
     student.must_change_password = True
-    student.sessions_valid_after = func.now()  # old access tokens can't claim the account
+    # Old access tokens can't claim the account.
+    student.sessions_valid_after = func.clock_timestamp()
     await scope.session.commit()
     assert student.username is not None
     return TempPasswordOut(username=student.username, temp_password=password)

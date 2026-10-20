@@ -1,6 +1,6 @@
 # Spec 002: Auth & tenancy
 
-Status: draft
+Status: implemented (feat/002-auth-tenancy)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 1; Phase 0 of docs/ROADMAP.md)
 
 ## Summary
@@ -244,40 +244,53 @@ Polished, responsive app shell on **shadcn/ui** (Radix + Tailwind, components co
 - Rate limiting our own endpoints (Supabase rate-limits auth; tutor limits come in 009).
 - Playwright e2e (manual verification below instead).
 
+## Deviations (as built)
+- **No `sign_out` in `SupabaseAdmin`.** GoTrue has no per-user admin sign-out; an admin password update already revokes
+  all of the user's sessions. Already-issued access tokens are cut off by `app_user.sessions_valid_after`: the API
+  rejects tokens whose `iat` is earlier (set on admin reset, in-app password change and deactivation).
+- **`invited` → `active` on any first authenticated request**, not only `GET /me` (`app/api/deps.py`), so the status is
+  right even if the client's first call is something else.
+- **Reset-password slips** open at `/slips` (one student, from the Students page); class slips stay at
+  `/classes/:id/slips`.
+- **Username collisions**: a per-school advisory lock plus a pre-insert check instead of insert-and-retry. Same result; a
+  unique violation that still slips through returns an error instead of retrying.
+- Staff resetting their own password via email recovery goes straight to Supabase, so `sessions_valid_after` isn't set:
+  access tokens on other devices last until they expire (≤ 1 h).
+
 ## Verification (end-to-end)
 Offline (`make check`):
-- [ ] `tests/test_auth.py`: a test EC keypair + fake JWKS → valid token accepted; expired, wrong `aud`, wrong `iss`,
+- [x] `tests/test_auth.py`: a test EC keypair + fake JWKS → valid token accepted; expired, wrong `aud`, wrong `iss`,
       unknown `kid` (after one refetch), bad signature, missing header → 401; JWKS unreachable → 503; legacy HS256 path.
-- [ ] `tests/test_deps.py`: deactivated / unknown user → 401; `must_change_password` → 403 on a normal route, allowed on
+- [x] `tests/test_deps.py`: deactivated / unknown user → 401; `must_change_password` → 403 on a normal route, allowed on
       `/me` and `/me/password`; student on a staff route → 403; non-admin on admin route → 403.
-- [ ] `tests/test_route_scoping.py`: walks `app.routes`; every `/api/v1` route except `/health` depends on
+- [x] `tests/test_route_scoping.py`: walks `app.routes`; every `/api/v1` route except `/health` depends on
       `get_current_user`, and every route with a tenant path param depends on `OrgScope`. Fails naming the route.
-- [ ] `tests/test_usernames.py`, `tests/test_passwords.py`: generation rules, non-ASCII fallback, entropy/charset.
-- [ ] `tests/test_cli.py`: arg validation (bad code format) with a fake admin client.
-- [ ] Frontend vitest: Login (both tabs, error message, school code remembered), `RequireRole` redirects, `apiFetch`
+- [x] `tests/test_usernames.py`, `tests/test_passwords.py`: generation rules, non-ASCII fallback, entropy/charset.
+- [x] `tests/test_cli.py`: arg validation (bad code format) with a fake admin client.
+- [x] Frontend vitest: Login (both tabs, error message, school code remembered), `RequireRole` redirects, `apiFetch`
       401 → sign-out and `password_change_required` → `/change-password`, Create-students dialog (count, >60 blocked),
       SlipsView renders one card per student.
 DB (`make test-db`, against the test Supabase project, Supabase admin faked):
-- [ ] Fixture runs `alembic upgrade head` and truncates tables per test.
-- [ ] `tests/test_tenant_isolation_db.py`: seed school A and B (admin, teacher, 2 classes, 3 students each). As A's
+- [x] Fixture runs `alembic upgrade head` and truncates tables per test.
+- [x] `tests/test_tenant_isolation_db.py`: seed school A and B (admin, teacher, 2 classes, 3 students each). As A's
       teacher, call **every** endpoint with B's ids → 404 and B unchanged; every list endpoint returns only A's rows;
       enrolling B's student into A's class → 404; a raw insert of a cross-school `enrollment` → FK error.
-- [ ] `tests/test_tenancy_db.py`: bulk create (usernames unique, flag set, rollback calls `delete_user` on failure),
+- [x] `tests/test_tenancy_db.py`: bulk create (usernames unique, flag set, rollback calls `delete_user` on failure),
       add existing / unenrol idempotent, last-admin rule, archive blocks enrolment, invite → `GET /me` activates.
-- [ ] `tests/test_rls_db.py`: every table in `public` has `relrowsecurity = true`.
+- [x] `tests/test_rls_db.py`: every table in `public` has `relrowsecurity = true`.
 Manual (real Supabase dev project; `make migrate`, `make dev`):
-- [ ] `uv run app org create --name "Test School" --code TST --admin-email <you> --admin-name "Admin"` → invite email
+- [x] `uv run app org create --name "Test School" --code TST --admin-email <you> --admin-name "Admin"` → invite email
       arrives; accept → set password → lands in the shell with Teachers in the nav.
-- [ ] Invite a second teacher (another email), accept, make them admin, then try to remove admin from both → second
+- [x] Invite a second teacher (another email), accept, make them admin, then try to remove admin from both → second
       attempt gets "A school needs at least one active admin."
-- [ ] Create class "9A Maths" (maths, 9); paste 5 names (one in Devanagari) → slips view shows 5 cards; print preview
+- [x] Create class "9A Maths" (maths, 9); paste 5 names (one in Devanagari) → slips view shows 5 cards; print preview
       shows 8-per-A4 layout. Screenshot it.
-- [ ] Sign in on a phone-width window as one student (code in lowercase) → forced to `/change-password` → set password
+- [x] Sign in on a phone-width window as one student (code in lowercase) → forced to `/change-password` → set password
       → student home stub. Screenshot the shell at 360 px and desktop.
-- [ ] Create "9A Physics", add 2 existing students via search; unenrol one; their account still signs in.
-- [ ] Reset a student's password → old password fails, new slip works.
-- [ ] Admin deactivates a student who is signed in elsewhere → their next action signs them out.
-- [ ] Create a second school with the CLI; its teacher sees none of "Test School"'s classes or students; pasting a
+- [x] Create "9A Physics", add 2 existing students via search; unenrol one; their account still signs in.
+- [x] Reset a student's password → old password fails, new slip works.
+- [x] Admin deactivates a student who is signed in elsewhere → their next action signs them out.
+- [ ] *(Skipped in the manual pass; covered by `tests/test_tenant_isolation_db.py`.)* Create a second school with the CLI; its teacher sees none of "Test School"'s classes or students; pasting a
       "Test School" class URL shows Not found.
-- [ ] With the anon key: `curl "$SUPABASE_URL/rest/v1/app_user" -H "apikey: $ANON"` → `[]`.
-- [ ] `make check` green; `make test-db` green; reviewer subagent + security-reviewer run on the diff.
+- [x] With the anon key: `curl "$SUPABASE_URL/rest/v1/app_user" -H "apikey: $ANON"` → `[]`.
+- [x] `make check` green; `make test-db` green; reviewer subagent + security-reviewer run on the diff.

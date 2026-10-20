@@ -96,5 +96,5 @@ docs/         PRD, architecture, roadmap, specs, plans
   pre-register predictable student auth emails and block account creation. Set the Site URL / redirect allow-list to
   `APP_URL` so invite and reset links land on `/accept-invite` and `/reset-password`.
 - **Sessions**: Supabase revokes refresh tokens on a password change, but issued access tokens live until expiry, so the
-  API also rejects tokens whose `iat` is before `app_user.sessions_valid_after` (set on reset, password change and
-  deactivation).
+  API also rejects tokens whose `iat` is before `app_user.sessions_valid_after` (set on admin reset, in-app password change and
+  deactivation; a staff email-recovery reset goes straight to Supabase and doesn't set it).

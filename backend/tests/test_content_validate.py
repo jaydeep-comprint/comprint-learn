@@ -309,6 +309,16 @@ def test_unreferenced_active_svgs_are_errors(tmp_path: Path, svg: str) -> None:
     ]
 
 
+def test_symlinks_in_img_are_errors(tmp_path: Path) -> None:
+    content = fx.write(tmp_path, fx.tree())
+    img = fx.concept_dir(content) / "img"
+    img.mkdir()
+    (img / "x.png").symlink_to("../concept.yaml")
+    assert [str(i) for i in validate(load(content))] == [
+        "content/maths/01-ch1/c1/img/x.png: symlinks aren't allowed in img/ (copy the file instead)"
+    ]
+
+
 def test_external_links_must_be_youtube(tmp_path: Path) -> None:
     content = fx.write(tmp_path, fx.tree())
     d = fx.concept_dir(content)

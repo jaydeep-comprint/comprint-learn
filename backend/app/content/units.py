@@ -54,11 +54,12 @@ def _shape_problem(text: str) -> str | None:
         tree = ast.parse(text.strip().replace("^", "**"), mode="eval")
     except SyntaxError:
         return None  # parse() reports it
-    exponents = {
-        id(n.right)
-        for n in ast.walk(tree)
-        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Pow)
-    }
+    exponents: set[int] = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Pow):
+            exponents.add(id(n.right))
+            if isinstance(n.right, ast.UnaryOp) and isinstance(n.right.op, ast.USub | ast.UAdd):
+                exponents.add(id(n.right.operand))  # s^-2
     for node in ast.walk(tree):
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add | ast.Sub):
             return "units can't be added or subtracted"

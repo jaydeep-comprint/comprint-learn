@@ -1,7 +1,7 @@
 // Serves content images (content/<course>/<chapter>/<concept>/img/*) at /content-assets/... in dev
 // and copies them into the build, so they ship on the CDN. Only image extensions are ever served:
 // never the YAML or Markdown, which hold answer keys.
-import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import type { Plugin } from "vite";
 
@@ -35,7 +35,10 @@ export function collectAssets(root: string): string[] {
     for (const name of readdirSync(dir)) {
       if (name.startsWith(".")) continue;
       const full = path.join(dir, name);
-      if (statSync(full).isDirectory()) walk(full);
+      const stat = lstatSync(full);
+      // Never follow symlinks: one under img/ could pull a concept.yaml into the build.
+      if (stat.isSymbolicLink()) continue;
+      if (stat.isDirectory()) walk(full);
       else {
         const rel = path.relative(root, full).split(path.sep).join("/");
         if (isAllowedAsset(rel)) out.push(rel);
@@ -65,6 +68,7 @@ export function contentAssets(root: string): Plugin {
           // realpath: a symlink under img/ can't point outside content/.
           full = realpathSync(path.resolve(contentRoot, rel));
           if (!full.startsWith(realpathSync(contentRoot) + path.sep)) return next();
+          if (!(path.extname(full).toLowerCase() in TYPES)) return next();
           body = readFileSync(full);
         } catch {
           return next();

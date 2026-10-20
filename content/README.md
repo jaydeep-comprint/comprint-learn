@@ -114,8 +114,12 @@ students.
 
 ## Markdown and images
 
-- Images: `![alt](img/file.svg)`, relative to the concept folder and inside it; `.svg .png .webp .jpg`,
-  at most 500 KB; SVGs must not contain scripts or event handlers.
+- Images live in the concept's `img/` folder: `![alt](img/file.svg)`; `.svg .png .webp .jpg`, at most
+  500 KB, file names `A-Z a-z 0-9 . _ -`, no symlinks. Every file in `img/` ships to the CDN, referenced or not.
+- SVGs are served from the app's own origin, so they may not contain scripts, event handlers (`onload=`),
+  links (`<a>`, or any `href` other than `#fragment`), `<animate>`/`<set>`, embedded HTML, `data:` images or
+  character entities (`&#176;`: type the character `°` instead). Inkscape and matplotlib exports often need a
+  quick clean-up.
 - External links: https YouTube links only.
 
 ## YAML tips

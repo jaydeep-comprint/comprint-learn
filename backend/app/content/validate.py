@@ -313,6 +313,10 @@ def _served_path(rel: str) -> bool:
 def _check_asset_folder(v: _Validator, concept: LoadedConcept) -> None:
     """Every image under img/ ships to the CDN (vite/content-assets.ts), referenced or not."""
     for path in sorted((concept.dir / "img").rglob("*")):
+        if path.is_symlink():
+            # The build would copy whatever it points at (e.g. a concept.yaml) as an image.
+            v.error(path, "symlinks aren't allowed in img/ (copy the file instead)")
+            continue
         if (
             not path.is_file()
             or path.suffix.lower() not in IMAGE_EXTENSIONS

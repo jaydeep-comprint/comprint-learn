@@ -162,7 +162,9 @@ def test_malicious_or_unsupported_expressions_rejected(text: str) -> None:
         parse(text, {"x": sympy.Integer(1)})
 
 
-@pytest.mark.parametrize("text", ["m/s^2", "km/h", "N", "kg*m/s**2", "1/s", "(m/s)/s"])
+@pytest.mark.parametrize(
+    "text", ["m/s^2", "km/h", "N", "kg*m/s**2", "1/s", "(m/s)/s", "s^-2", "m*s^-2", "kJ"]
+)
 def test_units_parse(text: str) -> None:
     parse_unit(text)
 

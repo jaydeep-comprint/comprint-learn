@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -39,6 +39,15 @@ describe("collectAssets", () => {
     writeFileSync(path.join(concept, "concept.yaml"), "id: speed");
     writeFileSync(path.join(concept, "intro.md"), "# Speed");
     expect(collectAssets(root)).toEqual(["physics/01-motion/speed/img/a.svg"]);
+  });
+
+  it("skips symlinks, so a link can't pull YAML into the build", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "content-"));
+    const concept = path.join(root, "physics", "01-motion", "speed");
+    mkdirSync(path.join(concept, "img"), { recursive: true });
+    writeFileSync(path.join(concept, "concept.yaml"), "answer: secret");
+    symlinkSync("../concept.yaml", path.join(concept, "img", "x.png"));
+    expect(collectAssets(root)).toEqual([]);
   });
 
   it("includes the sample SVG diagram", () => {

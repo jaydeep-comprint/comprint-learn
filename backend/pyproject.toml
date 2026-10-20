@@ -6,13 +6,25 @@ dependencies = [
     "alembic>=1.20.0",
     "asyncpg>=0.32.0",
     "fastapi[standard]>=0.143.0",
+    "httpx>=0.28.1",
     "pydantic-settings>=2.15.0",
+    "pyjwt[crypto]>=2.15.1",
     "sqlalchemy[asyncio]>=2.1.4",
+    "typer>=0.27.3",
 ]
+
+[project.scripts]
+app = "app.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
@@ -35,6 +47,9 @@ files = ["app", "tests", "alembic"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+# One event loop for the whole run, so DB tests can share one engine (asyncpg connections are
+# bound to the loop that opened them; reconnecting to the hosted DB costs seconds per test).
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 markers = ["db: needs a real Postgres (TEST_DATABASE_URL); run with `make test-db`"]

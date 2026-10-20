@@ -36,7 +36,7 @@ understands, so help arrives late and is generic.
 ## MVP scope (v1)
 Build order and spec numbers: docs/ROADMAP.md.
 0. Foundations: monorepo scaffold, `make dev` / `make check`, CI ([spec 001](specs/001-scaffold.md)).
-1. Multi-school accounts: schools → teachers → classes → students, with roles.
+1. Multi-school accounts: schools → teachers → classes → students, with roles ([spec 002](specs/002-auth-tenancy.md)).
 2. Pre-authored courses (content-as-code): concepts, KPs, prerequisite graph, items. First content is a **6–8 concept slice
    of each of** CBSE Class 9–10 Maths (algebra), Physics (motion and force) and Python basics.
 3. Student **Learn** layer: intro + worked examples (text, images, diagrams, maths) + misconception check.

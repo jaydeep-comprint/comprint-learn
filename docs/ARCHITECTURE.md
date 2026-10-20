@@ -13,7 +13,7 @@
 | Python execution | **Pyodide in a Web Worker** (in-browser) | No server sandbox needed; safe and free to run |
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2 (async), Alembic | Team choice (Python); typed |
 | Database | PostgreSQL (hosted Supabase, Session pooler, port 5432) | Relational data (orgs/classes) + JSONB for content. Test DB = a separate Supabase project (`TEST_DATABASE_URL`), used only by `make test-db` and CI |
-| Auth | Managed auth (Supabase Auth or Clerk) issuing JWTs; FastAPI verifies them | Don't build password, reset and invite flows ourselves |
+| Auth | **Supabase Auth** (same project as the DB). FastAPI verifies its JWTs against the project JWKS (`app/core/auth.py`); our `app_user.id` = the auth user id. Teachers are invited by email; students get teacher-created accounts with a synthetic, never-emailed auth email | Don't build password, reset and invite flows ourselves; one free-tier project for DB + auth |
 | Maths answer checking | SymPy (server side) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs) | Modern scheduler with fewer reviews than SM-2 |
 | AI | Anthropic API: Claude Haiku 5.5 (`claude-haiku-5-5`) for tutor chat, Claude Sonnet 5.5 (`claude-sonnet-5-5`) for teacher summaries | Low cost per student; better reasoning where needed |
@@ -42,7 +42,10 @@ docs/         PRD, architecture, roadmap, specs, plans
 ```
 
 ## Domain model (core tables)
-- **Tenancy**: `organization` (school) → `user` (role: admin | teacher | student, org_id) → `class` → `enrollment`.
+- **Tenancy**: `organization` (school, unique `code`) → `app_user` (role: teacher | student, `is_admin` for teachers only, status
+  invited | active | deactivated, org_id) → `school_class` → `enrollment`; `class_teacher` links co-teachers (no extra access).
+  Link tables carry `org_id` with composite FKs to `(id, org_id)`, so the DB rejects cross-school links. Students store a
+  display name and username only (no email).
 - **Content**:
   - `course` → `chapter` → `concept` (node) → `knowledge_point` (3–4 per concept, ordered; worked example + question pool) → `item`.
   - `concept_prereq` (edge) has `encompassing_weight` (0–1: how much of the prerequisite is practised inside the concept).
@@ -83,3 +86,15 @@ docs/         PRD, architecture, roadmap, specs, plans
 - The frontend talks to the backend only through `/api/v1`. It never connects to the database directly.
 - Answer keys and test cases marked hidden never reach the client. Practice-code test cases are an exception: they are visible in the MVP (decision 6).
 - All AI calls go through `backend/app/ai/` (one place for prompts, models, rate limits and logging).
+- **Org scoping**: every tenant-owned query goes through `OrgScope` (`app/api/deps.py`); ids from another school are 404.
+  `tests/test_route_scoping.py` fails if a route skips auth or the scope.
+- **RLS deny-all**: row-level security is enabled with no policies on every table in `public`, so Supabase's Data API
+  (anon/authenticated keys) reads nothing. The backend connects as `postgres`, which bypasses RLS. Every migration that
+  adds a table must enable RLS on it (`tests/test_rls_db.py` checks).
+- **Supabase Auth settings** (each project): turn **off** "Allow new users to sign up" (Authentication → Sign In / Providers).
+  Accounts are created only by admin invite or by teachers; with public sign-up on, anyone holding the anon key could
+  pre-register predictable student auth emails and block account creation. Set the Site URL / redirect allow-list to
+  `APP_URL` so invite and reset links land on `/accept-invite` and `/reset-password`.
+- **Sessions**: Supabase revokes refresh tokens on a password change, but issued access tokens live until expiry, so the
+  API also rejects tokens whose `iat` is before `app_user.sessions_valid_after` (set on admin reset, in-app password change and
+  deactivation; a staff email-recovery reset goes straight to Supabase and doesn't set it).

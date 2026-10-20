@@ -11,6 +11,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 - Typecheck: `cd backend && uv run mypy` · `cd frontend && pnpm typecheck`
 - Lint/format: `make fmt`
 - Migrate: `make migrate` (alembic upgrade head against `DATABASE_URL`)
+- Onboard a school: `cd backend && uv run app org create --name "..." --code ABC --admin-email ... --admin-name "..."` (`app org list`)
 - Full check (what the Stop hook and CI run): `make check`
 
 ## Workflow
@@ -29,6 +30,10 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 
 ## Gotchas
 <!-- Add one line every time Claude gets something wrong. Keep this file under ~200 lines. -->
+- Services take an `OrgScope` (`app/api/deps.py`), never a raw session + id; new routes must depend on it (route-walking test).
+- Students have no email: their Supabase auth email is synthetic, `{username}@{school-code}.students.invalid`, never shown or sent.
+- New tables: inherit `TenantMixin`, add composite FKs for links, and enable RLS in the migration (`test_rls_db.py`).
+- FastAPI 0.143 nests included routers: walk routes with `fastapi.routing.iter_route_contexts(app.routes)`, not `app.routes`.
 
 ## Compaction
 - When compacting, preserve: the current spec path, modified files, test commands, open TODOs.

@@ -24,6 +24,8 @@ def get_engine() -> AsyncEngine:
             url,
             connect_args=connect_args,
             pool_pre_ping=True,
+            # Error messages and logs never include bound values (names, emails).
+            hide_parameters=True,
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
         )

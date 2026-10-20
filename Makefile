@@ -12,8 +12,10 @@ install:
 dev:
 	$(MAKE) -j2 dev-api dev-web
 
+# uvicorn, not `fastapi dev`: its banner queries the terminal colour over /dev/tty, and under
+# `make -j2` Vite's keyboard reader can take the reply, leaving the API hung before it binds.
 dev-api:
-	cd $(BACKEND) && uv run fastapi dev app/main.py --port 8000
+	cd $(BACKEND) && uv run uvicorn app.main:app --reload --port 8000
 
 dev-web:
 	cd $(FRONTEND) && pnpm dev

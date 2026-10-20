@@ -17,4 +17,9 @@ export default defineConfig([
     ],
     languageOptions: { globals: globals.browser },
   },
+  {
+    // shadcn/ui components export variants and helpers next to components.
+    files: ["src/components/ui/**/*.tsx", "src/features/auth/AuthProvider.tsx"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
 ]);

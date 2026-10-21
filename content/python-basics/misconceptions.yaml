@@ -1,0 +1,24 @@
+- id: assign-vs-compare
+  title: "= and == are the same"
+  description: Uses `=` (assignment) where a comparison `==` is needed, or reads `x = 5` as "x equals 5?".
+- id: range-includes-stop
+  title: range() includes the stop value
+  description: Thinks `range(a, b)` goes up to and including `b`, so counts one value too many.
+- id: string-number-concat
+  title: Strings and numbers add together
+  description: Expects `"5" + 3` to give 8 or "53", instead of a TypeError; forgets to convert with int() or str().
+- id: slash-gives-int
+  title: "/ gives a whole number"
+  description: Thinks `7 / 2` gives 3; in Python 3 `/` always gives a float (3.5) and `//` is floor division.
+- id: all-branches-run
+  title: Every true branch runs
+  description: Thinks every if/elif/else branch whose condition is true runs, instead of only the first true one.
+- id: while-updates-itself
+  title: The loop variable changes by itself
+  description: Forgets to update the variable in a while loop's condition, so the loop never ends.
+- id: reset-inside-loop
+  title: Accumulator set inside the loop
+  description: Puts `total = 0` inside the loop body, so the total is reset on every pass.
+- id: names-can-be-anything
+  title: Any word can be a variable name
+  description: Uses names with hyphens, spaces, a leading digit or a keyword (like `class`) as variable names.

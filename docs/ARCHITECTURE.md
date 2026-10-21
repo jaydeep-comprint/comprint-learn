@@ -46,12 +46,21 @@ docs/         PRD, architecture, roadmap, specs, plans
   invited | active | deactivated, org_id) → `school_class` → `enrollment`; `class_teacher` links co-teachers (no extra access).
   Link tables carry `org_id` with composite FKs to `(id, org_id)`, so the DB rejects cross-school links. Students store a
   display name and username only (no email).
-- **Content**:
-  - `course` → `chapter` → `concept` (node) → `knowledge_point` (3–4 per concept, ordered; worked example + question pool) → `item`.
-  - `concept_prereq` (edge) has `encompassing_weight` (0–1: how much of the prerequisite is practised inside the concept).
-  - `knowledge_point.key_prereq_ids` names the concept(s) that step really depends on, used for remediation.
-  - `item` has a `bloom_level` tag, `type` (numeric | expression | mcq | multistep | code), `expected_minutes`, optional
-    `params` (randomised numbers), and a type-specific answer spec (see decision 10). MCQ options carry a `misconception_id`.
+- **Content** (global: platform-owned, the same for every school; **no `org_id`**, not `TenantMixin`, read without
+  `OrgScope`; RLS still on). Imported from `content/` by `app content import`: each row has its authored `slug`
+  (the identity), `content_hash` + `version` (+1 when the authored content changes), `position`, and `retired_at`
+  (removed content is retired, never deleted).
+  - `course` (one active per subject) → `chapter` (`grade` 9/10) → `concept` (node, `intro_md`) → `knowledge_point`
+    (3–4 per concept, ordered; `worked_example_md`) → `item`; `misconception` per course.
+  - `concept_prereq` (edge; may cross courses) has `encompassing_weight` (0–1: how much of the prerequisite is practised
+    inside the concept). `kp_key_prereq` links a KP to the concept(s) that step really depends on, used for remediation.
+  - `item` has `kind` (kp_question | practice | misconception_check), a `bloom_level` tag, `type` (numeric | expression |
+    mcq | multistep | code), `expected_minutes`, `has_params`, and two JSON documents: **`public`** (all a client may
+    ever see: prompt template, MCQ option texts, step prompts, unit, code starter + visible tests) and **`answer`**
+    (answer spec per decision 10, `params`/`constraints`/`derived`, MCQ correct id + misconception map, explanation,
+    code solution + hidden tests). API item shapes are built only from `public` (`ItemPublic.from_row`).
+  - Randomised numbers: `app.content.params.sample(item, seed)` is the one implementation that derives an item's
+    numbers (and so its answer) from an attempt's seed.
 - **Learning state**:
   - `attempt`: one row per answer submitted, with the result, time taken, hints used and the parameter seed.
   - `kp_progress`: per student × KP, holding status (not started | in progress | passed | failed) and the fail count.
@@ -87,7 +96,9 @@ docs/         PRD, architecture, roadmap, specs, plans
 - Answer keys and test cases marked hidden never reach the client. Practice-code test cases are an exception: they are visible in the MVP (decision 6).
 - All AI calls go through `backend/app/ai/` (one place for prompts, models, rate limits and logging).
 - **Org scoping**: every tenant-owned query goes through `OrgScope` (`app/api/deps.py`); ids from another school are 404.
-  `tests/test_route_scoping.py` fails if a route skips auth or the scope.
+  `tests/test_route_scoping.py` fails if a route skips auth or the scope. The one exemption is **global content**
+  (`/courses`, `/courses/{slug}/graph`): those routes authenticate but read only platform-owned content, and are listed
+  in `GLOBAL_CONTENT` in that test. Content routes never return `item.answer`.
 - **RLS deny-all**: row-level security is enabled with no policies on every table in `public`, so Supabase's Data API
   (anon/authenticated keys) reads nothing. The backend connects as `postgres`, which bypasses RLS. Every migration that
   adds a table must enable RLS on it (`tests/test_rls_db.py` checks).

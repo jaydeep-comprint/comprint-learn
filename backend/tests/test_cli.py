@@ -1,8 +1,11 @@
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
 from app import cli
 from app.cli import BAD_CODE, CliError, normalize_code
+from tests import content_fixtures as fx
 
 runner = CliRunner()
 
@@ -72,3 +75,30 @@ def test_help_lists_org_commands() -> None:
     result = runner.invoke(cli.app, ["org", "--help"])
     assert result.exit_code == 0
     assert "create" in result.output and "list" in result.output
+
+
+def test_content_check_ok_and_strict(tmp_path: Path) -> None:
+    content = fx.write(tmp_path, fx.tree())
+    result = runner.invoke(cli.app, ["content", "check", "--root", str(content)])
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "content OK: 1 courses, 1 concepts, 17 items"
+
+    (fx.concept_dir(content) / "draft.md").write_text("draft")
+    result = runner.invoke(cli.app, ["content", "check", "--root", str(content)])
+    assert result.exit_code == 0
+    assert "content OK: 1 courses, 1 concepts, 17 items (1 warnings)" in result.output
+    result = runner.invoke(cli.app, ["content", "check", "--root", str(content), "--strict"])
+    assert result.exit_code == 1
+    assert "0 errors, 1 warnings" in result.output
+
+
+def test_content_check_errors_exit_1(tmp_path: Path) -> None:
+    t = fx.tree()
+    t["maths"]["chapters"]["ch1"]["concepts"][0]["kps"].pop()
+    content = fx.write(tmp_path, t)
+    result = runner.invoke(cli.app, ["content", "check", "--root", str(content)])
+    assert result.exit_code == 1
+    assert "content/maths/01-ch1/c1/concept.yaml: kps (c1): a concept needs 3-4 KPs (found 2)" in (
+        result.output
+    )
+    assert "1 errors, 0 warnings" in result.output

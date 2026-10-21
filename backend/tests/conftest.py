@@ -68,6 +68,9 @@ def _require_test_db(request: pytest.FixtureRequest) -> Iterator[None]:
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 TENANT_TABLES = "organization, app_user, school_class, class_teacher, enrollment"
+CONTENT_TABLES = (
+    "course, chapter, concept, concept_prereq, knowledge_point, kp_key_prereq, misconception, item"
+)
 
 
 @pytest.fixture(scope="session")
@@ -117,7 +120,7 @@ async def db_app(migrated_test_db: str, monkeypatch: pytest.MonkeyPatch) -> Asyn
     get_settings.cache_clear()
     sessions = get_sessionmaker()
     async with sessions() as session:
-        await session.execute(text(f"TRUNCATE {TENANT_TABLES} CASCADE"))
+        await session.execute(text(f"TRUNCATE {TENANT_TABLES}, {CONTENT_TABLES} CASCADE"))
         await session.commit()
 
     fake_admin = FakeSupabaseAdmin()

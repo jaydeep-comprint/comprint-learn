@@ -1,0 +1,260 @@
+id: acceleration
+title: Acceleration
+summary: How quickly velocity changes, and in which direction.
+prereqs:
+  - {concept: speed-and-velocity, weight: 0.7}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    A ball is thrown straight up. At the very top of its flight it is momentarily at rest. What is its acceleration at that instant?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "About 9.8 m/s², pointing downwards", correct: true}
+        - {id: b, text: "Zero, because the ball is not moving", misconception: zero-velocity-means-zero-acceleration}
+        - {id: c, text: "About 9.8 m/s², pointing upwards"}
+  explanation: |
+    Gravity keeps changing the ball's velocity, even at the instant its velocity is zero.
+
+kps:
+  - id: kp1
+    title: Acceleration as rate of change of velocity
+    worked_example: kp-1-worked.md
+    key_prereqs: [speed-and-velocity]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A car speeds up from {{u}} m/s to {{v}} m/s in {{t}} s. Find its acceleration.
+          Give 2 significant figures.
+        params:
+          u: {min: 0, max: 10, step: 2}
+          v: {min: 12, max: 30, step: 2}
+          t: {choices: [2, 4, 5]}
+        constraints: ["v > u"]
+        derived: {a: "(v - u) / t"}
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: sigfig, sigfigs: 2}
+        explanation: |
+          a = (v − u) / t = ({{v}} − {{u}}) / {{t}} = {{a}} m/s².
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A scooter starts from rest and reaches {{v}} m/s in {{t}} s. What is its acceleration?
+        params:
+          v: {min: 4, max: 20, step: 2}
+          t: {choices: [2, 4, 5, 8]}
+        answer:
+          numeric: {value: "v / t", unit: m/s^2, mode: tolerance, rel_tol: 0.02}
+        explanation: |
+          From rest, u = 0, so a = {{v}} ÷ {{t}}.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A car speeds up from {{u}} km/h to {{v}} km/h in {{t}} s. Find its acceleration in m/s².
+          Give 2 significant figures.
+        params:
+          u: {choices: [18, 36, 54]}
+          v: {choices: [72, 90, 108]}
+          t: {choices: [5, 10, 20]}
+        answer:
+          numeric: {value: "(v - u) / 3.6 / t", unit: m/s^2, mode: sigfig, sigfigs: 2}
+        explanation: |
+          Convert to m/s first (divide by 3.6), then a = (v − u) ÷ t.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A train's velocity changes from 10 m/s to 25 m/s in 5 s. What is its acceleration?
+        answer:
+          numeric: {value: 3, unit: m/s^2, mode: exact}
+      - id: kp1-q5
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What is the SI unit of acceleration?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: m/s², correct: true}
+              - {id: b, text: m/s, misconception: velocity-same-as-speed}
+              - {id: c, text: s/m², misconception: rearranges-formula-wrongly}
+
+  - id: kp2
+    title: Slowing down (negative acceleration)
+    worked_example: kp-2-worked.md
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car moving at {{u}} m/s brakes and stops in {{t}} s. Taking the direction of motion as positive,
+          what is its acceleration? (Include the sign.)
+        params:
+          u: {min: 10, max: 30, step: 5}
+          t: {choices: [2, 4, 5, 8]}
+        answer:
+          numeric: {value: "-u / t", unit: m/s^2, mode: tolerance, rel_tol: 0.02}
+        explanation: |
+          a = (0 − {{u}}) ÷ {{t}}: negative, because it points against the motion.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A truck slows from {{u}} m/s to {{v}} m/s in {{t}} s. What is the size of its retardation?
+          Give 2 significant figures.
+        params:
+          u: {min: 20, max: 40, step: 4}
+          v: {min: 0, max: 16, step: 4}
+          t: {choices: [2, 4, 5]}
+        constraints: ["u > v"]
+        answer:
+          numeric: {value: "(u - v) / t", unit: m/s^2, mode: sigfig, sigfigs: 2}
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A cyclist moving at {{u}} m/s brakes with a steady retardation of {{a}} m/s².
+          How long does she take to stop? Give 2 significant figures.
+        params:
+          u: {choices: [4, 6, 8, 10, 12]}
+          a: {choices: [0.5, 1, 2]}
+        answer:
+          numeric: {value: "u / a", unit: s, mode: sigfig, sigfigs: 2}
+        explanation: |
+          The speed drops by {{a}} m/s each second, so t = {{u}} ÷ {{a}}.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A ball's velocity changes from 20 m/s to 5 m/s in 3 s (same direction). What is its acceleration?
+          (Include the sign.)
+        answer:
+          numeric: {value: -5, unit: m/s^2, mode: exact}
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Taking east as positive, a car has a negative acceleration. Which statement **must** be true?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: The acceleration points west., correct: true}
+              - {id: b, text: The car is slowing down., misconception: negative-means-decreasing}
+              - {id: c, text: The car is moving west.}
+
+  - id: kp3
+    title: The equation v = u + at
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A bike moving at {{u}} m/s accelerates uniformly at {{a}} m/s² for {{t}} s. What is its final velocity?
+        params:
+          u: {min: 0, max: 20, step: 5}
+          a: {choices: [0.5, 1, 1.5, 2, 2.5]}
+          t: {choices: [2, 4, 6, 8, 10]}
+        answer:
+          numeric: {value: "u + a * t", unit: m/s, mode: exact}
+        explanation: |
+          v = u + at = {{u}} + {{a}} × {{t}}.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          How long does a car take to speed up from {{u}} m/s to {{v}} m/s with a steady acceleration of {{a}} m/s²?
+          Give 3 significant figures.
+        params:
+          u: {min: 0, max: 10, step: 2}
+          v: {min: 20, max: 40, step: 4}
+          a: {choices: [2, 4, 5]}
+        answer:
+          numeric: {value: "(v - u) / a", unit: s, mode: sigfig, sigfigs: 3}
+        explanation: |
+          t = (v − u) ÷ a = ({{v}} − {{u}}) ÷ {{a}}.
+      - id: kp3-q3
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car moving at {{u}} m/s accelerates uniformly at {{a}} m/s².
+          Write its velocity v (in m/s) after t seconds.
+        params:
+          u: {min: 0, max: 20, step: 4}
+          a: {choices: [1, 2, 3, 4]}
+        answer:
+          expression: {value: "u + a*t", variables: [t], sympy_mode: equivalent}
+        explanation: |
+          v = u + at = {{u}} + {{a}}t.
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A car starts from rest and accelerates at 3 m/s² for 4 s. What is its velocity then?
+        answer:
+          numeric: {value: 12, unit: m/s, mode: exact}
+      - id: kp3-q5
+        type: mcq
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          An object starts from rest with a steady acceleration of 2 m/s². What is its velocity after 3 s?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: 6 m/s, correct: true}
+              - {id: b, text: 1.5 m/s, misconception: rearranges-formula-wrongly}
+              - {id: c, text: 5 m/s}
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A train moving at {{u}} m/s accelerates uniformly at {{a}} m/s² for {{t}} s.
+      The driver then brakes uniformly and the train stops {{t2}} s later.
+    params:
+      u: {choices: [0, 5, 10]}
+      a: {choices: [0.5, 1, 2]}
+      t: {choices: [10, 20, 30]}
+      t2: {choices: [10, 15, 20, 25]}
+    derived:
+      vmax: "u + a * t"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the train's velocity at the end of the acceleration?
+            answer:
+              numeric: {value: "vmax", unit: m/s, mode: exact}
+          - prompt: What is the size of its retardation while braking? Give 3 significant figures.
+            answer:
+              numeric: {value: "vmax / t2", unit: m/s^2, mode: sigfig, sigfigs: 3}
+          - prompt: How long is the train moving in total, from the start of the acceleration until it stops?
+            answer:
+              numeric: {value: "t + t2", unit: s, mode: exact}
+    explanation: |
+      v = {{u}} + {{a}} × {{t}} = {{vmax}} m/s; retardation = {{vmax}} ÷ {{t2}}; total time = {{t}} + {{t2}} s.

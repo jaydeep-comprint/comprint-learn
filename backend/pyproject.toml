@@ -9,7 +9,9 @@ dependencies = [
     "httpx>=0.28.1",
     "pydantic-settings>=2.15.0",
     "pyjwt[crypto]>=2.15.1",
+    "pyyaml>=6.0.3",
     "sqlalchemy[asyncio]>=2.1.4",
+    "sympy>=1.14.0",
     "typer>=0.27.3",
 ]
 
@@ -29,6 +31,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.17.0",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 [tool.ruff]
@@ -44,6 +47,11 @@ strict = true
 python_version = "3.13"
 plugins = ["pydantic.mypy"]
 files = ["app", "tests", "alembic"]
+
+[[tool.mypy.overrides]]
+# SymPy ships no type information.
+module = ["sympy", "sympy.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

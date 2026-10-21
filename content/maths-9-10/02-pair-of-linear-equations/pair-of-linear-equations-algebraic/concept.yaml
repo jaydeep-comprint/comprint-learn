@@ -1,0 +1,306 @@
+id: pair-of-linear-equations-algebraic
+title: Pair of linear equations (substitution and elimination)
+summary: Solve a pair of linear equations exactly by substitution or elimination, and use it for word problems.
+prereqs:
+  - {concept: pair-of-linear-equations-graphical, weight: 0.4}
+  - {concept: linear-equations-two-variables, weight: 0.5}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    Solving $x + y = 5$ and $2x - y = 1$ by substitution, you write $y = 5 - x$. What is the next equation?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "$2x - (5 - x) = 1$", correct: true}
+        - {id: b, text: "$2x - 5 - x = 1$", misconception: sign-error}
+        - {id: c, text: "$2x - 5 = 1$", misconception: substitutes-coefficient}
+  explanation: |
+    Replace $y$ by the whole expression in brackets: $2x - (5 - x) = 1$, which becomes $3x - 5 = 1$, so $x = 2$.
+
+kps:
+  - id: kp1
+    title: Substitution
+    worked_example: kp-1-worked.md
+    key_prereqs: [linear-equations-two-variables]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Solve by substitution: $y = {{m}}x + {{k}}$ and ${{a}}x + {{b}}y = {{c}}$. Find $x$.
+        params:
+          x0: {min: 0, max: 6, step: 1}
+          m: {min: 2, max: 4, step: 1}
+          k: {min: 0, max: 6, step: 1}
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 4, step: 1}
+        derived:
+          y0: "m * x0 + k"
+          c: "a * x0 + b * y0"
+        answer:
+          numeric: {value: "x0", mode: exact}
+        explanation: |
+          ${{a}}x + {{b}}({{m}}x + {{k}}) = {{c}}$, so $({{a}} + {{b}} \times {{m}})x = {{c}} - {{b}} \times {{k}}$ and $x = {{x0}}$ (then $y = {{y0}}$).
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Solve by substitution: $x + y = {{s}}$ and $x - {{m}}y = {{t}}$. Find $y$.
+        params:
+          y0: {min: 1, max: 9, step: 1}
+          m: {min: 2, max: 5, step: 1}
+          x0: {min: 1, max: 20, step: 1}
+        derived:
+          s: "x0 + y0"
+          t: "x0 - m * y0"
+        answer:
+          numeric: {value: "y0", mode: exact}
+        explanation: |
+          $x = {{s}} - y$, so $({{s}} - y) - {{m}}y = {{t}}$, giving $({{m}} + 1)y = {{s}} - ({{t}})$ and $y = {{y0}}$.
+      - id: kp1-q3
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The first step of substitution: from ${{a}}x + y = {{c}}$, write $y$ in terms of $x$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 20, step: 1}
+        answer:
+          expression: {value: "c - a*x", variables: [x], sympy_mode: equivalent}
+        explanation: |
+          Subtract ${{a}}x$ from both sides: $y = {{c}} - {{a}}x$.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Solve $2x + y = 7$ and $x - y = 2$. Find $x$.
+        answer:
+          numeric: {value: 3, mode: exact}
+        explanation: |
+          From the second, $x = y + 2$. Then $2(y + 2) + y = 7$, so $3y = 3$, $y = 1$ and $x = 3$.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          Substituting $y = 2x$ into $x + y = 9$ gives…
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$x + 2x = 9$", correct: true}
+              - {id: b, text: "$x + 2 = 9$", misconception: substitutes-coefficient}
+              - {id: c, text: "$2x = 9$"}
+        explanation: |
+          $y$ is replaced by the whole of $2x$: $x + 2x = 9$, so $x = 3$ and $y = 6$.
+
+  - id: kp2
+    title: Elimination
+    worked_example: kp-2-worked.md
+    key_prereqs: [linear-equations-two-variables]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Solve by elimination: ${{a1}}x + {{b}}y = {{c1}}$ and ${{a2}}x - {{b}}y = {{c2}}$. Find $x$.
+        params:
+          x0: {min: 1, max: 6, step: 1}
+          y0: {min: 0, max: 6, step: 1}
+          a1: {min: 1, max: 5, step: 1}
+          a2: {min: 1, max: 5, step: 1}
+          b: {min: 2, max: 5, step: 1}
+        derived:
+          c1: "a1 * x0 + b * y0"
+          c2: "a2 * x0 - b * y0"
+        answer:
+          numeric: {value: "x0", mode: exact}
+        explanation: |
+          The $y$-terms are opposite, so add: $({{a1}} + {{a2}})x = {{c1}} + ({{c2}})$, giving $x = {{x0}}$.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 2.5
+        prompt: |
+          Solve ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = {{c2}}$. Find $y$.
+        params:
+          a1: {min: 1, max: 5, step: 1}
+          b1: {min: 1, max: 5, step: 1}
+          a2: {min: 1, max: 5, step: 1}
+          b2: {min: 1, max: 5, step: 1}
+          x0: {min: 0, max: 6, step: 1}
+          y0: {min: 0, max: 6, step: 1}
+        constraints: ["a1 * b2 != a2 * b1"]
+        derived:
+          c1: "a1 * x0 + b1 * y0"
+          c2: "a2 * x0 + b2 * y0"
+        answer:
+          numeric: {value: "y0", mode: exact}
+        explanation: |
+          Multiply the first equation by {{a2}} and the second by {{a1}}, then subtract to eliminate $x$. You get $y = {{y0}}$ (and $x = {{x0}}$).
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Take ${{a1}}x + {{b1}}y = 10$ and ${{a2}}x + {{b2}}y = 12$. Multiply the first equation by {{a2}} and the second by {{a1}}, then subtract the second from the first. What is the coefficient of $y$ in the result?
+        params:
+          a1: {min: 2, max: 6, step: 1}
+          a2: {min: 2, max: 6, step: 1}
+          b1: {min: 1, max: 5, step: 1}
+          b2: {min: 1, max: 5, step: 1}
+        constraints: ["a1 != a2"]
+        answer:
+          numeric: {value: "a2 * b1 - a1 * b2", mode: exact}
+        explanation: |
+          The $y$-terms become ${{a2}} \times {{b1}}y$ and ${{a1}} \times {{b2}}y$; subtracting leaves $({{a2}} \times {{b1}} - {{a1}} \times {{b2}})y$. The $x$-terms cancel.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Solve $3x + 2y = 11$ and $3x - 2y = 1$. Find $y$ as a decimal.
+        answer:
+          numeric: {value: 2.5, mode: exact}
+        explanation: |
+          Subtract: $4y = 10$, so $y = 2.5$ (and $x = 2$).
+      - id: kp2-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Solve $x + y = 10$ and $x - y = 4$. Find $x$.
+        answer:
+          numeric: {value: 7, mode: exact}
+        explanation: |
+          Add: $2x = 14$, so $x = 7$ (and $y = 3$).
+
+  - id: kp3
+    title: Word problems
+    worked_example: kp-3-worked.md
+    key_prereqs: [linear-equations-two-variables]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          The sum of two numbers is {{s}} and their difference is {{d}}. Find the larger number.
+        params:
+          s: {min: 20, max: 60, step: 1}
+          d: {min: 2, max: 18, step: 1}
+        constraints: ["(s + d) % 2 == 0"]
+        answer:
+          numeric: {value: "(s + d) / 2", mode: exact}
+        explanation: |
+          $x + y = {{s}}$ and $x - y = {{d}}$. Adding: $2x = {{s}} + {{d}}$, so the larger number is $\frac{ {{s}} + {{d}} }{2}$.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          {{p1}} pens and {{n1}} notebooks cost ₹{{c1}}. {{p2}} pens and {{n2}} notebooks cost ₹{{c2}}. Find the cost of one notebook in ₹.
+        params:
+          P: {min: 5, max: 15, step: 1}
+          N: {min: 20, max: 50, step: 5}
+          p1: {min: 2, max: 5, step: 1}
+          n1: {min: 2, max: 5, step: 1}
+          p2: {min: 2, max: 5, step: 1}
+          n2: {min: 2, max: 5, step: 1}
+        constraints: ["p1 * n2 != p2 * n1"]
+        derived:
+          c1: "p1 * P + n1 * N"
+          c2: "p2 * P + n2 * N"
+        answer:
+          numeric: {value: "N", mode: exact}
+        explanation: |
+          Let a pen cost ₹$x$ and a notebook ₹$y$: ${{p1}}x + {{n1}}y = {{c1}}$ and ${{p2}}x + {{n2}}y = {{c2}}$. Solving gives $x = {{P}}$, $y = {{N}}$.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          The ages of a father and his son add up to {{s}} years. The father is {{d}} years older than the son. How old is the son?
+        params:
+          s: {min: 40, max: 80, step: 1}
+          d: {min: 20, max: 36, step: 1}
+        constraints: ["(s - d) % 2 == 0"]
+        answer:
+          numeric: {value: "(s - d) / 2", mode: exact}
+        explanation: |
+          $f + s = {{s}}$ and $f - s = {{d}}$. Subtracting: $2s = {{s}} - {{d}}$, so the son is $\frac{ {{s}} - {{d}} }{2}$ years old.
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 3
+        prompt: |
+          A fraction becomes $\frac{9}{11}$ if 2 is added to both its numerator and denominator. If 3 is added to both, it becomes $\frac{5}{6}$. Find the numerator.
+        answer:
+          numeric: {value: 7, mode: exact}
+        explanation: |
+          $11(x + 2) = 9(y + 2)$ and $6(x + 3) = 5(y + 3)$ give $11x - 9y = -4$ and $6x - 5y = -3$. Solving: $x = 7$, $y = 9$; the fraction is $\frac{7}{9}$.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          A pen costs ₹$x$ and a pencil ₹$y$. Which equation says "3 pens cost ₹5 more than 2 pencils"?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$3x = 2y + 5$", correct: true}
+              - {id: b, text: "$3x + 5 = 2y$", misconception: reverse-translation}
+              - {id: c, text: "$3y = 2x + 5$", misconception: swaps-coordinates}
+        explanation: |
+          The pens are the bigger amount: pens = pencils + 5, so $3x = 2y + 5$.
+
+practice:
+  - id: practice-tickets
+    type: multistep
+    bloom: analyze
+    expected_minutes: 7
+    prompt: |
+      At a cinema, one group bought {{a1}} adult and {{k1}} child tickets for ₹{{T1}}. Another bought {{a2}} adult and {{k2}} child tickets for ₹{{T2}}. Let an adult ticket cost ₹$x$ and a child ticket ₹$y$.
+    params:
+      A: {min: 100, max: 250, step: 10}
+      C: {min: 50, max: 90, step: 10}
+      a1: {min: 1, max: 4, step: 1}
+      k1: {min: 1, max: 4, step: 1}
+      a2: {min: 1, max: 4, step: 1}
+      k2: {min: 1, max: 4, step: 1}
+      a3: {min: 1, max: 5, step: 1}
+      k3: {min: 1, max: 5, step: 1}
+    constraints: ["a1 * k2 != a2 * k1"]
+    derived:
+      T1: "a1 * A + k1 * C"
+      T2: "a2 * A + k2 * C"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Using the first group only, write $y$ in terms of $x$.
+            answer:
+              expression: {value: "(T1 - a1*x) / k1", variables: [x], sympy_mode: equivalent}
+          - prompt: |
+              Find the price of an adult ticket in ₹.
+            answer:
+              numeric: {value: "A", mode: exact}
+          - prompt: |
+              Find the price of a child ticket in ₹.
+            answer:
+              numeric: {value: "C", mode: exact}
+          - prompt: |
+              How much, in ₹, do {{a3}} adult and {{k3}} child tickets cost?
+            answer:
+              numeric: {value: "a3 * A + k3 * C", mode: exact}
+    explanation: |
+      ${{a1}}x + {{k1}}y = {{T1}}$ and ${{a2}}x + {{k2}}y = {{T2}}$ give $x = {{A}}$ and $y = {{C}}$. Then ${{a3}} \times {{A}} + {{k3}} \times {{C}}$.

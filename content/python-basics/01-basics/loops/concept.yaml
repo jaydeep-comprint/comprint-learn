@@ -1,0 +1,368 @@
+id: loops
+title: Loops
+summary: Repeat code with for loops over range() and with while loops, and add up or count as you go.
+prereqs:
+  - {concept: conditionals, weight: 0.4}
+  - {concept: variables-and-types, weight: 0.3}
+intro: intro.md
+misconception_check:
+  id: check
+  type: mcq
+  bloom: remember
+  expected_minutes: 0.5
+  prompt: |
+    Which values does `i` take in `for i in range(5):`?
+  answer:
+    mcq:
+      options:
+        - id: a
+          text: 0, 1, 2, 3, 4
+          correct: true
+        - id: b
+          text: 0, 1, 2, 3, 4, 5
+          misconception: range-includes-stop
+        - id: c
+          text: 1, 2, 3, 4, 5
+  explanation: |
+    `range(5)` starts at 0 and stops before 5, so it gives 5 values: 0 to 4.
+kps:
+  - id: kp1
+    title: for loops and range()
+    worked_example: kp-1-worked.md
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          count = 0
+          for i in range({{n}}):
+              count = count + 1
+          print(count)
+          ```
+        params:
+          n: {min: 3, max: 20, step: 1}
+        answer:
+          numeric: {value: "n", mode: exact}
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          How many numbers are in `range({{a}}, {{b}})`?
+        params:
+          a: {min: 0, max: 10, step: 1}
+          b: {min: 5, max: 30, step: 1}
+        constraints: ["b > a"]
+        answer:
+          numeric: {value: "b - a", mode: exact}
+        explanation: |
+          `range({{a}}, {{b}})` stops before {{b}}, so it has {{b}} − {{a}} values.
+      - id: kp1-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What is the last number printed?
+
+          ```python
+          for i in range({{a}}, {{b}}, {{s}}):
+              print(i)
+          ```
+        params:
+          a: {min: 0, max: 5, step: 1}
+          b: {min: 10, max: 30, step: 1}
+          s: {min: 2, max: 4, step: 1}
+        answer:
+          numeric: {value: "a + s * floor((b - 1 - a) / s)", mode: exact}
+      - id: kp1-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `squares(n)` that returns the list of squares `[1, 4, 9, ..., n*n]`.
+          For `n = 0` return an empty list.
+        answer:
+          code:
+            entry: squares
+            starter: |
+              def squares(n):
+                  result = []
+                  return result
+            solution: |
+              def squares(n):
+                  result = []
+                  for i in range(1, n + 1):
+                      result.append(i * i)
+                  return result
+            tests:
+              - {args: [3], expected: [1, 4, 9], visible: true}
+              - {args: [0], expected: []}
+              - {args: [5], expected: [1, 4, 9, 16, 25]}
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          How many times does the body of `for i in range(2, 6):` run?
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: "4"
+                correct: true
+              - id: b
+                text: "5"
+                misconception: range-includes-stop
+              - id: c
+                text: "6"
+  - id: kp2
+    title: Adding up and counting in a loop
+    worked_example: kp-2-worked.md
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          total = 0
+          for i in range(1, {{n}} + 1):
+              total += i
+          print(total)
+          ```
+        params:
+          n: {min: 3, max: 30, step: 1}
+        answer:
+          numeric: {value: "n * (n + 1) / 2", mode: exact}
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          count = 0
+          for i in range(1, {{n}} + 1):
+              if i % {{k}} == 0:
+                  count += 1
+          print(count)
+          ```
+        params:
+          n: {min: 10, max: 60, step: 1}
+          k: {min: 2, max: 7, step: 1}
+        answer:
+          numeric: {value: "floor(n / k)", mode: exact}
+        explanation: |
+          It counts the multiples of {{k}} from 1 to {{n}}.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          p = 1
+          for i in range({{n}}):
+              p = p * {{b}}
+          print(p)
+          ```
+        params:
+          n: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 3, step: 1}
+        answer:
+          numeric: {value: "b ** n", mode: exact}
+      - id: kp2-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `count_vowels(word)` that returns how many of the letters a, e, i, o, u
+          (lowercase) are in `word`.
+        answer:
+          code:
+            entry: count_vowels
+            starter: |
+              def count_vowels(word):
+                  count = 0
+                  return count
+            solution: |
+              def count_vowels(word):
+                  count = 0
+                  for letter in word:
+                      if letter in "aeiou":
+                          count += 1
+                  return count
+            tests:
+              - {args: ["banana"], expected: 3, visible: true}
+              - {args: ["sky"], expected: 0}
+              - {args: ["education"], expected: 5}
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          To add up numbers in a loop, where should `total = 0` go?
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: Before the loop starts.
+                correct: true
+              - id: b
+                text: Inside the loop, as its first line.
+                misconception: reset-inside-loop
+              - id: c
+                text: After the loop ends.
+  - id: kp3
+    title: while loops
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          n = {{a}}
+          steps = 0
+          while n > 0:
+              n = n - {{b}}
+              steps += 1
+          print(steps)
+          ```
+        params:
+          a: {min: 10, max: 50, step: 1}
+          b: {min: 2, max: 7, step: 1}
+        answer:
+          numeric: {value: "ceiling(a / b)", mode: exact}
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = 1
+          while x < {{limit}}:
+              x = x * 2
+          print(x)
+          ```
+        params:
+          limit: {choices: [3, 5, 6, 7, 9, 10, 12, 20, 25, 33, 50, 70, 100]}
+        answer:
+          numeric: {value: "2 ** ceiling(log(limit, 2))", mode: exact}
+        explanation: |
+          x doubles (1, 2, 4, 8, ...) until it is no longer less than {{limit}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          What does this program print?
+
+          ```python
+          n = {{n}}
+          total = 0
+          while n > 0:
+              total += n % 10
+              n = n // 10
+          print(total)
+          ```
+        params:
+          n: {min: 10, max: 99, step: 1}
+        answer:
+          numeric: {value: "floor(n / 10) + n % 10", mode: exact}
+        explanation: |
+          `n % 10` is the last digit and `n // 10` removes it, so the loop adds up the digits of {{n}}.
+      - id: kp3-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `countdown()` that reads a whole number `n` with `input()`, then uses a `while` loop
+          to print `n`, `n - 1`, ..., `1` on separate lines, and finally prints `Go!`.
+        answer:
+          code:
+            entry: countdown
+            starter: |
+              def countdown():
+                  n = int(input())
+            solution: |
+              def countdown():
+                  n = int(input())
+                  while n > 0:
+                      print(n)
+                      n = n - 1
+                  print("Go!")
+            tests:
+              - {stdin: "3\n", expected_stdout: "3\n2\n1\nGo!\n", visible: true}
+              - {stdin: "1\n", expected_stdout: "1\nGo!\n"}
+              - {stdin: "0\n", expected_stdout: "Go!\n"}
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What happens when this program runs?
+
+          ```python
+          i = 0
+          while i < 5:
+              print(i)
+          ```
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: It prints 0 forever, because i never changes.
+                correct: true
+              - id: b
+                text: It prints 0, 1, 2, 3, 4 and stops.
+                misconception: while-updates-itself
+              - id: c
+                text: It prints nothing.
+practice:
+  - id: practice-1
+    type: code
+    bloom: create
+    expected_minutes: 10
+    prompt: |
+      A **prime** number has exactly two factors: 1 and itself (so 1 is not prime).
+      Write `primes_up_to(n)` that returns a list of all primes from 2 to `n`, in order.
+    answer:
+      code:
+        entry: primes_up_to
+        starter: |
+          def primes_up_to(n):
+              primes = []
+              return primes
+        solution: |
+          def primes_up_to(n):
+              primes = []
+              for k in range(2, n + 1):
+                  is_prime = True
+                  d = 2
+                  while d * d <= k:
+                      if k % d == 0:
+                          is_prime = False
+                          break
+                      d += 1
+                  if is_prime:
+                      primes.append(k)
+              return primes
+        tests:
+          - {args: [10], expected: [2, 3, 5, 7], visible: true}
+          - {args: [1], expected: [], visible: true}
+          - {args: [2], expected: [2]}
+          - {args: [30], expected: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]}

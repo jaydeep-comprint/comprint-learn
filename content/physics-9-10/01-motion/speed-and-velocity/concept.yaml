@@ -1,0 +1,262 @@
+id: speed-and-velocity
+title: Speed and velocity
+summary: Speed is distance per unit time; velocity is displacement per unit time, so it has a direction.
+prereqs:
+  - {concept: distance-and-displacement, weight: 0.7}
+  - {concept: maths-9-10/linear-equations-two-variables, weight: 0.2}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    A car's speedometer reads a steady 50 km/h as it drives round a roundabout. Is its velocity constant?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "No: its direction keeps changing, so its velocity changes.", correct: true}
+        - {id: b, text: "Yes: the speed is constant, so the velocity is constant.", misconception: velocity-same-as-speed}
+        - {id: c, text: "It depends on the size of the roundabout."}
+  explanation: |
+    Velocity includes direction. Going round a roundabout changes direction, so velocity changes even at constant speed.
+
+kps:
+  - id: kp1
+    title: Average speed = total distance ÷ total time
+    worked_example: kp-1-worked.md
+    key_prereqs: [distance-and-displacement]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A bus travels {{d}} km in {{t}} h. What is its average speed? Give 3 significant figures.
+        params:
+          d: {min: 60, max: 240, step: 20}
+          t: {choices: [2, 3, 4, 5]}
+        answer:
+          numeric: {value: "d / t", unit: km/h, mode: sigfig, sigfigs: 3}
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A jogger runs {{d1}} m in {{t1}} s, then {{d2}} m in {{t2}} s.
+          What is the average speed for the whole run? Give 3 significant figures.
+        params:
+          d1: {min: 100, max: 500, step: 50}
+          t1: {choices: [20, 25, 40, 50]}
+          d2: {min: 100, max: 500, step: 50}
+          t2: {choices: [10, 20, 25, 50]}
+        answer:
+          numeric: {value: "(d1 + d2) / (t1 + t2)", unit: m/s, mode: sigfig, sigfigs: 3}
+        explanation: |
+          Total distance ÷ total time = ({{d1}} + {{d2}}) m ÷ ({{t1}} + {{t2}}) s.
+      - id: kp1-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2.5
+        prompt: |
+          A family drives to a town {{d}} km away at {{v1}} km/h and returns by the same road at {{v2}} km/h.
+          What is the average speed for the round trip? Give 3 significant figures.
+        params:
+          d: {choices: [30, 60, 90, 120]}
+          v1: {choices: [20, 30, 40, 60]}
+          v2: {choices: [20, 30, 40, 60]}
+        constraints: ["v1 != v2"]
+        derived:
+          total_time: "d / v1 + d / v2"
+        answer:
+          numeric: {value: "2 * d / total_time", unit: km/h, mode: sigfig, sigfigs: 3}
+        explanation: |
+          Total time = {{d}}/{{v1}} + {{d}}/{{v2}} = {{total_time}} h, so average speed = 2 × {{d}} km ÷ {{total_time}} h.
+          It is not the mean of the two speeds.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A sprinter runs 100 m in 12.5 s. What is her average speed?
+        answer:
+          numeric: {value: 8, unit: m/s, mode: exact}
+      - id: kp1-q5
+        type: mcq
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A cyclist rides 12 km at 12 km/h and then another 12 km at 24 km/h. What is the average speed?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: 16 km/h, correct: true}
+              - {id: b, text: 18 km/h, misconception: speed-is-average-of-speeds}
+              - {id: c, text: 36 km/h}
+              - {id: d, text: 24 km/h}
+        explanation: |
+          Times: 1 h and 0.5 h, so 24 km ÷ 1.5 h = 16 km/h.
+
+  - id: kp2
+    title: Velocity and converting km/h ↔ m/s
+    worked_example: kp-2-worked.md
+    key_prereqs: [distance-and-displacement]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Convert {{v}} km/h to m/s.
+        params:
+          v: {min: 18, max: 144, step: 18}
+        answer:
+          numeric: {value: "v / 3.6", unit: m/s, mode: exact}
+        explanation: |
+          Divide by 3.6: {{v}} ÷ 3.6.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Convert {{v}} m/s to km/h.
+        params:
+          v: {min: 5, max: 40, step: 5}
+        answer:
+          numeric: {value: "v * 3.6", unit: km/h, mode: exact}
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Take east as positive. A car moves from x = {{x1}} m to x = {{x2}} m in {{t}} s.
+          What is its average velocity? (Include a minus sign if it points west.)
+        params:
+          x1: {min: -100, max: 100, step: 20}
+          x2: {min: -100, max: 100, step: 20}
+          t: {choices: [4, 5, 8, 10]}
+        constraints: ["x1 != x2"]
+        answer:
+          numeric: {value: "(x2 - x1) / t", unit: m/s, mode: tolerance, rel_tol: 0.02}
+        explanation: |
+          Average velocity = displacement ÷ time = ({{x2}} − ({{x1}})) m ÷ {{t}} s.
+      - id: kp2-q4
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A runner completes one 400 m lap in 80 s and finishes at the starting line.
+          What is her average velocity for the lap?
+        answer:
+          numeric: {value: 0, unit: m/s, mode: exact}
+      - id: kp2-q5
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          A car travels at 54 km/h. What is this in m/s?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: 15 m/s, correct: true}
+              - {id: b, text: 194.4 m/s, misconception: kmh-to-ms-multiply}
+              - {id: c, text: 54 m/s}
+
+  - id: kp3
+    title: Using s = vt to find time, distance or a rule
+    worked_example: kp-3-worked.md
+    key_prereqs: [maths-9-10/linear-equations-two-variables]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          How long does a train moving at a steady {{v}} m/s take to cover {{d}} m? Give 3 significant figures.
+        params:
+          v: {choices: [10, 15, 20, 25, 30]}
+          d: {min: 300, max: 1500, step: 300}
+        answer:
+          numeric: {value: "d / v", unit: s, mode: sigfig, sigfigs: 3}
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A car moves at a steady {{v}} km/h for {{t}} h. How far does it travel?
+        params:
+          v: {min: 40, max: 100, step: 10}
+          t: {choices: [0.5, 1.5, 2, 2.5, 3]}
+        answer:
+          numeric: {value: "v * t", unit: km, mode: exact}
+      - id: kp3-q3
+        type: expression
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A car starts {{d0}} m from a pole and moves directly away from it at a steady {{v}} m/s.
+          Write its distance from the pole, s (in metres), after t seconds.
+        params:
+          d0: {min: 10, max: 50, step: 10}
+          v: {min: 5, max: 20, step: 5}
+        answer:
+          expression: {value: "d0 + v*t", variables: [t], sympy_mode: equivalent}
+        explanation: |
+          Start at {{d0}} m and add {{v}} m every second: s = {{d0}} + {{v}}t.
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          Sound travels at 340 m/s. A girl claps and hears the echo from a wall 2 s later.
+          How far away is the wall?
+        answer:
+          numeric: {value: 340, unit: m, mode: exact}
+        explanation: |
+          The sound travels 340 × 2 = 680 m there and back, so the wall is 340 m away.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          For uniform motion, s = vt. Which expression gives the time t?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: t = s ÷ v, correct: true}
+              - {id: b, text: t = v ÷ s, misconception: rearranges-formula-wrongly}
+              - {id: c, text: t = s × v}
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      Riya cycles {{d}} km to school at {{v1}} km/h and comes home by the same road at {{v2}} km/h.
+    params:
+      d: {choices: [3, 4, 5, 6, 8]}
+      v1: {choices: [12, 15, 20]}
+      v2: {choices: [10, 12, 15, 20, 24]}
+    constraints: ["v1 != v2"]
+    derived:
+      t1: "d / v1"
+      t2: "d / v2"
+    answer:
+      multistep:
+        steps:
+          - prompt: How long does the ride to school take, in hours? Give 3 significant figures.
+            answer:
+              numeric: {value: "t1", unit: h, mode: sigfig, sigfigs: 3}
+          - prompt: What is the total time for the round trip, in hours? Give 3 significant figures.
+            answer:
+              numeric: {value: "t1 + t2", unit: h, mode: sigfig, sigfigs: 3}
+          - prompt: What is her average speed for the round trip? Give 3 significant figures.
+            answer:
+              numeric: {value: "2 * d / (t1 + t2)", unit: km/h, mode: sigfig, sigfigs: 3}
+          - prompt: What is her average velocity for the round trip?
+            answer:
+              numeric: {value: 0, unit: km/h, mode: exact}
+    explanation: |
+      Going: {{t1}} h; returning: {{t2}} h. Average speed = 2 × {{d}} km ÷ total time. She ends at home, so her displacement and average velocity are 0.

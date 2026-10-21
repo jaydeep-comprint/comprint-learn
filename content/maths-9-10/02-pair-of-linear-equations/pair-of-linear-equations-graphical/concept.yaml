@@ -1,0 +1,287 @@
+id: pair-of-linear-equations-graphical
+title: Pair of linear equations (graphical method)
+summary: Two lines can intersect, be parallel or coincide; the ratio test tells which, and the graph shows the solution.
+prereqs:
+  - {concept: linear-equations-two-variables, weight: 0.6}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    The two lines of a pair of linear equations are **parallel**. How many solutions does the pair have?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "Infinitely many", misconception: parallel-means-coincident}
+        - {id: b, text: "None", correct: true}
+        - {id: c, text: "Exactly one"}
+  explanation: |
+    Parallel lines never meet, so no point lies on both: the pair is inconsistent. Infinitely many solutions happen only when the lines coincide.
+
+kps:
+  - id: kp1
+    title: The ratio test
+    worked_example: kp-1-worked.md
+    key_prereqs: [linear-equations-two-variables]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          The lines ${{a1}}x + {{b1}}y = 7$ and $kx + {{b2}}y = 9$ are parallel. Find $k$.
+        params:
+          a1: {min: 1, max: 6, step: 1}
+          b1: {min: 1, max: 6, step: 1}
+          m: {min: 2, max: 4, step: 1}
+        derived:
+          b2: "m * b1"
+        answer:
+          numeric: {value: "a1 * m", mode: exact}
+        explanation: |
+          Parallel needs $\frac{ {{a1}} }{k} = \frac{ {{b1}} }{ {{b2}} }$, so $k = {{a1}} \times \frac{ {{b2}} }{ {{b1}} }$. (And $\frac{7}{9}$ differs, so the lines are not coincident.)
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          For the pair ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = {{c2}}$, calculate $a_1b_2 - a_2b_1$.
+        params:
+          a1: {min: 1, max: 6, step: 1}
+          b1: {min: 1, max: 6, step: 1}
+          c1: {min: 1, max: 12, step: 1}
+          a2: {min: 1, max: 6, step: 1}
+          b2: {min: 1, max: 6, step: 1}
+          c2: {min: 1, max: 12, step: 1}
+        constraints: ["a1 * b2 != a2 * b1"]
+        answer:
+          numeric: {value: "a1 * b2 - a2 * b1", mode: exact}
+        explanation: |
+          ${{a1}} \times {{b2}} - {{a2}} \times {{b1}}$. It is not 0, so the lines intersect in exactly one point.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          For which value of $k$ do ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = k$ have infinitely many solutions?
+        params:
+          a1: {min: 1, max: 5, step: 1}
+          b1: {min: 1, max: 5, step: 1}
+          c1: {min: 1, max: 9, step: 1}
+          m: {min: 2, max: 4, step: 1}
+        derived:
+          a2: "m * a1"
+          b2: "m * b1"
+        answer:
+          numeric: {value: "m * c1", mode: exact}
+        explanation: |
+          Coincident lines need all three ratios equal. $\frac{a_2}{a_1} = \frac{b_2}{b_1} = {{m}}$, so $k = {{m}} \times {{c1}}$.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          For the pair $3x + 2y = 7$ and $6x - y = 4$, find $\dfrac{a_1}{a_2}$ as a decimal.
+        answer:
+          numeric: {value: 0.5, mode: exact}
+        explanation: |
+          $\frac{a_1}{a_2} = \frac{3}{6} = 0.5$.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          For $x + 2y = 4$ and $2x + 4y = 12$: $\frac{a_1}{a_2} = \frac{b_1}{b_2} = \frac{1}{2}$ but $\frac{c_1}{c_2} = \frac{1}{3}$. The lines are…
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "parallel (no solution)", correct: true}
+              - {id: b, text: "coincident (infinitely many solutions)", misconception: parallel-means-coincident}
+              - {id: c, text: "intersecting (one solution)", misconception: ratio-test-confusion}
+        explanation: |
+          Equal $a$ and $b$ ratios mean the same slope; a different $c$ ratio means different lines. Same slope, different lines: parallel.
+
+  - id: kp2
+    title: Reading the solution from the graph
+    worked_example: kp-2-worked.md
+    key_prereqs: [linear-equations-two-variables]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          The lines $x + y = {{s}}$ and $x - y = {{d}}$ are drawn on the same axes. At what value of $x$ do they meet?
+        params:
+          s: {min: 2, max: 16, step: 1}
+          d: {min: 0, max: 8, step: 1}
+        constraints: ["(s + d) % 2 == 0", "s > d"]
+        answer:
+          numeric: {value: "(s + d) / 2", mode: exact}
+        explanation: |
+          Adding the equations gives $2x = {{s}} + {{d}}$, so the lines meet where $x = \frac{ {{s}} + {{d}} }{2}$.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          The lines $y = x + {{p}}$ and $y = {{m}}x$ meet at a point. Find its y-coordinate.
+        params:
+          x0: {min: 1, max: 6, step: 1}
+          m: {min: 2, max: 5, step: 1}
+        derived:
+          p: "(m - 1) * x0"
+        answer:
+          numeric: {value: "m * x0", mode: exact}
+        explanation: |
+          $x + {{p}} = {{m}}x$ gives $x = {{x0}}$, and then $y = {{m}} \times {{x0}}$.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          The lines ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = {{c2}}$ meet at $(p, q)$. Find $p + q$.
+        params:
+          x0: {min: 0, max: 5, step: 1}
+          y0: {min: 0, max: 5, step: 1}
+          a1: {min: 1, max: 4, step: 1}
+          b1: {min: 1, max: 4, step: 1}
+          a2: {min: 1, max: 4, step: 1}
+          b2: {min: 1, max: 4, step: 1}
+        constraints: ["a1 * b2 != a2 * b1"]
+        derived:
+          c1: "a1 * x0 + b1 * y0"
+          c2: "a2 * x0 + b2 * y0"
+        answer:
+          numeric: {value: "x0 + y0", mode: exact}
+        explanation: |
+          The lines meet at $({{x0}}, {{y0}})$ (check it in both equations), so $p + q = {{x0}} + {{y0}}$.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          The lines $y = 2$ and $x = -3$ meet at $(a, b)$. Find $a$.
+        answer:
+          numeric: {value: -3, mode: exact}
+        explanation: |
+          $x = -3$ is a vertical line and $y = 2$ is horizontal; they meet at $(-3, 2)$.
+      - id: kp2-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          At what value of $y$ does the line $y = x$ meet the line $x + y = 8$?
+        answer:
+          numeric: {value: 4, mode: exact}
+        explanation: |
+          On $y = x$: $x + x = 8$, so $x = 4$ and $y = 4$.
+
+  - id: kp3
+    title: Lines, axes and areas
+    worked_example: kp-3-worked.md
+    key_prereqs: [linear-equations-two-variables]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          The line ${{q}}x + {{p}}y = {{pq}}$ meets the x-axis at $A$ and the y-axis at $B$. Find the area of triangle $OAB$ in square units.
+        params:
+          p: {min: 1, max: 9, step: 1}
+          q: {min: 1, max: 9, step: 1}
+        derived:
+          pq: "p * q"
+        answer:
+          numeric: {value: "p * q / 2", mode: exact}
+        explanation: |
+          $A = ({{p}}, 0)$ and $B = (0, {{q}})$, so the area is $\frac{1}{2} \times {{p}} \times {{q}}$.
+      - id: kp3-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2.5
+        prompt: |
+          Find the area, in square units, of the triangle formed by the lines $y = x$, $x + y = {{c}}$ and the x-axis.
+        params:
+          c: {min: 2, max: 20, step: 2}
+        answer:
+          numeric: {value: "c^2 / 4", mode: exact}
+        explanation: |
+          The vertices are $(0, 0)$, $({{c}}, 0)$ and where the lines meet, $(\frac{ {{c}} }{2}, \frac{ {{c}} }{2})$. Area $= \frac{1}{2} \times {{c}} \times \frac{ {{c}} }{2}$.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          How far apart are the points where ${{a}}x + y = {{c1}}$ and $x - y = {{d}}$ cut the x-axis?
+        params:
+          p: {min: 1, max: 9, step: 1}
+          a: {min: 2, max: 5, step: 1}
+          d: {min: 1, max: 9, step: 1}
+        derived:
+          c1: "a * p"
+        answer:
+          numeric: {value: "abs(p - d)", mode: exact}
+        explanation: |
+          Put $y = 0$: the first line cuts at $x = {{p}}$, the second at $x = {{d}}$. The distance is $|{{p}} - {{d}}|$.
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          At what value of $x$ does the line $4x + 5y = 20$ cut the x-axis?
+        answer:
+          numeric: {value: 5, mode: exact}
+        explanation: |
+          Put $y = 0$: $4x = 20$, so $x = 5$.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          How are the graphs of $x = 2$ and $y = 3$ related?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "They intersect at $(2, 3)$", correct: true}
+              - {id: b, text: "They intersect at $(3, 2)$", misconception: swaps-coordinates}
+              - {id: c, text: "They are parallel"}
+        explanation: |
+          $x = 2$ is vertical and $y = 3$ is horizontal; the point on both has $x = 2$ and $y = 3$.
+
+practice:
+  - id: practice-triangle
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      Draw the lines $x + y = {{s}}$ and $x - y = {{d}}$. Together with the y-axis they form a triangle.
+    params:
+      s: {min: 2, max: 12, step: 1}
+      d: {min: 1, max: 8, step: 1}
+    constraints: ["(s + d) % 2 == 0"]
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Where does $x + y = {{s}}$ cut the y-axis? Give the y-coordinate.
+            answer:
+              numeric: {value: "s", mode: exact}
+          - prompt: |
+              Where does $x - y = {{d}}$ cut the y-axis? Give the y-coordinate.
+            answer:
+              numeric: {value: "-d", mode: exact}
+          - prompt: |
+              Find the x-coordinate of the point where the two lines meet.
+            answer:
+              numeric: {value: "(s + d) / 2", mode: exact}
+          - prompt: |
+              Find the area of the triangle in square units.
+            answer:
+              numeric: {value: "(s + d)^2 / 4", mode: exact}
+    explanation: |
+      The base on the y-axis runs from $-{{d}}$ to {{s}} (length ${{s}} + {{d}}$); the height is the x-coordinate of the meeting point, $\frac{ {{s}} + {{d}} }{2}$. Area $= \frac{1}{2} \times \text{base} \times \text{height}$.

@@ -1,0 +1,380 @@
+id: conditionals
+title: Conditionals
+summary: Make decisions with comparisons, and, or, not, and if / elif / else blocks.
+prereqs:
+  - {concept: variables-and-types, weight: 0.5}
+intro: intro.md
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    What is wrong with this line?
+
+    ```python
+    if marks = 100:
+    ```
+  answer:
+    mcq:
+      options:
+        - id: a
+          text: "`=` stores a value; comparing needs `==`."
+          correct: true
+        - id: b
+          text: Nothing, it checks whether marks is 100.
+          misconception: assign-vs-compare
+        - id: c
+          text: The number 100 must be in quotes.
+  explanation: |
+    `=` is assignment. A condition that tests equality must use `==`: `if marks == 100:`.
+kps:
+  - id: kp1
+    title: Comparisons and boolean logic
+    worked_example: kp-1-worked.md
+    key_prereqs: [variables-and-types]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          print(int({{a}} > {{b}}) + {{c}})
+          ```
+        params:
+          a: {min: 10, max: 30, step: 1}
+          b: {min: 1, max: 20, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        constraints: ["a > b"]
+        answer:
+          numeric: {value: "1 + c", mode: exact}
+        explanation: |
+          {{a}} > {{b}} is True, and `int(True)` is 1, so the result is 1 + {{c}}.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = {{a}}
+          print(int(x >= 10 and x < 20) * {{b}})
+          ```
+        params:
+          a: {min: 10, max: 19, step: 1}
+          b: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "b", mode: exact}
+        explanation: |
+          Both {{a}} >= 10 and {{a}} < 20 are True, so `and` gives True (1). 1 × {{b}} = {{b}}.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          print(int(not ({{a}} == {{b}})) * {{c}})
+          ```
+        params:
+          a: {min: 1, max: 20, step: 1}
+          b: {min: 1, max: 20, step: 1}
+          c: {min: 2, max: 9, step: 1}
+        constraints: ["a != b"]
+        answer:
+          numeric: {value: "c", mode: exact}
+      - id: kp1-q4
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Write `is_even(n)` that returns `True` if `n` is even and `False` otherwise.
+        answer:
+          code:
+            entry: is_even
+            starter: |
+              def is_even(n):
+                  pass
+            solution: |
+              def is_even(n):
+                  return n % 2 == 0
+            tests:
+              - {args: [4], expected: true, visible: true}
+              - {args: [7], expected: false}
+              - {args: [0], expected: true}
+              - {args: [-3], expected: false}
+      - id: kp1-q5
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          Which line checks whether `marks` is equal to 100?
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: "`if marks == 100:`"
+                correct: true
+              - id: b
+                text: "`if marks = 100:`"
+                misconception: assign-vs-compare
+              - id: c
+                text: "`if 100:`"
+  - id: kp2
+    title: if and else
+    worked_example: kp-2-worked.md
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = {{a}}
+          if x > {{b}}:
+              x = x - {{b}}
+          else:
+              x = x + {{b}}
+          print(x)
+          ```
+        params:
+          a: {min: 10, max: 40, step: 1}
+          b: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "a - b", mode: exact}
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          n = {{a}}
+          if n % 2 == 0:
+              print(n // 2)
+          else:
+              print(3 * n + 1)
+          ```
+        params:
+          a: {min: 2, max: 40, step: 2}
+        answer:
+          numeric: {value: "a / 2", mode: exact}
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          n = {{a}}
+          if n % 2 == 0:
+              print(n // 2)
+          else:
+              print(3 * n + 1)
+          ```
+        params:
+          a: {min: 1, max: 39, step: 2}
+        answer:
+          numeric: {value: "3 * a + 1", mode: exact}
+        explanation: |
+          {{a}} is odd, so {{a}} % 2 is 1 and the `else` block runs: 3 × {{a}} + 1.
+      - id: kp2-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          A cinema charges 50 rupees for children under 12 and 100 rupees for everyone else.
+          Write `ticket_price(age)` that returns the price.
+        answer:
+          code:
+            entry: ticket_price
+            starter: |
+              def ticket_price(age):
+                  pass
+            solution: |
+              def ticket_price(age):
+                  if age < 12:
+                      return 50
+                  else:
+                      return 100
+            tests:
+              - {args: [8], expected: 50, visible: true}
+              - {args: [12], expected: 100, visible: true}
+              - {args: [11], expected: 50}
+              - {args: [40], expected: 100}
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          When does the `else` block of an `if / else` run?
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: Only when the `if` condition is False.
+                correct: true
+              - id: b
+                text: Always, straight after the `if` block.
+                misconception: all-branches-run
+              - id: c
+                text: Only when the `if` condition is True.
+  - id: kp3
+    title: elif chains
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          marks = {{m}}
+          if marks >= 90:
+              points = 10
+          elif marks >= 75:
+              points = 8
+          elif marks >= 50:
+              points = 6
+          else:
+              points = 4
+          print(points + {{b}})
+          ```
+        params:
+          m: {min: 75, max: 89, step: 1}
+          b: {min: 1, max: 5, step: 1}
+        answer:
+          numeric: {value: "8 + b", mode: exact}
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          t = {{t}}
+          if t >= 30:
+              level = 3
+          elif t >= 15:
+              level = 2
+          else:
+              level = 1
+          print(level * {{k}})
+          ```
+        params:
+          t: {min: 15, max: 29, step: 1}
+          k: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "2 * k", mode: exact}
+      - id: kp3-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          n = {{n}}
+          if n > 10:
+              n = n * 2
+          elif n > 5:
+              n = n * 3
+          print(n)
+          ```
+        params:
+          n: {min: 11, max: 30, step: 1}
+        answer:
+          numeric: {value: "2 * n", mode: exact}
+        explanation: |
+          {{n}} > 10 is True, so only the first block runs. The `elif` is skipped, even though {{n}} > 5 is also True.
+      - id: kp3-q4
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `grade(marks)` that returns `"A"` for 90 or more, `"B"` for 75–89, `"C"` for 50–74
+          and `"D"` below 50.
+        answer:
+          code:
+            entry: grade
+            starter: |
+              def grade(marks):
+                  pass
+            solution: |
+              def grade(marks):
+                  if marks >= 90:
+                      return "A"
+                  elif marks >= 75:
+                      return "B"
+                  elif marks >= 50:
+                      return "C"
+                  return "D"
+            tests:
+              - {args: [95], expected: "A", visible: true}
+              - {args: [75], expected: "B"}
+              - {args: [74], expected: "C"}
+              - {args: [12], expected: "D"}
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = 15
+          if x > 10:
+              print("big")
+          elif x > 5:
+              print("medium")
+          ```
+        answer:
+          mcq:
+            options:
+              - id: a
+                text: big
+                correct: true
+              - id: b
+                text: big, then medium
+                misconception: all-branches-run
+              - id: c
+                text: medium
+practice:
+  - id: practice-1
+    type: code
+    bloom: create
+    expected_minutes: 8
+    prompt: |
+      A year is a **leap year** if it is divisible by 4, except years divisible by 100,
+      which are leap years only if they are also divisible by 400.
+      Write `is_leap(year)` that returns `True` or `False`.
+    answer:
+      code:
+        entry: is_leap
+        starter: |
+          def is_leap(year):
+              pass
+        solution: |
+          def is_leap(year):
+              if year % 400 == 0:
+                  return True
+              elif year % 100 == 0:
+                  return False
+              return year % 4 == 0
+        tests:
+          - {args: [2024], expected: true, visible: true}
+          - {args: [2023], expected: false, visible: true}
+          - {args: [1900], expected: false}
+          - {args: [2000], expected: true}

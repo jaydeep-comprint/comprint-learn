@@ -20,6 +20,8 @@ from app.main import create_app
 PUBLIC = {("GET", "/api/v1/health")}
 # Routes allowed to skip the must_change_password check (and so `get_current_user`).
 PASSWORD_CHANGE_ALLOWED = {("GET", "/api/v1/me"), ("POST", "/api/v1/me/password")}
+# Routes that authenticate but read only global (platform-owned) content, so skip OrgScope.
+GLOBAL_CONTENT = {("GET", "/api/v1/courses"), ("GET", "/api/v1/courses/{slug}/graph")}
 
 
 def _calls(dep: Dependant) -> Iterator[Callable[..., Any]]:
@@ -72,7 +74,7 @@ def test_only_allowlisted_routes_skip_password_change_check() -> None:
 def test_routes_with_tenant_ids_use_org_scope() -> None:
     missing = []
     for method, path, route in _routes():
-        if (method, path) in PUBLIC or (method, path) in PASSWORD_CHANGE_ALLOWED:
+        if (method, path) in PUBLIC | PASSWORD_CHANGE_ALLOWED | GLOBAL_CONTENT:
             continue
         if not any(_builds_scope(c) for c in _calls(route)):
             missing.append(f"{method} {path}")
@@ -83,3 +85,10 @@ def test_walker_sees_the_routes() -> None:
     paths = {p for _, p, _ in _routes()}
     assert "/api/v1/classes/{class_id}/enrollments/{student_id}" in paths
     assert len(paths) >= 12
+
+
+def test_global_content_routes_exist_and_skip_scope() -> None:
+    routes = {(m, p): r for m, p, r in _routes()}
+    for key in GLOBAL_CONTENT:
+        assert key in routes, key
+        assert not any(_builds_scope(c) for c in _calls(routes[key])), key

@@ -2,7 +2,7 @@
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: install dev dev-api dev-web check check-api check-web test-db migrate fmt fmt-api fmt-web
+.PHONY: install dev dev-api dev-web check check-api check-web content-check content-import test-db migrate fmt fmt-api fmt-web
 
 install:
 	cd $(BACKEND) && uv sync --frozen
@@ -20,7 +20,7 @@ dev-api:
 dev-web:
 	cd $(FRONTEND) && pnpm dev
 
-check: check-api check-web
+check: check-api check-web content-check
 
 # --frozen: never re-lock or touch the network from the gate.
 check-api:
@@ -36,6 +36,14 @@ check-web:
 	cd $(FRONTEND) && pnpm exec prettier --check .
 	cd $(FRONTEND) && pnpm exec tsc -b --noEmit
 	cd $(FRONTEND) && pnpm exec vitest run
+
+# Validates content/ offline (schema, graph, answers, code solutions); part of `check`.
+content-check:
+	cd $(BACKEND) && uv run --frozen app content check --root ../content
+
+# Imports content/ into DATABASE_URL (idempotent; add ARGS=--dry-run to preview).
+content-import:
+	cd $(BACKEND) && uv run app content import --root ../content $(ARGS)
 
 # Real-database tests against TEST_DATABASE_URL (a separate Supabase project). Fails if it is unset.
 test-db:

@@ -98,6 +98,8 @@ export type OutlineConcept = {
   kps_total: number;
   waiting: { reopen_at: string | null } | null;
   brush_up: boolean;
+  /** The due review behind `brush_up` (the map's "Brush up first" button). */
+  brush_up_id: string | null;
 };
 
 export type Outline = {
@@ -185,6 +187,8 @@ export type AnswerResult = {
   concept_learned: boolean;
   unlocked: ConceptRef[];
   remediations: RemediationRef[];
+  /** Passed brush-up: the part it was for is no longer blocked (null otherwise). */
+  kp_open?: boolean | null;
 };
 
 export type RemediationInfo = {

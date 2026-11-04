@@ -79,37 +79,52 @@ export default function CourseMap({
     };
   });
 
+  const staff = concepts.every((c) => c.status === null);
   return (
-    <div className="relative h-[70vh] min-h-96 w-full overflow-hidden rounded-lg border">
-      <button
-        type="button"
-        onClick={onShowList}
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:rounded focus:bg-background focus:px-3 focus:py-2"
-      >
-        View as list
-      </button>
-      <ReactFlowProvider>
-        <ReactFlow
-          nodes={nodes}
-          edges={flowEdges}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.15 }}
-          minZoom={0.3}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          elementsSelectable={false}
-          onPaneClick={clear}
+    <div className="space-y-2">
+      <div className="relative h-[70vh] min-h-96 w-full overflow-hidden rounded-lg border">
+        <button
+          type="button"
+          onClick={onShowList}
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:rounded focus:bg-background focus:px-3 focus:py-2"
         >
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      </ReactFlowProvider>
-      <ConceptPanel
-        course={course}
-        outline={outline}
-        concept={selected ? (byId.get(selected) ?? null) : null}
-        onClose={clear}
-      />
+          View as list
+        </button>
+        <ReactFlowProvider>
+          <ReactFlow
+            nodes={nodes}
+            edges={flowEdges}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.15 }}
+            minZoom={0.3}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            onPaneClick={clear}
+          >
+            <Controls showInteractive={false} />
+          </ReactFlow>
+        </ReactFlowProvider>
+        <ConceptPanel
+          course={course}
+          outline={outline}
+          concept={selected ? (byId.get(selected) ?? null) : null}
+          onClose={clear}
+        />
+      </div>
+      {!staff && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-hidden>
+          <span>No knowledge</span>
+          <span
+            className="h-2 w-32 rounded-full border"
+            style={{
+              background: "linear-gradient(to right, var(--mastery-empty), var(--mastery-full))",
+            }}
+          />
+          <span>Learned</span>
+        </div>
+      )}
     </div>
   );
 }

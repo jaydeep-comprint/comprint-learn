@@ -21,7 +21,16 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 
 const STEP = "remediation"; // study time is logged against the prerequisite as practice
 
-function Outcome({ info, passed }: { info: RemediationInfo; passed: boolean }) {
+function Outcome({
+  info,
+  passed,
+  kpOpen = true,
+}: {
+  info: RemediationInfo;
+  passed: boolean;
+  /** False when another brush-up still blocks the part. */
+  kpOpen?: boolean;
+}) {
   const concept = info.concept;
   const prereq = info.prereq;
   return (
@@ -29,7 +38,11 @@ function Outcome({ info, passed }: { info: RemediationInfo; passed: boolean }) {
       {passed ? (
         <>
           <CheckCircle2 className="size-10 text-[var(--success)]" aria-hidden />
-          <h2 className="text-2xl font-semibold">Nice, {info.kp_title} is open again</h2>
+          <h2 className="text-2xl font-semibold">
+            {kpOpen
+              ? `Nice, ${info.kp_title} is open again`
+              : `Nice. ${info.kp_title} opens once your other brush-ups are done`}
+          </h2>
           <Button asChild className="w-full sm:w-auto">
             <Link to={lessonPath(conceptCourse(concept.id), concept.id)}>
               Back to {concept.title}
@@ -63,7 +76,15 @@ function Review({ info }: { info: RemediationInfo }) {
   );
   useStepTimer(done ? null : STEP, report);
 
-  if (done) return <Outcome info={info} passed={done.session_status === "passed"} />;
+  if (done) {
+    return (
+      <Outcome
+        info={info}
+        passed={done.session_status === "passed"}
+        kpOpen={done.kp_open !== false}
+      />
+    );
+  }
   return (
     <PracticeRunner
       header={`Brush up · ${info.prereq.title}`}

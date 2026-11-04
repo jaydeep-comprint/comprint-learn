@@ -121,6 +121,7 @@ const outline: Outline = {
           kps_total: 3,
           waiting: null,
           brush_up: false,
+          brush_up_id: null,
         },
         {
           id: "maths-9-10/linear-equations-two-variables",
@@ -132,6 +133,7 @@ const outline: Outline = {
           kps_total: 3,
           waiting: null,
           brush_up: false,
+          brush_up_id: null,
         },
         {
           id: `${COURSE}/speed-and-velocity`,
@@ -143,6 +145,7 @@ const outline: Outline = {
           kps_total: 3,
           waiting: null,
           brush_up: false,
+          brush_up_id: null,
         },
       ],
     },

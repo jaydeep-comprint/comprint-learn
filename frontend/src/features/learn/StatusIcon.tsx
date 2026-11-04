@@ -21,11 +21,20 @@ const ICONS = {
   locked: { Icon: Lock, className: "text-muted-foreground" },
 } as const;
 
-export function StatusIcon({ status, className }: { status: LessonStatus; className?: string }) {
+export function StatusIcon({
+  status,
+  className,
+  inheritColor = false,
+}: {
+  status: LessonStatus;
+  className?: string;
+  /** Use the surrounding text colour (e.g. on the map's coloured nodes). */
+  inheritColor?: boolean;
+}) {
   const { Icon, className: tone } = ICONS[status];
   return (
     <span className={cn("inline-flex shrink-0", className)}>
-      <Icon className={cn("size-5", tone)} aria-hidden />
+      <Icon className={cn("size-5", !inheritColor && tone)} aria-hidden />
       <span className="sr-only">{STATUS_LABELS[status]}</span>
     </span>
   );

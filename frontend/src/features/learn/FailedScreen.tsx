@@ -22,6 +22,8 @@ export function ComeBackLater({
   heading: string;
 }) {
   const outline = useOutline(course);
+  // A relearn blocks the part until the prerequisite is learned again, not just until tomorrow.
+  const relearn = remediations.find((r) => r.kind === "relearn");
   const ready = (outline.data?.chapters.flatMap((ch) => ch.concepts) ?? [])
     .filter((c) => c.id !== exclude && (c.status === "ready" || c.status === "in_progress"))
     .slice(0, 3);
@@ -31,8 +33,9 @@ export function ComeBackLater({
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">{heading}</h2>
         <p className="text-muted-foreground">
-          {kpTitle} will reopen with new questions tomorrow, or sooner once you learn something
-          else.
+          {relearn
+            ? `${kpTitle} reopens with new questions once you've relearned ${relearn.prereq.title}.`
+            : `${kpTitle} will reopen with new questions tomorrow, or sooner once you learn something else.`}
         </p>
       </div>
       {remediations.map((r) =>

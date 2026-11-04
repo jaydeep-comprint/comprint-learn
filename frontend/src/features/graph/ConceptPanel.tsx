@@ -4,13 +4,16 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { LockedPanel } from "@/features/learn/LockedPanel";
-import { lessonPath, STATUS_LABELS, unfinishedPrereqs } from "@/features/learn/paths";
+import { brushUpPath, lessonPath, STATUS_LABELS, unfinishedPrereqs } from "@/features/learn/paths";
 import { StatusIcon } from "@/features/learn/StatusIcon";
 import type { Outline, OutlineConcept } from "@/lib/types";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 
 function Action({ course, concept }: { course: string; concept: OutlineConcept }) {
-  const to = lessonPath(course, concept.id);
+  const to =
+    concept.brush_up && concept.brush_up_id
+      ? brushUpPath(concept.brush_up_id)
+      : lessonPath(course, concept.id);
   const label =
     concept.status === null
       ? "Preview lesson"

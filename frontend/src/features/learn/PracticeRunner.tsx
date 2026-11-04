@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { type AnswerBody, conflictCode } from "@/features/learn/api";
+import { type AnswerBody, type AnswerFields, conflictCode } from "@/features/learn/api";
 import { QuestionStep } from "@/features/learn/QuestionStep";
 import type { AnswerResult, Question } from "@/lib/types";
 
@@ -19,6 +19,8 @@ export function PracticeRunner({
   assetBase,
   onDone,
   renderConflict,
+  passedLabel,
+  continueLabel,
 }: {
   header: string;
   query: UseQueryResult<Question, unknown>;
@@ -28,6 +30,8 @@ export function PracticeRunner({
   /** Continue after the session passed or failed. */
   onDone: (result: AnswerResult) => void;
   renderConflict?: (code: string, error: unknown) => ReactNode;
+  passedLabel?: string;
+  continueLabel?: (result: AnswerResult) => string;
 }) {
   const [result, setResult] = useState<AnswerResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -62,19 +66,27 @@ export function PracticeRunner({
     );
   }
 
-  const onSubmit = async (response: string) => {
+  const onSubmit = async (fields: AnswerFields) => {
     setSubmitting(true);
     try {
       const body: AnswerBody = {
+        ...fields,
         position: question.position,
-        response,
         time_taken_ms: Math.round(performance.now() - shownAt.current),
       };
       if (preview) {
         body.item_id = question.item_id;
         body.seed = question.preview_seed;
+      } else if (question.session_id) {
+        body.session_id = question.session_id;
       }
-      setResult(await submit(body));
+      let next = await submit(body);
+      // A preview keeps no state: carry the earlier steps of a multi-step problem along here.
+      if (preview && result?.step_results && (next.step ?? 0) > 0) {
+        next = { ...next, step_results: [...result.step_results, ...(next.step_results ?? [])] };
+      }
+      setResult(next);
+      shownAt.current = performance.now(); // time each step from the previous one
     } catch {
       toast.error("Couldn't submit, try again");
     } finally {
@@ -104,6 +116,8 @@ export function PracticeRunner({
       onSubmit={onSubmit}
       onNext={onNext}
       onContinue={() => result && onDone(result)}
+      passedLabel={passedLabel}
+      continueLabel={continueLabel}
     />
   );
 }

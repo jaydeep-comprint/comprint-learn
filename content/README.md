@@ -65,13 +65,19 @@ practice:                       # >= 1 item, type multistep or code
   - ...
 ```
 
+**Practice step (spec 006)**: every lesson ends with Practice: one item drawn from `practice:` per attempt.
+A concept is learned only when every KP is passed *and* a practice attempt is passed. A failed code task is
+served again (the editor keeps the student's code); a failed multi-step problem draws the next item (or the same
+one with new numbers). Give each concept 1–3 practice items; param multi-step items are best.
+
 **Pool size**: a fixed item counts 1, an item with `params` counts 2. Each KP pool needs at least 6 (error)
 and should have at least 8 (warning). Keep MCQs to at most 30% of a pool (warning).
 
-**KP practice (spec 005)** serves only `numeric`, `expression` and `mcq` questions, one at a time; `code`
-(and `multistep`) items stay in the pool but aren't served until spec 006. So each KP needs at least 2 of those
-gradable questions (error), and their weight (same counting) should be at least 5 (warning), so a 5-question
-session never runs out of new questions. Write explanations with `{{name}}` placeholders freely: they're
+**KP practice** serves every type one at a time (spec 006: `multistep` and `code` too; a multi-step item
+counts as one question). Each KP needs at least 2 questions (error), at least 5 fixed ones if none has params
+(error), and a weight of at least 5 (warning), so a 5-question session never runs out of new questions.
+**Brush-up reviews** of a prerequisite serve only `numeric`, `expression` and `mcq` questions (quick checks),
+so every KP needs at least one of those (error). Write explanations with `{{name}}` placeholders freely: they're
 rendered with the student's numbers after each answer.
 
 **Misconception check**: one MCQ with fixed numbers (`type: mcq`, no `params`; both errors). Students get one try
@@ -112,15 +118,17 @@ misconception's `title` as "Common mix-up: …" (write titles for students; `des
 
 | `type` | `answer:` | Rules |
 |---|---|---|
-| `numeric` | `numeric: {value, unit?, mode, sigfigs?, rel_tol?, abs_tol?, sci_notation?}` | `value`: number or expression. `unit` e.g. `m`, `km/h`, `m/s^2`, `N`, `kJ` (omit if dimensionless). `mode: exact` → value must be an integer or finite decimal for every seed (1/3 isn't; use `sigfig`/`tolerance`). `mode: sigfig` → `sigfigs` 1–6, value never 0. `mode: tolerance` → exactly one of `rel_tol` (0–0.2) or `abs_tol` (> 0) |
+| `numeric` | `numeric: {value, unit?, mode, sigfigs?, rel_tol?, abs_tol?, sci_notation?}` | `value`: number or expression. `unit` e.g. `m`, `km/h`, `m/s^2`, `N`, `kJ` (omit if dimensionless). Students type their own unit beside the number: any unit of the same quantity is converted and accepted (`0.5 km` for `500 m`), with aliases `kmph`/`kph`/`km/hr` → `km/h`, `mps` → `m/s`, `sec(s)` → `s`, `hr(s)` → `h`, `kgs` → `kg`, `Ω` → `ohm`, `²`/`³`, and a space or `·` between units. Units are case-sensitive (`ms` is milliseconds). Sig figs and tolerance apply in the student's unit; in `exact` mode, the value must be a finite decimal in that unit (else "Give it in {unit}"). `mode: exact` → value must be an integer or finite decimal for every seed (1/3 isn't; use `sigfig`/`tolerance`). `mode: sigfig` → `sigfigs` 1–6, value never 0. `mode: tolerance` → exactly one of `rel_tol` (0–0.2) or `abs_tol` (> 0) |
 | `expression` | `expression: {value, variables: [x, ...], sympy_mode: exact \| equivalent \| simplified}` | `value` may use only `variables` (and params/derived, substituted as numbers) |
 | `mcq` | `mcq: {options: [{id, text, correct?, misconception?}], shuffle?: true}` | 2–5 options with ids `a`–`e`, exactly one `correct: true`, at least one distractor tagged with a `misconception` id from the course's `misconceptions.yaml`; the correct option has none. Use sparingly |
-| `multistep` | `multistep: {steps: [{prompt, answer: {numeric \| expression \| mcq: ...}}]}` | 2–10 steps; steps share the item's params/derived |
-| `code` | `code: {entry, starter, solution, tests: [...], time_limit_ms?: 2000}` | `entry`: the function both `starter` and `solution` define. ≥ 3 tests, ≥ 1 `visible: true`. A test is `{args: [...], expected: <JSON>}` (return value) or `{stdin?: "...", expected_stdout: "..."}` (printed output; `entry(*args)` is called with stdin fed in, lines compared ignoring trailing spaces). Standard library only, no file/network/OS modules. The checker runs `solution` against every test |
+| `multistep` | `multistep: {steps: [{prompt, answer: {numeric \| expression \| mcq: ...}}]}` | 2–10 steps; steps share the item's params/derived. Students answer one step at a time (one try each, then the correct value is shown); the item is correct when ≥ 75% of steps are correct, the last one included |
+| `code` | `code: {entry, starter, solution, tests: [...], time_limit_ms?: 2000}` | `entry`: the function both `starter` and `solution` define. ≥ 3 tests, ≥ 1 `visible: true`. A test is `{args: [...], expected: <JSON>}` (return value) or `{stdin?: "...", expected_stdout: "..."}` (printed output; `entry(*args)` is called with stdin fed in, lines compared ignoring trailing spaces). Standard library only, no file/network/OS modules. `time_limit_ms` ≤ 5000 (code runs in the student's browser, in Pyodide). The checker runs `solution` against every test, using the same comparison the server uses for students (floats close, lists/dicts deep, `True` ≠ `1`) |
 
 **Never to the client**: the answer spec, params/constraints/derived, MCQ correctness and misconception tags,
-explanations, the code `solution` and hidden tests stay on the server. Visible code tests are shown to
-students.
+explanations, the code `solution` and hidden tests' expected values stay on the server. Visible code tests are
+shown to students. Hidden tests' *inputs* (`args` / `stdin`) are sent, because the browser runs the code; their
+`expected` / `expected_stdout` never are. The `solution` is shown after a KP code question is answered, and after
+a practice task is passed.
 
 ## Markdown and images
 

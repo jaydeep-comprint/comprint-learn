@@ -66,11 +66,18 @@ export type RemediationRef = {
   concept: ConceptRef;
 };
 
+export type PracticeStatus = "none" | "pending" | "passed";
+
 export type HomeConcept = {
   id: string;
   title: string;
   kps_passed: number;
   kps_total: number;
+  /** KPs passed + Practice passed, out of KPs + 1 when the concept has Practice (spec 006). */
+  parts_passed: number;
+  parts_total: number;
+  /** Every KP passed; only Practice is left. */
+  practice_left?: boolean;
   reopen_at: string | null;
 };
 
@@ -96,6 +103,9 @@ export type OutlineConcept = {
   prereqs: string[];
   kps_passed: number;
   kps_total: number;
+  /** KPs passed + Practice passed, out of KPs + 1 when the concept has Practice (spec 006). */
+  parts_passed: number;
+  parts_total: number;
   waiting: { reopen_at: string | null } | null;
   brush_up: boolean;
   /** The due review behind `brush_up` (the map's "Brush up first" button). */
@@ -140,6 +150,8 @@ export type Lesson = {
   /** null for staff. */
   concept_status: LessonStatus | null;
   waiting: LessonWaiting | null;
+  /** The Practice step (spec 006); `none` when the concept has no practice items. */
+  practice: { status: PracticeStatus; active: boolean };
 };
 
 export type LessonKp = {
@@ -160,22 +172,86 @@ export type LessonWaiting = {
   remediations: RemediationRef[];
 };
 
-/** KP questions (backend/app/schemas/kp.py). */
+/** KP questions, reviews and practice (backend/app/schemas/kp.py). */
+export type QuestionType = "numeric" | "expression" | "mcq" | "multistep" | "code";
+export type StepType = "numeric" | "expression" | "mcq";
+export type Option = { id: string; text: string };
+
+/** One step of a multi-step problem, rendered with this attempt's numbers. */
+export type StepPublic = {
+  prompt_md: string;
+  type: StepType;
+  unit: string | null;
+  options: Option[] | null;
+  variables: string[] | null;
+};
+
+export type StepResult = {
+  correct: boolean;
+  display_answer: string;
+  note: string | null;
+  misconception: { title: string } | null;
+};
+
+/** A code test in authored order. `args` / `expected` are JSON text (Python's `json.dumps`). */
+export type CodeTestPublic = {
+  visible: boolean;
+  returns: "value" | "stdout";
+  args: string;
+  stdin: string | null;
+  /** Visible tests only. */
+  expected: string | null;
+  expected_stdout: string | null;
+};
+
+export type CodePublic = {
+  entry: string;
+  starter: string;
+  /** Practice: the student's last submitted code. */
+  prefill: string | null;
+  time_limit_ms: number;
+  tests: CodeTestPublic[];
+};
+
 export type Question = {
   session_id: string | null;
   position: number;
   item_id: string;
-  type: "numeric" | "expression" | "mcq";
+  type: QuestionType;
+  /** Multi-step: the problem stem. */
   prompt_md: string;
   unit: string | null;
-  options: { id: string; text: string }[] | null;
+  /** Numeric with a unit: show the unit box. */
+  unit_required?: boolean;
+  options: Option[] | null;
   variables: string[] | null;
+  steps?: StepPublic[] | null;
+  /** Multi-step: the step to answer now. */
+  step?: number | null;
+  step_results?: StepResult[] | null;
+  code?: CodePublic | null;
   results: boolean[];
   /** Staff preview only: sent back with the answer. */
   preview_seed: number | null;
 };
 
+/** One test's output as the browser sends it (`backend/app/grading/code.py`). */
+export type TestOutput =
+  { json: string } | { stdout: string } | { error: string } | { timeout: true };
+
+export type CodeTestResult = {
+  visible: boolean;
+  passed: boolean;
+  status: "passed" | "failed" | "error" | "timeout";
+  args: string;
+  stdin: string | null;
+  /** Visible tests only. */
+  expected: string | null;
+  got: string;
+};
+
 export type AnswerResult = {
+  /** This answer (multi-step: this step; see `item_correct`). */
   correct: boolean;
   display_answer: string;
   explanation_md: string | null;
@@ -189,6 +265,13 @@ export type AnswerResult = {
   remediations: RemediationRef[];
   /** Passed brush-up: the part it was for is no longer blocked (null otherwise). */
   kp_open?: boolean | null;
+  step?: number | null;
+  step_results?: StepResult[] | null;
+  /** Multi-step: false until the last step is answered. */
+  item_done?: boolean;
+  item_correct?: boolean | null;
+  tests?: CodeTestResult[] | null;
+  solution?: string | null;
 };
 
 export type RemediationInfo = {

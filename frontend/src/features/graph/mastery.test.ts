@@ -13,6 +13,8 @@ function concept(overrides: Partial<OutlineConcept>): OutlineConcept {
     prereqs: [],
     kps_passed: 0,
     kps_total: 3,
+    parts_passed: 0,
+    parts_total: 4,
     waiting: null,
     brush_up: false,
     brush_up_id: null,
@@ -24,9 +26,10 @@ describe("mastery", () => {
   it("is 0 with no knowledge, grows with parts passed, and is 1 only when learned", () => {
     expect(mastery(concept({ status: "locked" }))).toBe(0);
     expect(mastery(concept({ status: "ready" }))).toBe(0);
-    const one = mastery(concept({ status: "in_progress", kps_passed: 1 }));
-    const two = mastery(concept({ status: "in_progress", kps_passed: 2 }));
-    const all = mastery(concept({ status: "in_progress", kps_passed: 3 }));
+    const one = mastery(concept({ status: "in_progress", parts_passed: 1 }));
+    const two = mastery(concept({ status: "in_progress", parts_passed: 2 }));
+    // Every KP passed, Practice left (spec 006): still short of learned.
+    const all = mastery(concept({ status: "in_progress", kps_passed: 3, parts_passed: 3 }));
     expect(0).toBeLessThan(one);
     expect(one).toBeLessThan(two);
     expect(two).toBeLessThan(all);

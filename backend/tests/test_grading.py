@@ -10,7 +10,7 @@ from app.cli import DEFAULT_CONTENT_ROOT
 from app.content.hashing import split_item
 from app.content.loader import load
 from app.content.params import sample
-from app.grading import GRADABLE_TYPES, InvalidOptionError, ShownOptions, grade
+from app.grading import QUICK_TYPES, InvalidOptionError, ShownOptions, grade
 from app.grading.expression import answer_text, preprocess
 from app.grading.numeric import parse_number, sig_fig_range
 from app.schemas.content import OptionPublic
@@ -19,7 +19,8 @@ R = sympy.Rational
 
 
 def num(spec: dict[str, Any], response: str, values: dict[str, Any] | None = None) -> Any:
-    return grade("numeric", {"spec": spec}, values or {}, response)
+    """Answers in the authored unit (unit conversion: test_grading_units.py)."""
+    return grade("numeric", {"spec": spec}, values or {}, response, unit=spec.get("unit"))
 
 
 def expr(spec: dict[str, Any], response: str, values: dict[str, Any] | None = None) -> Any:
@@ -196,7 +197,7 @@ def _pool_items() -> list[Any]:
         for concept in bundle.concepts
         for kp in concept.file.kps
         for item in kp.items
-        if item.type.value in GRADABLE_TYPES
+        if item.type.value in QUICK_TYPES
     ]
 
 
@@ -211,12 +212,13 @@ def test_sample_items_accept_their_own_answer(item: Any) -> None:
             first = grade("mcq", answer, values, "1", shown=shown)
             assert grade("mcq", answer, values, first.display_answer, shown=shown).correct
             continue
-        probe = grade(item.type.value, answer, values, "0")
+        unit = answer["spec"].get("unit")
+        probe = grade(item.type.value, answer, values, "0", unit=unit)
         if item.type.value == "numeric":
-            response = probe.display_answer.removesuffix(f" {answer['spec'].get('unit')}")
+            response = probe.display_answer.removesuffix(f" {unit}")
         else:
             response = answer_text(answer["spec"], values)
-        result = grade(item.type.value, answer, values, response)
+        result = grade(item.type.value, answer, values, response, unit=unit)
         assert result.correct, (seed, values, response, result)
 
 

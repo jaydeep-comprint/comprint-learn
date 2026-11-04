@@ -11,6 +11,21 @@ vi.mock("@/lib/supabase", () => ({
 vi.mock("@/features/graph/CourseMap", () => ({
   default: () => <div>Map view stub</div>,
 }));
+const python = {
+  status: { state: "ready" } as const,
+  run: vi.fn(),
+  retry: vi.fn(),
+};
+vi.mock("@/features/code/usePython", () => ({ usePython: () => python }));
+vi.mock("@/features/code/CodeEditor", () => ({
+  CodeEditor: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <textarea
+      aria-label="Code editor"
+      defaultValue={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
+}));
 
 import { CoursePage } from "@/features/learn/CoursePage";
 import { LessonPage } from "@/features/learn/LessonPage";
@@ -22,6 +37,8 @@ const DIST = `${COURSE}/distance-and-displacement`;
 const LESSON_URL = `/api/v1/learn/concepts/${DIST}`;
 const OUTLINE_URL = `/api/v1/learn/courses/${COURSE}/outline`;
 const Q_URL = `${LESSON_URL}/kps/kp1/question`;
+const PQ_URL = `${LESSON_URL}/practice/question`;
+const PA_URL = `${LESSON_URL}/practice/answer`;
 const A_URL = `${LESSON_URL}/kps/kp1/answer`;
 
 function kp(slug: string, title: string, example: string, extra: Partial<LessonKp> = {}): LessonKp {
@@ -99,6 +116,7 @@ function lesson(overrides: Partial<Lesson> = {}): Lesson {
     preview: false,
     concept_status: "ready",
     waiting: null,
+    practice: { status: "none", active: false },
     ...overrides,
   };
 }
@@ -119,6 +137,8 @@ const outline: Outline = {
           prereqs: [],
           kps_passed: 3,
           kps_total: 3,
+          parts_passed: 3,
+          parts_total: 3,
           waiting: null,
           brush_up: false,
           brush_up_id: null,
@@ -131,6 +151,8 @@ const outline: Outline = {
           prereqs: [],
           kps_passed: 0,
           kps_total: 3,
+          parts_passed: 0,
+          parts_total: 3,
           waiting: null,
           brush_up: false,
           brush_up_id: null,
@@ -143,6 +165,8 @@ const outline: Outline = {
           prereqs: [DIST, "maths-9-10/linear-equations-two-variables"],
           kps_passed: 0,
           kps_total: 3,
+          parts_passed: 0,
+          parts_total: 3,
           waiting: null,
           brush_up: false,
           brush_up_id: null,
@@ -452,6 +476,232 @@ describe("LessonPage", () => {
       "href",
       `/learn/${COURSE}/maths-9-10/lin`,
     );
+  });
+});
+
+describe("LessonPage · Practice step (spec 006)", () => {
+  beforeEach(() => {
+    progressCalls.length = 0;
+    python.run.mockReset();
+  });
+
+  const withPractice = (overrides: Partial<Lesson> = {}) =>
+    lesson({
+      kps: [kp("kp1", "Along a road", "Example one.")],
+      steps: ["intro", "check", "kp:kp1", "kpq:kp1", "practice"],
+      concept_status: "in_progress",
+      check_result: ANSWERED_CHECK,
+      practice: { status: "pending", active: false },
+      ...overrides,
+    });
+
+  const multistep: Question = {
+    ...question(1),
+    item_id: "ms",
+    type: "multistep",
+    prompt_md: "A round trip.",
+    unit: null,
+    steps: [
+      { prompt_md: "Time out?", type: "numeric", unit: null, options: null, variables: null },
+      { prompt_md: "Time back?", type: "numeric", unit: null, options: null, variables: null },
+    ],
+    step: 0,
+    step_results: [],
+  };
+
+  function stepResult(step: number, correct: boolean, done: Partial<AnswerResult> = {}) {
+    const steps = [
+      { correct: true, display_answer: "1.25", note: null, misconception: null },
+      { correct, display_answer: "2.00", note: null, misconception: null },
+    ].slice(0, step + 1);
+    return answer({ step, step_results: steps, item_done: step === 1, results: [], ...done });
+  }
+
+  it("Practice stays locked until every part passes; Next then moves to it", async () => {
+    const user = userEvent.setup();
+    let practiceGets = 0;
+    mockApi(
+      withPractice({
+        progress: {
+          seen_steps: ["intro", "check", "kp:kp1"],
+          last_step: "kp:kp1",
+          finished_at: null,
+        },
+      }),
+      {
+        [`GET ${Q_URL}`]: () => jsonResponse(200, question(1, [true])),
+        [`POST ${A_URL}`]: () =>
+          jsonResponse(200, answer({ results: [true, true], session_status: "passed" })),
+        [`GET ${PQ_URL}`]: () => {
+          practiceGets += 1;
+          return jsonResponse(200, multistep);
+        },
+      },
+    );
+    renderAt(`/learn/${COURSE}/${DIST}`);
+    const nav = await screen.findByRole("navigation", { name: "Lesson steps" });
+    expect(within(nav).getByRole("button", { name: "Practice" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.type(await screen.findByLabelText("Your answer"), "8");
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(await screen.findByText("Practice · Put it together")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 2")).toBeInTheDocument();
+    expect(practiceGets).toBe(1);
+    // "Finish lesson" is replaced by passing Practice.
+    expect(screen.queryByRole("button", { name: "Finish lesson" })).not.toBeInTheDocument();
+  });
+
+  it("passing Practice shows the learned screen", async () => {
+    const user = userEvent.setup();
+    const bodies: Record<string, unknown>[] = [];
+    mockApi(
+      withPractice({ kps: [kp("kp1", "Along a road", "Example one.", { status: "passed" })] }),
+      {
+        [`GET ${PQ_URL}`]: () => jsonResponse(200, multistep),
+        [`POST ${PA_URL}`]: (init) => {
+          const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+          bodies.push(body);
+          return jsonResponse(
+            200,
+            body.step === 0
+              ? stepResult(0, true)
+              : stepResult(1, true, {
+                  session_status: "passed",
+                  item_correct: true,
+                  results: [true],
+                  concept_learned: true,
+                  unlocked: [{ id: `${COURSE}/speed-and-velocity`, title: "Speed and velocity" }],
+                }),
+          );
+        },
+      },
+    );
+    renderAt(`/learn/${COURSE}/${DIST}`);
+    expect(await screen.findByText("Step 1 of 2")).toBeInTheDocument(); // resumes at Practice
+    await user.type(screen.getByLabelText("Your answer"), "1.25");
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByText("Step 2 of 2")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Your answer"), "2");
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByText("Practice passed ✓")).toBeInTheDocument();
+    expect(screen.getByText("Problem solved ✓")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByText("Concept learned ✓")).toBeInTheDocument();
+    expect(bodies.map((b) => b.step)).toEqual([0, 1]);
+    // Answers name the session they were shown in (a stale tab can't answer a new attempt).
+    expect(bodies.map((b) => b.session_id)).toEqual(["sess1", "sess1"]);
+    await waitFor(() =>
+      expect(progressCalls).toContainEqual({ step: "practice", active_seconds: 0 }),
+    );
+  });
+
+  it("a failed code task keeps the student's code for the next try", async () => {
+    const user = userEvent.setup();
+    const code: Question = {
+      ...question(1),
+      item_id: "code",
+      type: "code",
+      prompt_md: "Write `double(n)`.",
+      unit: null,
+      code: {
+        entry: "double",
+        starter: "def double(n):\n    pass\n",
+        prefill: null,
+        time_limit_ms: 2000,
+        tests: [
+          {
+            visible: true,
+            returns: "value",
+            args: "[2]",
+            stdin: null,
+            expected: "4",
+            expected_stdout: null,
+          },
+        ],
+      },
+    };
+    let gets = 0;
+    let submittedCode = "";
+    python.run.mockResolvedValue({ outputs: [{ json: "5" }], passed: [false] });
+    mockApi(
+      withPractice({ kps: [kp("kp1", "Along a road", "Example one.", { status: "passed" })] }),
+      {
+        [`GET ${PQ_URL}`]: () => {
+          gets += 1;
+          return jsonResponse(
+            200,
+            gets === 1
+              ? code
+              : { ...code, session_id: "sess2", code: { ...code.code!, prefill: submittedCode } },
+          );
+        },
+        [`POST ${PA_URL}`]: (init) => {
+          submittedCode = (JSON.parse(String(init.body)) as { code: string }).code;
+          return jsonResponse(
+            200,
+            answer({
+              correct: false,
+              session_status: "failed",
+              results: [false],
+              tests: [
+                {
+                  visible: true,
+                  passed: false,
+                  status: "failed",
+                  args: "[2]",
+                  stdin: null,
+                  expected: "4",
+                  got: "5",
+                },
+              ],
+              solution: null,
+            }),
+          );
+        },
+      },
+    );
+    renderAt(`/learn/${COURSE}/${DIST}`);
+    const editor = await screen.findByLabelText("Code editor");
+    await user.type(editor, "# try 1");
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByText("Not quite: 0 of 1 tests passed")).toBeInTheDocument();
+    expect(screen.queryByTestId("solution")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Fix your code and submit again" }));
+    await waitFor(() => expect(gets).toBe(2));
+    expect(await screen.findByLabelText("Code editor")).toHaveValue(submittedCode);
+    expect(submittedCode).toContain("# try 1");
+  });
+
+  it("a learned concept shows Passed and offers an unscored Practise again", async () => {
+    const user = userEvent.setup();
+    const urls: string[] = [];
+    mockApi(
+      withPractice({
+        concept_status: "learned",
+        kps: [kp("kp1", "Along a road", "Example one.", { status: "passed" })],
+        practice: { status: "passed", active: false },
+      }),
+      {
+        [`GET ${PQ_URL}`]: () =>
+          jsonResponse(200, { ...multistep, session_id: null, preview_seed: 7 }),
+      },
+    );
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        urls.push(String(input));
+        return realFetch(input, init);
+      }),
+    );
+    renderAt(`/learn/${COURSE}/${DIST}`);
+    const nav = await screen.findByRole("navigation", { name: "Lesson steps" });
+    await user.click(within(nav).getByRole("button", { name: "Practice (passed)" }));
+    expect(await screen.findByText("Passed ✓")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Practise again" }));
+    expect(await screen.findByText("Step 1 of 2")).toBeInTheDocument();
+    expect(urls.some((u) => u.endsWith("/practice/question?again=true"))).toBe(true);
   });
 });
 

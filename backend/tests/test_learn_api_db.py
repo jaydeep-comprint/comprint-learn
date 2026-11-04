@@ -130,8 +130,10 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
         "kpq:kp2",
         "kp:kp3",
         "kpq:kp3",
+        "practice",  # spec 006
     ]
     assert lesson["concept_status"] == "ready" and lesson["waiting"] is None
+    assert lesson["practice"] == {"status": "pending", "active": False}
     assert [k["status"] for k in lesson["kps"]] == ["not_started"] * 3
     assert lesson["progress"] is None and lesson["check_result"] is None
     assert (

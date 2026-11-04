@@ -21,6 +21,7 @@ import { FailedScreen } from "@/features/learn/FailedScreen";
 import { LearnedScreen } from "@/features/learn/LearnedScreen";
 import { LockedPanel } from "@/features/learn/LockedPanel";
 import { PracticeRunner } from "@/features/learn/PracticeRunner";
+import { PracticeStep } from "@/features/learn/PracticeStep";
 import { StepIndicator } from "@/features/learn/StepIndicator";
 import { useStepTimer } from "@/features/learn/useStepTimer";
 import { WaitingPanel } from "@/features/learn/WaitingPanel";
@@ -35,16 +36,20 @@ import type {
 } from "@/lib/types";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
-/** The first step that isn't done: an active question session, the waiting panel, a reopened
- * part's worked example, else `last_step` (as in 004). Preview and learned concepts open at intro. */
+/** The first step that isn't done: an active question session or practice attempt, the waiting
+ * panel, a reopened part's worked example, Practice once every part passed, else `last_step` (as
+ * in 004). Preview and learned concepts open at intro. */
 function initialIndex(lesson: Lesson): number {
   const { steps, kps } = lesson;
   if (lesson.preview || lesson.concept_status === "learned") return 0;
+  const practice = steps.indexOf("practice");
+  if (practice >= 0 && lesson.practice.active) return practice;
   const active = kps.find((k) => k.active);
   if (active) return steps.indexOf(`kpq:${active.slug}`);
   if (lesson.waiting) return steps.indexOf(`kpq:${lesson.waiting.kp}`);
   const next = kps.find((k) => k.status !== "passed");
   if (next?.status === "failed") return steps.indexOf(`kp:${next.slug}`);
+  if (!next && practice >= 0 && lesson.practice.status === "pending") return practice;
   const p = lesson.progress;
   if (!p) return 0;
   return Math.max(0, steps.indexOf(p.last_step));
@@ -159,6 +164,7 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
     () => new Set(lesson.kps.filter((k) => k.status === "passed").map((k) => k.slug)),
   );
   const [ended, setEnded] = useState<Ended | null>(null);
+  const practicePassed = lesson.practice.status === "passed";
 
   const [index, setIndex] = useState(() => initialIndex(lesson));
   const [furthest, setFurthest] = useState(() =>
@@ -176,6 +182,7 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
   // A question step can't be passed over until its KP is passed.
   const firstUnpassed = steps.findIndex((s) => s.startsWith("kpq:") && !passed.has(s.slice(4)));
   const passedSteps = new Set([...passed].map((slug) => `kpq:${slug}`));
+  if (practicePassed) passedSteps.add("practice");
   // Jump up to the furthest step reached + 1, but never past an unanswered check or an unpassed
   // question step.
   const maxIndex = allOpen
@@ -215,6 +222,11 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
 
   const finish = () => {
     setEnded({ kind: "learned", unlocked: null });
+    refreshStatuses();
+  };
+
+  const onPracticePassed = (unlocked: ConceptRef[] | null) => {
+    setEnded({ kind: "learned", unlocked });
     refreshStatuses();
   };
 
@@ -342,6 +354,13 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
               onGoToCheck={() => go(checkIndex)}
             />
           ))}
+        {step === "practice" && (
+          <PracticeStep
+            lesson={lesson}
+            passed={review || practicePassed}
+            onPassed={onPracticePassed}
+          />
+        )}
       </article>
       <div className="sticky bottom-0 -mx-4 mt-6 border-t bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none">
         <div className="mx-auto flex max-w-prose items-center justify-between gap-3">
@@ -349,9 +368,12 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
             Back
           </Button>
           {isLast ? (
-            <Button onClick={finish} disabled={studentBlockedByCheck || blockedByQuestions}>
-              Finish lesson
-            </Button>
+            // With a Practice step, passing it finishes the lesson (spec 006).
+            (step !== "practice" || preview || review) && (
+              <Button onClick={finish} disabled={studentBlockedByCheck || blockedByQuestions}>
+                Finish lesson
+              </Button>
+            )
           ) : (
             <Button
               onClick={() => go(index + 1)}

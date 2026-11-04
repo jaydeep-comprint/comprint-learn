@@ -415,39 +415,69 @@ def test_misconception_check_without_params(tmp_path: Path) -> None:
     ]
 
 
-def test_kp_needs_two_gradable_questions(tmp_path: Path) -> None:
+def test_kp_needs_two_questions(tmp_path: Path) -> None:
+    t = fx.tree()
+    _concept(t)["kps"][0]["items"] = [fx.fixed_item("kp1-q1")]
+    assert f"{CONCEPT}: kps[0] (kp1): only 1 questions; KP practice needs >= 2" in _issues(
+        tmp_path, t
+    )
+
+
+def test_kp_needs_a_quick_check_for_reviews(tmp_path: Path) -> None:
     t = fx.tree()
     _concept(t)["kps"][0]["items"] = [
-        fx.fixed_item("kp1-q1"),
-        *(fx.multistep_item(f"kp1-q{n}") for n in range(2, 6)),
+        *(fx.code_item(f"kp1-q{n}") for n in range(1, 5)),
+        fx.multistep_item("kp1-q5"),
     ]
     assert _issues(tmp_path, t) == [
-        f"{CONCEPT}: kps[0] (kp1): only 1 numeric/expression/mcq questions; KP practice needs "
-        ">= 2 (code items aren't served until spec 006)"
+        f"{CONCEPT}: kps[0] (kp1): needs at least 1 numeric/expression/mcq question "
+        "(brush-up reviews serve only those)"
     ]
 
 
 def test_fixed_only_pool_needs_five(tmp_path: Path) -> None:
     t = fx.tree()
     _concept(t)["kps"][0]["items"] = [
-        *(fx.fixed_item(f"kp1-q{n}") for n in range(1, 5)),
-        fx.multistep_item("kp1-q5"),
+        *(fx.fixed_item(f"kp1-q{n}") for n in range(1, 4)),
+        fx.code_item("kp1-q4"),
     ]
     assert _issues(tmp_path, t) == [
-        f"{CONCEPT}: kps[0] (kp1): only 4 fixed numeric/expression/mcq questions and none with "
-        "params; a KP needs >= 5 fixed ones (or a param item) so a 5-question session never "
-        "repeats a question whose answer was shown"
+        f"{CONCEPT}: kps[0] (kp1): question pool is too small: weight 4, needs >= 6 "
+        "(fixed item = 1, param item = 2)",
+        f"{CONCEPT}: kps[0] (kp1): only 4 fixed questions and none with params; a KP needs >= 5 "
+        "fixed ones (or a param item) so a 5-question session never repeats a question whose "
+        "answer was shown",
+    ]
+
+
+def test_code_time_limit_fits_the_browser(tmp_path: Path) -> None:
+    t = fx.tree()
+    _concept(t)["practice"].append(fx.code_item("practice-2", time_limit_ms=6000))
+    assert _issues(tmp_path, t) == [
+        f"{CONCEPT}: practice[1] (practice-2): time_limit_ms is 6000; code runs in the browser, "
+        "so at most 5000"
     ]
 
 
 def test_warning_few_gradable_slots(tmp_path: Path) -> None:
     t = fx.tree()
-    _concept(t)["kps"][0]["items"] = [
-        fx.numeric_item("kp1-q1"),
-        *(fx.multistep_item(f"kp1-q{n}") for n in range(2, 6)),
-        fx.fixed_item("kp1-q6"),
-    ]
+    _concept(t)["kps"][0]["items"] = [fx.numeric_item("kp1-q1"), fx.fixed_item("kp1-q2")]
     assert _issues(tmp_path, t, "warning") == [
-        f"{CONCEPT}: kps[0] (kp1): gradable question weight is 3; aim for >= 5 "
+        f"{CONCEPT}: kps[0] (kp1): question weight is 3; aim for >= 5 "
         "(fixed item = 1, param item = 2) so a 5-question KP session never runs dry"
     ]
+
+
+def test_single_fixed_multistep_practice_needs_params(tmp_path: Path) -> None:
+    t = fx.tree()
+    fixed = fx.multistep_item("practice-1")
+    fixed["prompt"] = "A rectangle has perimeter 20 cm and length 6 cm."
+    fixed.pop("params")
+    fixed["derived"] = {"w": "20 / 2 - 6", "p": "20"}
+    _concept(t)["practice"] = [fixed]
+    assert (
+        f"{CONCEPT}: practice (c1): a single multistep practice item needs params (a retry would "
+        "repeat the numbers whose answers were just shown); add params or another practice item"
+    ) in _issues(tmp_path, t)
+    _concept(t)["practice"].append(fx.code_item("practice-2"))
+    assert not any("single multistep" in i for i in _issues(tmp_path / "x", t))

@@ -41,7 +41,8 @@ Build order and spec numbers: docs/ROADMAP.md.
    of each of** CBSE Class 9–10 Maths (algebra), Physics (motion and force) and Python basics ([spec 003](specs/003-content-model-importer.md)).
 3. Student **Learn** layer: intro + worked examples (text, images, diagrams, maths) + misconception check ([spec 004](specs/004-learn-layer.md)).
 4. Student **Practice** layer, with these formats: numeric + units (exact / significant figures / tolerance, randomised numbers),
-   SymPy expressions, limited multiple choice (misconception-tagged), multi-step problems, and Python code with tests.
+   SymPy expressions, limited multiple choice (misconception-tagged), multi-step problems, and Python code with tests
+   ([spec 006](specs/006-practice-formats.md)). Each lesson ends with a required Practice step.
 5. Mastery: the KP flow (fail → retry later → remediate key prerequisites), the knowledge frontier, and a visual knowledge graph ([spec 005](specs/005-kp-flow-knowledge-graph.md)).
 6. Spaced repetition per concept with implicit credit, a daily review cap, and a mixed timed quiz every ~150 XP.
 7. XP (minutes × performance), daily goal, streaks. **Class leaderboards are opt-in, switched on by the teacher**, and ranked by XP, never time spent.

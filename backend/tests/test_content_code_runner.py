@@ -89,3 +89,9 @@ def test_json_comparison(got: str, expected: Any) -> None:
 def test_bool_is_not_int() -> None:
     tests = [{"args": [0], "expected": 1, "visible": True}] * 3
     assert len(run_tests(_spec("def f(n):\n    return True\n", tests))) == 3
+
+
+def test_bool_never_matches_a_float() -> None:
+    tests = [{"args": [1], "expected": 1.0, "visible": True}, *TESTS[1:]]
+    [failure] = run_tests(_spec("def f(n):\n    return True if n == 1 else 2 * n\n", tests))
+    assert failure.index == 0

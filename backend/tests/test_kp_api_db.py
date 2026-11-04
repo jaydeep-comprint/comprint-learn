@@ -23,6 +23,7 @@ from app.models import (
     RemediationState,
     StudyTime,
 )
+from app.models.content import ItemKind
 from app.services.kp_flow import next_midnight_ist
 from tests.conftest import DbApp
 from tests.learn_helpers import (
@@ -33,6 +34,7 @@ from tests.learn_helpers import (
     PHYSICS,
     SPEED,
     answer_check,
+    answer_fields,
     answer_kp,
     count,
     get,
@@ -122,7 +124,7 @@ async def test_pass_a_kp_same_question_on_reload_no_leaks(db_app: DbApp) -> None
         db_app,
         s,
         a_url(DIST, "kp1"),
-        {"position": 1, "response": await response_for(db_app, q), "time_taken_ms": 4000},
+        {"position": 1, **await answer_fields(db_app, q), "time_taken_ms": 4000},
     )
     assert first["correct"] is True and first["session_status"] == "active"
     assert first["results"] == [True]
@@ -132,7 +134,7 @@ async def test_pass_a_kp_same_question_on_reload_no_leaks(db_app: DbApp) -> None
         db_app,
         s,
         a_url(DIST, "kp1"),
-        {"position": 2, "response": await response_for(db_app, q2), "time_taken_ms": 4000},
+        {"position": 2, **await answer_fields(db_app, q2), "time_taken_ms": 4000},
     )
     assert second["session_status"] == "passed" and second["results"] == [True, True]
     row = await _kp_row(db_app, s, "distance-and-displacement", "kp1")
@@ -184,7 +186,7 @@ async def test_two_answers_at_once_store_one_attempt(db_app: DbApp) -> None:
     s = w.physics_student
     await _open_lesson(db_app, s, DIST)
     q = await get(db_app, s, q_url(DIST, "kp1"))
-    body = {"position": 1, "response": await response_for(db_app, q), "time_taken_ms": 100}
+    body = {"position": 1, **await answer_fields(db_app, q), "time_taken_ms": 100}
     r1, r2 = await asyncio.gather(
         db_app.client.post(a_url(DIST, "kp1"), json=body, headers=db_app.auth(s)),
         db_app.client.post(a_url(DIST, "kp1"), json=body, headers=db_app.auth(s)),
@@ -335,7 +337,7 @@ async def test_review_pass_resolves_and_reopens(db_app: DbApp) -> None:
             f"/api/v1/learn/remediations/{rid}/answer",
             {
                 "position": q["position"],
-                "response": await response_for(db_app, q),
+                **await answer_fields(db_app, q),
                 "time_taken_ms": 100,
             },
         )
@@ -415,7 +417,7 @@ async def _review(db: DbApp, s: uuid.UUID, rid: str, pattern: str) -> dict[str, 
         q = await get(db, s, f"/api/v1/learn/remediations/{rid}/question")
         body = {
             "position": q["position"],
-            "response": await response_for(db, q, correct=c == "C"),
+            **await answer_fields(db, q, correct=c == "C"),
             "time_taken_ms": 100,
         }
         res = await post(db, s, f"/api/v1/learn/remediations/{rid}/answer", body)
@@ -457,7 +459,7 @@ async def test_a_stale_review_can_not_be_answered_after_a_relearn(db_app: DbApp)
         f"/api/v1/learn/remediations/{r2.id}/answer",
         json={
             "position": q2["position"],
-            "response": await response_for(db_app, q2),
+            **await answer_fields(db_app, q2),
             "time_taken_ms": 100,
         },
         headers=db_app.auth(s),
@@ -530,7 +532,22 @@ async def test_retired_kp_no_longer_blocks_learned(db_app: DbApp) -> None:
         )
         await session.commit()
     outline = await get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
-    assert statuses(outline)[DIST] == "learned"  # promoted on read
+    concept = next(c for ch in outline["chapters"] for c in ch["concepts"] if c["id"] == DIST)
+    # Spec 006: every KP is passed, but Practice is still a part to pass.
+    assert concept["status"] == "in_progress"
+    assert (concept["parts_passed"], concept["parts_total"]) == (2, 3)
+    async with db_app.sessions() as session:
+        await session.execute(
+            update(Item)
+            .where(
+                Item.kind == ItemKind.practice,
+                Item.concept_id.in_(_concept_ids("distance-and-displacement")),
+            )
+            .values(retired_at=datetime.now(UTC))
+        )
+        await session.commit()
+    outline = await get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
+    assert statuses(outline)[DIST] == "learned"  # no practice left either: promoted on read
 
 
 async def test_kp_whose_questions_are_all_retired_counts_as_passed(db_app: DbApp) -> None:
@@ -561,7 +578,7 @@ async def test_staff_preview_answers_and_writes_nothing(db_app: DbApp) -> None:
     assert not (keys(q) & LEAKS)
     body = {
         "position": 1,
-        "response": await response_for(db_app, q),
+        **await answer_fields(db_app, q),
         "time_taken_ms": 10,
         "item_id": q["item_id"],
         "seed": q["preview_seed"],

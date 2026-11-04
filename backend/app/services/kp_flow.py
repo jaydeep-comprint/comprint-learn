@@ -1,10 +1,13 @@
-"""KP question flow (spec 005): sessions, pass/fail, reopening and remediation.
+"""KP question flow (spec 005): sessions, pass/fail, reopening and remediation. Spec 006: every
+format (multi-step problems answered step by step, Python code checked against hidden expected
+values) and the shared answer path the Practice step (`app/services/practice.py`) uses.
 
 The top of this module is pure (no DB) so the rules are unit-testable; the DB services below
 take an `OrgScope` and write only for students (staff previews write nothing).
 """
 
 import asyncio
+import json
 import logging
 import random
 import secrets
@@ -15,20 +18,24 @@ from datetime import UTC, datetime, time, timedelta
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import ColumnElement, delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope
 from app.content import params
 from app.core.errors import ApiProblem, forbidden, not_found
 from app.grading import (
-    GRADABLE_TYPES,
+    ALL_TYPES,
     MAX_RESPONSE,
+    QUICK_TYPES,
     GradeResult,
     InvalidOptionError,
     ShownOptions,
     grade,
+    multistep,
 )
+from app.grading.code import MAX_CODE, CodeGrade, InvalidOutputsError, grade_code
+from app.grading.units import MAX_UNIT
 from app.models import (
     Attempt,
     AttemptContext,
@@ -50,7 +57,17 @@ from app.models import (
 )
 from app.models.content import ItemKind
 from app.schemas.content import ItemPublic
-from app.schemas.kp import AnswerIn, AnswerResult, QuestionPublic, RemediationOut
+from app.schemas.kp import (
+    AnswerIn,
+    AnswerResult,
+    CodePublic,
+    CodeTestPublic,
+    CodeTestResult,
+    QuestionPublic,
+    RemediationOut,
+    StepPublic,
+    StepResult,
+)
 from app.schemas.learn import ConceptRef, MisconceptionOut, RemediationRef
 from app.services import frontier, learn
 
@@ -139,6 +156,34 @@ def is_open(
     )
 
 
+def position_results(
+    attempts: Sequence[Attempt], step_counts: Mapping[uuid.UUID, int]
+) -> list[bool]:
+    """One result per answered item, in position order (spec 006).
+
+    A multi-step item (its id in `step_counts`) has one attempt row per step and counts once
+    every step is answered, with `multistep_outcome`; other items have one row."""
+    by_position: dict[int, list[Attempt]] = {}
+    for a in attempts:
+        by_position.setdefault(a.position or 0, []).append(a)
+    out = []
+    for position in sorted(by_position):
+        rows = sorted(by_position[position], key=lambda a: a.step)
+        steps = step_counts.get(rows[0].item_id)
+        if steps is None:
+            out.append(rows[0].correct)
+        elif (result := multistep.multistep_outcome([a.correct for a in rows], steps)) is not None:
+            out.append(result)
+    return out
+
+
+def single_item_outcome(results: Sequence[bool]) -> Outcome:
+    """A practice attempt is one item: it passes or fails with it (spec 006)."""
+    if not results:
+        return "active"
+    return "passed" if results[-1] else "failed"
+
+
 def next_midnight_ist(now: datetime) -> datetime:
     """The next 00:00 in Asia/Kolkata after `now` (aware), in UTC."""
     local = now.astimezone(IST)
@@ -154,13 +199,19 @@ _ACTIVE_KP_WHERE = text("status = 'active' AND kind = 'kp'")
 _ACTIVE_REMEDIATION_WHERE = text("status = 'active'")
 _OPEN_REMEDIATION_WHERE = text("state <> 'resolved'")
 
+SolutionRule = Literal["always", "on_pass"]
+
 
 class EmptyPoolError(Exception):
-    """A KP has no active gradable questions left (retired mid-session)."""
+    """A KP has no active questions left (retired mid-session)."""
 
 
 def _conflict(code: str, detail: str, **extra: Any) -> ApiProblem:
     return ApiProblem(409, code, detail, extra=extra or None)
+
+
+def _invalid(detail: str = "That answer is too long.") -> ApiProblem:
+    return ApiProblem(422, "invalid_response", detail)
 
 
 @dataclass
@@ -186,14 +237,16 @@ async def _kp_ctx(scope: OrgScope, course: str, concept: str, kp_slug: str) -> _
     return _KpCtx(access, content, kp)
 
 
-async def _pool(scope: OrgScope, kp_id: uuid.UUID) -> list[Item]:
-    """The KP's gradable questions (code/multistep items wait for 006), in authored order."""
+async def _pool(
+    scope: OrgScope, kp_id: uuid.UUID, types: Collection[str] = ALL_TYPES
+) -> list[Item]:
+    """The KP's active questions of `types` (KP sessions: every type; reviews: quick checks)."""
     rows = await scope.session.scalars(
         select(Item)
         .where(
             Item.kp_id == kp_id,
             Item.kind == ItemKind.kp_question,
-            Item.type.in_(GRADABLE_TYPES),
+            Item.type.in_(types),
             Item.retired_at.is_(None),
         )
         .order_by(Item.position)
@@ -201,7 +254,66 @@ async def _pool(scope: OrgScope, kp_id: uuid.UUID) -> list[Item]:
     return list(rows.all())
 
 
-def _question(
+# --- building questions ---------------------------------------------------------------------------
+
+
+def _step_shown(scope: OrgScope, item: Item, index: int) -> ShownOptions:
+    """A multi-step MCQ step's options in this student's order (stable across reloads)."""
+    step = (ItemPublic.from_row(item).steps or [])[index]
+    options = list(step.options or [])
+    if scope.user.is_staff or not step.shuffle:
+        return ShownOptions(options)
+    by_id = {o.id: o for o in options}
+    key = uuid.uuid5(item.id, f"step-{index}")
+    return ShownOptions([by_id[i] for i in learn.shuffled_order(list(by_id), scope.user.id, key)])
+
+
+def _test_args(test: Mapping[str, Any]) -> str:
+    return json.dumps(test.get("args") or [])
+
+
+def _visible_expected(test: Mapping[str, Any]) -> tuple[str | None, str | None]:
+    """(expected JSON text, expected stdout) for a visible test; (None, None) for a hidden one."""
+    if not test.get("visible"):
+        return None, None
+    if test.get("expected_stdout") is not None:
+        return None, str(test["expected_stdout"])
+    return json.dumps(test.get("expected")), None
+
+
+def _code_public(item: Item, prefill: str | None) -> CodePublic:
+    """Visible tests in full; hidden tests' inputs only (never `expected` / `expected_stdout`)."""
+    spec = item.answer["spec"]
+    tests = []
+    for t in spec["tests"]:
+        expected, expected_stdout = _visible_expected(t)
+        tests.append(
+            CodeTestPublic(
+                visible=bool(t.get("visible")),
+                returns="stdout" if t.get("expected_stdout") is not None else "value",
+                args=_test_args(t),
+                stdin=t.get("stdin"),
+                expected=expected,
+                expected_stdout=expected_stdout,
+            )
+        )
+    return CodePublic(
+        entry=spec["entry"],
+        starter=spec["starter"],
+        prefill=prefill,
+        time_limit_ms=int(spec.get("time_limit_ms") or 2000),
+        tests=tests,
+    )
+
+
+def _render(template: str, values: Mapping[str, Any]) -> str:
+    try:
+        return params.render(template, values)
+    except KeyError:
+        return template
+
+
+async def _question(
     scope: OrgScope,
     item: Item,
     seed: int | None,
@@ -210,29 +322,73 @@ def _question(
     position: int,
     results: list[bool],
     preview_seed: int | None = None,
+    step_rows: Sequence[Attempt] = (),
+    prefill: str | None = None,
 ) -> QuestionPublic:
     public = ItemPublic.from_row(item)
     values = params.sample_answer(item.answer, seed)
-    is_mcq = public.type == "mcq"
-    return QuestionPublic(
+    kind = public.type
+    question = QuestionPublic(
         session_id=None if session_id is None else str(session_id),
         position=position,
         item_id=str(item.id),
-        type=public.type,  # pools hold gradable types only (validated by the schema)
+        type=kind,
         prompt_md=params.render(public.prompt, values),
         unit=public.unit,
-        options=learn._shown_options(scope, item).public() if is_mcq else None,
-        variables=(list(item.answer["spec"]["variables"]) if public.type == "expression" else None),
+        unit_required=kind == "numeric" and bool(public.unit),
+        options=learn._shown_options(scope, item).public() if kind == "mcq" else None,
+        variables=(list(item.answer["spec"]["variables"]) if kind == "expression" else None),
         results=results,
         preview_seed=preview_seed,
     )
+    if kind == "multistep":
+        specs = item.answer["spec"]["steps"]
+        question.steps = [
+            StepPublic(
+                prompt_md=_render(s.prompt, values),
+                type=s.type,
+                unit=s.unit,
+                options=_step_shown(scope, item, i).public() if s.type == "mcq" else None,
+                variables=(
+                    list(specs[i]["answer"]["expression"]["variables"])
+                    if s.type == "expression"
+                    else None
+                ),
+            )
+            for i, s in enumerate(public.steps or [])
+        ]
+        rows = sorted(step_rows, key=lambda a: a.step)
+        question.step = len(rows)
+        question.step_results = [
+            _step_result((await _regrade(scope, item, seed, a)).result) for a in rows
+        ]
+    elif kind == "code":
+        question.code = _code_public(item, prefill)
+    return question
 
 
 async def _session_attempts(scope: OrgScope, session_id: uuid.UUID) -> list[Attempt]:
     rows = await scope.session.scalars(
-        scope.select(Attempt).where(Attempt.session_id == session_id).order_by(Attempt.position)
+        scope.select(Attempt)
+        .where(Attempt.session_id == session_id)
+        .order_by(Attempt.position, Attempt.step)
     )
     return list(rows.all())
+
+
+async def _session_state(
+    scope: OrgScope, session_id: uuid.UUID
+) -> tuple[list[Attempt], list[bool]]:
+    """The session's attempt rows and its per-item results (`position_results`)."""
+    attempts = await _session_attempts(scope, session_id)
+    ids = {a.item_id for a in attempts}
+    items = (await scope.session.scalars(select(Item).where(Item.id.in_(ids)))).all() if ids else []
+    counts = {i.id: multistep.step_count(i.answer) for i in items if i.type.value == "multistep"}
+    return attempts, position_results(attempts, counts)
+
+
+def _at(attempts: Sequence[Attempt], position: int) -> list[Attempt]:
+    return [a for a in attempts if a.position == position]
 
 
 async def _serve(
@@ -240,7 +396,7 @@ async def _serve(
 ) -> Item:
     """Choose the next item (`choose_next_item`) with a fresh seed, stored before it's returned.
 
-    Raises `EmptyPoolError` when the pool has no active gradable items (retired content)."""
+    Raises `EmptyPoolError` when the pool has no active items (retired content)."""
     if not pool:
         raise EmptyPoolError(order_key)
     served = {a.item_id for a in await _session_attempts(scope, session.id)}
@@ -262,36 +418,146 @@ async def _serve(
     if chosen is None:
         # Only invalid content gets here (the validator requires >= 5 fixed items or a param
         # item): repeating means repeating an item whose answer was shown.
-        log.error("KP pool %s exhausted within a session; repeating an item", order_key)
+        log.error("pool %s exhausted within a session; repeating an item", order_key)
         chosen = choose_next_item(order, history, set(), params_ids)
     assert chosen is not None
     item = next(i for i in pool if i.id == chosen)
+    await serve_item(scope, session, item, position)
+    return item
+
+
+async def serve_item(scope: OrgScope, session: PracticeSession, item: Item, position: int) -> None:
+    """Show `item` at `position` with a fresh seed. Steps already answered at that position (a
+    multi-step item retired mid-problem) are discarded with it (spec 006)."""
+    discarded = await scope.session.execute(
+        delete(Attempt)
+        .where(
+            Attempt.org_id == scope.org_id,
+            Attempt.session_id == session.id,
+            Attempt.position == position,
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if getattr(discarded, "rowcount", 0):
+        log.warning("session %s: discarded the answered steps at position %s", session.id, position)
     session.current_item_id = item.id
     session.current_seed = secrets.randbelow(2**31) if item.has_params else None
     session.current_position = position
     session.current_served_at = datetime.now(UTC)
     await scope.session.flush()
-    return item
 
 
-def _check_response(response: str) -> None:
-    if len(response) > MAX_RESPONSE:
-        raise ApiProblem(422, "invalid_response", "That answer is too long.")
+# --- grading answers ------------------------------------------------------------------------------
 
 
-async def _grade(
-    scope: OrgScope, item: Item, seed: int | None, response: str, shown: ShownOptions | None = None
-) -> tuple[GradeResult, ShownOptions | None, dict[str, Any]]:
-    values = params.sample_answer(item.answer, seed)
-    if item.type.value == "mcq" and shown is None:
-        shown = learn._shown_options(scope, item)
+@dataclass
+class _Graded:
+    result: GradeResult  # code: `correct` only
+    response: dict[str, Any]  # what `attempt.response` stores
+    values: dict[str, Any]
+    step: int = 0  # multistep: the step answered
+    code: CodeGrade | None = None
+
+
+def _part(
+    scope: OrgScope, item: Item, step: int
+) -> tuple[str, dict[str, Any], ShownOptions | None]:
+    """(type, answer document, shown MCQ options) for the item, or for one of its steps."""
+    kind = item.type.value
+    if kind == "multistep":
+        kind = multistep.step_type(item.answer, step)
+        doc = multistep.step_answer_doc(item.answer, step)
+        return kind, doc, _step_shown(scope, item, step) if kind == "mcq" else None
+    return kind, item.answer, learn._shown_options(scope, item) if kind == "mcq" else None
+
+
+async def _grade_quick(
+    kind: str,
+    doc: dict[str, Any],
+    values: dict[str, Any],
+    response: str,
+    unit: str | None,
+    shown: ShownOptions | None,
+) -> GradeResult:
     try:
-        result = await asyncio.to_thread(
-            grade, item.type.value, item.answer, values, response, shown=shown
-        )
+        return await asyncio.to_thread(grade, kind, doc, values, response, shown=shown, unit=unit)
     except InvalidOptionError as exc:
         raise ApiProblem(422, "invalid_option", "That isn't one of the options.") from exc
-    return result, shown, values
+
+
+def _check_quick_body(kind: str, doc: dict[str, Any], body: AnswerIn) -> None:
+    if len(body.response) > MAX_RESPONSE:
+        raise _invalid()
+    if body.unit is not None:
+        if not (kind == "numeric" and doc["spec"].get("unit")):
+            raise ApiProblem(422, "invalid_unit_field", "This answer has no unit.")
+        if len(body.unit) > MAX_UNIT:
+            raise _invalid("That unit is too long.")
+
+
+async def _grade_answer(scope: OrgScope, item: Item, seed: int | None, body: AnswerIn) -> _Graded:
+    """Grades `body` against the item (or the step `body.step` of a multi-step item)."""
+    values = params.sample_answer(item.answer, seed)
+    if item.type.value == "code":
+        if body.code is None or body.outputs is None or len(body.code) > MAX_CODE:
+            raise _invalid("Send the code (at most 20,000 characters) and one output per test.")
+        try:
+            graded = grade_code(item.answer, body.outputs)
+        except InvalidOutputsError as exc:
+            raise _invalid("Those test outputs don't fit this question.") from exc
+        response = {
+            "code": body.code,
+            "outputs": graded.stored_outputs,
+            "verdicts": [v.status for v in graded.per_test],
+        }
+        return _Graded(GradeResult(graded.correct, ""), response, values, 0, graded)
+    step = 0
+    if item.type.value == "multistep":
+        if body.step is None:
+            raise _invalid("Say which step this answers.")
+        if body.step >= multistep.step_count(item.answer):
+            raise _conflict("step_order", "That step isn't part of this problem.")
+        step = body.step
+    kind, doc, shown = _part(scope, item, step)
+    _check_quick_body(kind, doc, body)
+    result = await _grade_quick(kind, doc, values, body.response, body.unit, shown)
+    stored: dict[str, Any] = {"raw": body.response}
+    if body.unit is not None:
+        stored["unit"] = body.unit
+    if shown is not None:
+        stored = {"option": result.chosen, "order": [o.id for o in shown.authored]}
+    return _Graded(result, stored, values, step)
+
+
+def _raw_output(stored: Mapping[str, Any]) -> dict[str, Any]:
+    """A stored output back into the shape the browser sends (for regrading)."""
+    if "value" in stored:
+        return {"json": json.dumps(stored["value"])}
+    return dict(stored)
+
+
+async def _regrade(scope: OrgScope, item: Item, seed: int | None, attempt: Attempt) -> _Graded:
+    """The grade of an answer already stored (reloads, double submits)."""
+    values = params.sample_answer(item.answer, seed)
+    response = attempt.response
+    if item.type.value == "code":
+        try:
+            graded = grade_code(item.answer, [_raw_output(o) for o in response.get("outputs", [])])
+        except InvalidOutputsError:  # the item's tests changed since: keep the stored grade
+            graded = None
+        return _Graded(GradeResult(attempt.correct, ""), response, values, 0, graded)
+    kind, doc, shown = _part(scope, item, attempt.step)
+    raw = str(response.get("raw", ""))
+    if kind == "mcq":
+        options = {o.id: o for o in (shown.authored if shown else [])}
+        order = [i for i in response.get("order", []) if i in options]
+        shown = ShownOptions([options[i] for i in order])
+        raw = shown.to_client(response.get("option"))
+    try:
+        result = await _grade_quick(kind, doc, values, raw, response.get("unit"), shown)
+    except ApiProblem:  # content changed since: keep the stored grade
+        result = GradeResult(attempt.correct, "")
+    return _Graded(result, response, values, attempt.step)
 
 
 async def _misconception(scope: OrgScope, item: Item, slug: str | None) -> tuple[Any, Any]:
@@ -318,54 +584,115 @@ def _explanation(item: Item, values: dict[str, Any]) -> str | None:
         return str(text_)
 
 
+def _step_result(result: GradeResult, title: str | None = None) -> StepResult:
+    return StepResult(
+        correct=result.correct,
+        display_answer=result.display_answer,
+        note=result.note,
+        misconception=None if title is None else MisconceptionOut(title=title),
+    )
+
+
+def _code_tests(item: Item, graded: CodeGrade) -> list[CodeTestResult]:
+    out = []
+    for t, v in zip(item.answer["spec"]["tests"], graded.per_test, strict=True):
+        expected, expected_stdout = _visible_expected(t)
+        out.append(
+            CodeTestResult(
+                visible=bool(t.get("visible")),
+                passed=v.passed,
+                status=v.status,
+                args=_test_args(t),
+                stdin=t.get("stdin"),
+                expected=expected if expected is not None else expected_stdout,
+                got=v.got,
+            )
+        )
+    return out
+
+
 async def _result(
     scope: OrgScope,
     item: Item,
-    result: GradeResult,
-    values: dict[str, Any],
+    graded: _Graded,
     *,
     correct: bool,
     session_status: str,
     results: list[bool],
     already_answered: bool,
+    item_correct: bool | None,
+    earlier_steps: Sequence[StepResult] = (),
+    solution: bool = False,
 ) -> AnswerResult:
+    """`item_correct` is None until the item is done (a multi-step item's last step).
+    `solution`: code only (KP sessions and previews always; practice once passed)."""
+    result = graded.result
     _, title = await _misconception(scope, item, result.misconception)
-    return AnswerResult(
+    kind = item.type.value
+    out = AnswerResult(
         correct=correct,
         display_answer=result.display_answer,
-        explanation_md=_explanation(item, values),
+        explanation_md=_explanation(item, graded.values),
         misconception=None if title is None else MisconceptionOut(title=title),
         note=result.note,
         session_status=session_status,
         already_answered=already_answered,
         results=results,
+        item_correct=item_correct,
     )
+    if kind == "multistep":
+        done = graded.step == multistep.step_count(item.answer) - 1
+        out.step = graded.step
+        out.step_results = [*earlier_steps, _step_result(result, title)]
+        out.item_done = done
+        if not done:
+            out.explanation_md = None
+            out.item_correct = None
+    elif kind == "code":
+        out.tests = None if graded.code is None else _code_tests(item, graded.code)
+        if solution:
+            out.solution = str(item.answer["spec"].get("solution") or "")
+        else:
+            out.explanation_md = None
+    return out
+
+
+async def _earlier_steps(
+    scope: OrgScope, item: Item, seed: int | None, rows: Sequence[Attempt], before: int
+) -> list[StepResult]:
+    return [
+        _step_result((await _regrade(scope, item, seed, a)).result)
+        for a in sorted(rows, key=lambda a: a.step)
+        if a.step < before
+    ]
 
 
 async def _stored_result(
-    scope: OrgScope, session: PracticeSession, attempt: Attempt
+    scope: OrgScope, session: PracticeSession, attempt: Attempt, rule: SolutionRule
 ) -> AnswerResult:
     """The result of an answer already given (double submit, two tabs)."""
     item = await scope.session.get(Item, attempt.item_id)
     assert item is not None
-    shown = None
-    raw = str(attempt.response.get("raw", ""))
-    if item.type.value == "mcq":
-        options = {o.id: o for o in ItemPublic.from_row(item).options or []}
-        order = [i for i in attempt.response.get("order", []) if i in options]
-        shown = ShownOptions([options[i] for i in order])
-        raw = shown.to_client(attempt.response.get("option"))
-    result, _, values = await _grade(scope, item, attempt.seed, raw, shown)
-    results = [a.correct for a in await _session_attempts(scope, session.id)]
+    seed = attempt.seed
+    graded = await _regrade(scope, item, seed, attempt)
+    attempts, results = await _session_state(scope, session.id)
+    rows = _at(attempts, attempt.position or 0)
+    done = item.type.value != "multistep" or attempt.step == multistep.step_count(item.answer) - 1
+    item_correct = None
+    if done:
+        index = sorted({a.position or 0 for a in attempts}).index(attempt.position or 0)
+        item_correct = results[index] if index < len(results) else attempt.correct
     return await _result(
         scope,
         item,
-        result,
-        values,
+        graded,
         correct=attempt.correct,
         session_status=session.status.value,
         results=results,
         already_answered=True,
+        item_correct=item_correct,
+        earlier_steps=await _earlier_steps(scope, item, seed, rows, attempt.step),
+        solution=rule == "always" or (rule == "on_pass" and bool(item_correct)),
     )
 
 
@@ -374,41 +701,95 @@ class _Answered:
     result: AnswerResult
     outcome: Outcome
     item: Item
+    item_done: bool = True
 
 
-async def _answer_in_session(
+async def _stored_at(
+    scope: OrgScope, session: PracticeSession, position: int, step: int
+) -> Attempt | None:
+    return await scope.session.scalar(
+        scope.select(Attempt).where(
+            Attempt.session_id == session.id,
+            Attempt.position == position,
+            Attempt.step == step,
+        )
+    )
+
+
+def _session_uuid(body: AnswerIn) -> uuid.UUID | None:
+    try:
+        return None if body.session_id is None else uuid.UUID(body.session_id)
+    except ValueError:
+        raise _conflict("stale_question", "That question is no longer current.") from None
+
+
+async def _answer_from_other_session(
+    scope: OrgScope,
+    other_id: uuid.UUID,
+    body: AnswerIn,
+    step: int,
+    rule: SolutionRule,
+    owner: ColumnElement[bool],
+) -> AnswerResult:
+    """A repeat of an answer given in an earlier session *of the same KP / review / practice*
+    (`owner`) gets its stored result; anything else is stale. Without `owner`, a failed practice
+    session posted to a KP route would come back under the KP's "always" solution rule."""
+    other = await scope.session.scalar(
+        scope.select(PracticeSession).where(
+            PracticeSession.id == other_id, PracticeSession.student_id == scope.user.id, owner
+        )
+    )
+    stored = None if other is None else await _stored_at(scope, other, body.position, step)
+    if other is None or stored is None:
+        raise _conflict("stale_question", "That question is no longer current.")
+    return await _stored_result(scope, other, stored, rule)
+
+
+async def answer_in_session(
     scope: OrgScope,
     session: PracticeSession | None,
     body: AnswerIn,
     context: AttemptContext,
     judge: Callable[[Sequence[bool]], Outcome],
+    rule: SolutionRule = "always",
+    *,
+    owner: ColumnElement[bool],
 ) -> _Answered | AnswerResult:
     """Grade and store one answer at the session's current position (the session row is locked).
 
-    Returns the stored result for a repeat of an answered position; 409 `stale_question` for any
-    other position mismatch."""
+    A multi-step item takes one answer per step, in order (409 `step_order`); the session's
+    results and outcome move only once its last step is answered. Returns the stored result for a
+    repeat of an answered position/step; 409 `stale_question` for any other mismatch."""
+    step = body.step or 0
+    sent = _session_uuid(body)
+    if sent is not None and (session is None or sent != session.id):
+        return await _answer_from_other_session(scope, sent, body, step, rule, owner)
     if session is None:
         raise _conflict("stale_question", "That question is no longer current.")
     if session.status != SessionStatus.active or body.position != session.current_position:
-        stored = await scope.session.scalar(
-            scope.select(Attempt).where(
-                Attempt.session_id == session.id, Attempt.position == body.position
-            )
-        )
+        stored = await _stored_at(scope, session, body.position, step)
         if stored is None:
             raise _conflict("stale_question", "That question is no longer current.")
-        return await _stored_result(scope, session, stored)
+        return await _stored_result(scope, session, stored, rule)
     assert session.current_item_id is not None
     item = await scope.session.get(Item, session.current_item_id)
     assert item is not None
-    result, shown, values = await _grade(scope, item, session.current_seed, body.response)
-    misconception_id, _ = await _misconception(scope, item, result.misconception)
+    is_multistep = item.type.value == "multistep"
+    attempts = await _session_attempts(scope, session.id)
+    here = _at(attempts, session.current_position)
+    if is_multistep and body.step is not None:
+        if body.step < len(here):
+            stored = next(a for a in here if a.step == body.step)
+            return await _stored_result(scope, session, stored, rule)
+        if body.step > len(here):
+            raise _conflict("step_order", "Answer the earlier steps first.", step=len(here))
+    elif not is_multistep and here:  # answered already at this position (a race we lost)
+        return await _stored_result(scope, session, here[0], rule)
+    graded = await _grade_answer(scope, item, session.current_seed, body)
+    misconception_id, _ = await _misconception(scope, item, graded.result.misconception)
     now = datetime.now(UTC)
     served_at = session.current_served_at or now
     elapsed = int((now - served_at).total_seconds() * 1000)
-    response: dict[str, Any] = {"raw": body.response}
-    if shown is not None:
-        response = {"option": result.chosen, "order": [o.id for o in shown.authored]}
     inserted = await scope.session.scalar(
         insert(Attempt)
         .values(
@@ -419,59 +800,68 @@ async def _answer_in_session(
             item_version=item.version,
             context=context,
             seed=session.current_seed,
-            response=response,
-            correct=result.correct,
+            response=graded.response,
+            correct=graded.result.correct,
             misconception_id=misconception_id,
             time_taken_ms=max(0, min(body.time_taken_ms, elapsed, MAX_ANSWER_MS)),
             hints_used=0,
             session_id=session.id,
             position=session.current_position,
+            step=graded.step,
         )
-        .on_conflict_do_nothing(index_elements=[Attempt.session_id, Attempt.position])
+        .on_conflict_do_nothing(index_elements=[Attempt.session_id, Attempt.position, Attempt.step])
         .returning(Attempt.id)
     )
     if inserted is None:  # can't happen while we hold the session lock; be safe anyway
-        stored = await scope.session.scalar(
-            scope.select(Attempt).where(
-                Attempt.session_id == session.id, Attempt.position == body.position
-            )
-        )
+        stored = await _stored_at(scope, session, session.current_position, graded.step)
         assert stored is not None
-        return await _stored_result(scope, session, stored)
-    results = [a.correct for a in await _session_attempts(scope, session.id)]
-    outcome = judge(results)
-    if outcome != "active":
-        session.status = SessionStatus(outcome)
-        session.ended_at = now
+        return await _stored_result(scope, session, stored, rule)
+    if is_multistep:
+        session.current_served_at = now  # time each step from the previous one
+    attempts, results = await _session_state(scope, session.id)
+    item_done = not is_multistep or graded.step == multistep.step_count(item.answer) - 1
+    outcome: Outcome = "active"
+    item_correct = None
+    if item_done:
+        item_correct = results[-1]
+        outcome = judge(results)
+        if outcome != "active":
+            session.status = SessionStatus(outcome)
+            session.ended_at = now
     out = await _result(
         scope,
         item,
-        result,
-        values,
-        correct=result.correct,
+        graded,
+        correct=graded.result.correct,
         session_status=outcome,
         results=results,
         already_answered=False,
+        item_correct=item_correct,
+        earlier_steps=await _earlier_steps(scope, item, session.current_seed, here, graded.step),
+        solution=rule == "always" or (rule == "on_pass" and outcome == "passed"),
     )
-    return _Answered(out, outcome, item)
+    return _Answered(out, outcome, item, item_done)
 
 
-async def _preview_answer(scope: OrgScope, pool: list[Item], body: AnswerIn) -> AnswerResult:
-    """Staff: grade the previewed item with its seed; nothing is written."""
+async def preview_answer(scope: OrgScope, pool: list[Item], body: AnswerIn) -> AnswerResult:
+    """Staff (and "Practise again"): grade the previewed item with its seed; nothing is written.
+
+    A multi-step item is graded one step at a time; the client keeps the earlier steps."""
     item = next((i for i in pool if str(i.id) == body.item_id), None)
     if item is None:
         raise ApiProblem(422, "invalid_item", "Send the previewed item_id and seed back.")
     seed = body.seed if item.has_params else None
-    result, _, values = await _grade(scope, item, seed, body.response)
+    graded = await _grade_answer(scope, item, seed, body)
     return await _result(
         scope,
         item,
-        result,
-        values,
-        correct=result.correct,
+        graded,
+        correct=graded.result.correct,
         session_status="active",
         results=[],
         already_answered=False,
+        item_correct=None if item.type.value == "multistep" else graded.result.correct,
+        solution=True,
     )
 
 
@@ -508,11 +898,7 @@ async def current_question(
     if scope.user.is_staff:
         if not pool:
             raise not_found()
-        item = random.choice(pool)
-        seed = secrets.randbelow(2**31) if item.has_params else None
-        return _question(
-            scope, item, seed, session_id=None, position=1, results=[], preview_seed=seed
-        )
+        return await preview_question(scope, pool)
 
     session = await _locked_kp_session(scope, ctx.kp.id)
     try:
@@ -525,19 +911,37 @@ async def current_question(
         await _on_kp_passed(scope, ctx)
         await scope.session.commit()
         raise _conflict("kp_passed", "This part has no questions left.") from None
+    out = await session_question(scope, session)
+    await scope.session.commit()
+    return out
+
+
+async def preview_question(scope: OrgScope, pool: list[Item]) -> QuestionPublic:
+    """A random item and seed (staff previews; "Practise again"); nothing is written."""
+    item = random.choice(pool)
+    seed = secrets.randbelow(2**31) if item.has_params else None
+    return await _question(
+        scope, item, seed, session_id=None, position=1, results=[], preview_seed=seed
+    )
+
+
+async def session_question(
+    scope: OrgScope, session: PracticeSession, *, prefill: str | None = None
+) -> QuestionPublic:
+    """The session's current question, with the steps answered so far (multi-step)."""
     current = await scope.session.get(Item, session.current_item_id)
     assert current is not None
-    results = [a.correct for a in await _session_attempts(scope, session.id)]
-    out = _question(
+    attempts, results = await _session_state(scope, session.id)
+    return await _question(
         scope,
         current,
         session.current_seed,
         session_id=session.id,
         position=session.current_position,
         results=results,
+        step_rows=_at(attempts, session.current_position),
+        prefill=prefill,
     )
-    await scope.session.commit()
-    return out
 
 
 async def _start_kp_session(scope: OrgScope, ctx: _KpCtx, pool: list[Item]) -> PracticeSession:
@@ -602,19 +1006,28 @@ async def _start_kp_session(scope: OrgScope, ctx: _KpCtx, pool: list[Item]) -> P
 async def answer(
     scope: OrgScope, course: str, concept: str, kp_slug: str, body: AnswerIn
 ) -> AnswerResult:
-    _check_response(body.response)
     ctx = await _kp_ctx(scope, course, concept, kp_slug)
     pool = await _pool(scope, ctx.kp.id)
     if scope.user.is_staff:
-        return await _preview_answer(scope, pool, body)
+        return await preview_answer(scope, pool, body)
 
     session = await _locked_kp_session(scope, ctx.kp.id)
-    answered = await _answer_in_session(scope, session, body, AttemptContext.kp, kp_outcome)
+    answered = await answer_in_session(
+        scope,
+        session,
+        body,
+        AttemptContext.kp,
+        kp_outcome,
+        owner=(PracticeSession.kind == SessionKind.kp) & (PracticeSession.kp_id == ctx.kp.id),
+    )
     if isinstance(answered, AnswerResult):
         await scope.session.rollback()
         return answered
     assert session is not None
     out = answered.result
+    if not answered.item_done:  # a multi-step item mid-problem: same question, next step
+        await scope.session.commit()
+        return out
     if answered.outcome == "active":
         try:
             await _serve(scope, session, pool, session.current_position + 1, ctx.kp.id)
@@ -672,8 +1085,16 @@ async def _on_kp_passed(scope: OrgScope, ctx: _KpCtx) -> tuple[bool, list[Concep
     cid = ctx.access.node.id
     front = await frontier.load(scope, [cid], graph.prereqs, promote=False)
     view = front.views[cid]
-    if view.status == "learned" or view.next_kp is not None:
+    # Spec 006: with practice pending the concept stays in progress (Practice is its next part).
+    if view.status == "learned" or not frontier.complete(view):
         return False, []
+    return True, await learned_and_unlocked(scope, graph, cid)
+
+
+async def learned_and_unlocked(
+    scope: OrgScope, graph: "learn._Graph", cid: uuid.UUID
+) -> list[ConceptRef]:
+    """Mark the concept learned; returns the dependants that became ready."""
     await frontier.mark_learned(scope, cid)
     reachable = await _reachable(scope, graph)
     dependants = [c for c, ps in graph.prereqs.items() if cid in ps and c in reachable]
@@ -682,7 +1103,7 @@ async def _on_kp_passed(scope: OrgScope, ctx: _KpCtx) -> tuple[bool, list[Concep
         (c for c in dependants if after.status(c) == "ready"),
         key=lambda c: graph.nodes[c].sort_key(),
     )
-    return True, [learn._concept_ref(graph, c) for c in unlocked]
+    return [learn._concept_ref(graph, c) for c in unlocked]
 
 
 async def _on_kp_failed(scope: OrgScope, ctx: _KpCtx) -> list[RemediationRef]:
@@ -806,7 +1227,7 @@ async def remediation_info(scope: OrgScope, remediation_id: str) -> RemediationO
 
 async def _review_kps(scope: OrgScope, rem: Remediation) -> list["frontier.KpView"]:
     kps = await frontier.active_kps(scope, [rem.prereq_concept_id])
-    return [k for k in kps if k.gradable]
+    return [k for k in kps if k.quick]  # reviews serve quick checks only (spec 006)
 
 
 async def _review_pool(
@@ -816,7 +1237,7 @@ async def _review_pool(
     if not kps:
         raise EmptyPoolError(None)
     kp = kps[(position - 1) % len(kps)]
-    return await _pool(scope, kp.id), kp.id
+    return await _pool(scope, kp.id, QUICK_TYPES), kp.id
 
 
 def _resolve_review(rem: Remediation, session: PracticeSession | None) -> None:
@@ -909,23 +1330,12 @@ async def _review_question(
         pool, key = await _review_pool(scope, kps, session.current_position)
         if session.current_item_id not in {i.id for i in pool}:
             await _serve(scope, session, pool, session.current_position, key)
-    item = await scope.session.get(Item, session.current_item_id)
-    assert item is not None
-    results = [a.correct for a in await _session_attempts(scope, session.id)]
-    out = _question(
-        scope,
-        item,
-        session.current_seed,
-        session_id=session.id,
-        position=session.current_position,
-        results=results,
-    )
+    out = await session_question(scope, session)
     await scope.session.commit()
     return out
 
 
 async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerIn) -> AnswerResult:
-    _check_response(body.response)
     rem = await _remediation(scope, remediation_id)
     # Serialise every review on this prerequisite (prereq row, then remediation, then session):
     # two reviews on the same prereq failing at once would otherwise each hold their own
@@ -943,17 +1353,23 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
     if rem.state != RemediationState.review_due:
         # A repeat of an answered position still gets its stored result; nothing else may be
         # answered once the brush-up stopped being due (e.g. a relearn closed it in another tab).
-        if session is not None and session.status != SessionStatus.active:
-            stored = await scope.session.scalar(
-                scope.select(Attempt).where(
-                    Attempt.session_id == session.id, Attempt.position == body.position
-                )
-            )
+        sent = _session_uuid(body)
+        if (
+            session is not None
+            and session.status != SessionStatus.active
+            and (sent is None or sent == session.id)
+        ):
+            stored = await _stored_at(scope, session, body.position, body.step or 0)
             if stored is not None:
-                return await _stored_result(scope, session, stored)
+                return await _stored_result(scope, session, stored, "always")
         raise _conflict("not_due", "This brush-up isn't due.", state=rem.state.value)
-    answered = await _answer_in_session(
-        scope, session, body, AttemptContext.remediation, review_outcome
+    answered = await answer_in_session(
+        scope,
+        session,
+        body,
+        AttemptContext.remediation,
+        review_outcome,
+        owner=PracticeSession.remediation_id == rem.id,
     )
     if isinstance(answered, AnswerResult):
         await scope.session.rollback()

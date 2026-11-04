@@ -1,7 +1,9 @@
 """KP flow rules (spec 005). Pure, no DB."""
 
 import itertools
+import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -153,3 +155,30 @@ def test_is_open() -> None:
 )
 def test_next_midnight_ist(now: datetime, expected: datetime) -> None:
     assert next_midnight_ist(now) == expected
+
+
+# --- spec 006: per-item results with multi-step positions -----------------------------------------
+
+
+def test_position_results_counts_a_multistep_item_once_when_done() -> None:
+    from types import SimpleNamespace
+
+    from app.services.kp_flow import position_results
+
+    ms, a, b = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+
+    def row(item: uuid.UUID, position: int, correct: bool, step: int = 0) -> Any:
+        return SimpleNamespace(item_id=item, position=position, step=step, correct=correct)
+
+    rows = [
+        row(a, 1, True),
+        row(ms, 2, True, 0),
+        row(ms, 2, False, 1),
+        row(ms, 2, True, 2),
+        row(ms, 2, True, 3),  # 3 of 4 with the last: correct
+        row(b, 3, False),
+        row(ms, 4, True, 0),  # half-answered: not counted yet
+    ]
+    assert position_results(rows, {ms: 4}) == [True, True, False]
+    assert position_results(rows[:4], {ms: 4}) == [True]
+    assert position_results([row(ms, 1, True, 1), row(ms, 1, False, 0)], {ms: 2}) == [False]

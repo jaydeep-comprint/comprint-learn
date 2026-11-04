@@ -10,7 +10,7 @@
 | Diagrams | Mermaid + static SVG/PNG in content | Can be written as text in content files |
 | Knowledge graph UI | React Flow (`@xyflow/react`) | Interactive DAG with custom nodes for mastery colours |
 | Code editor | CodeMirror 6 | Lighter than Monaco, works on mobile |
-| Python execution | **Pyodide in a Web Worker** (in-browser) | No server sandbox needed; safe and free to run |
+| Python execution | **Pyodide in a Web Worker** (in-browser), pinned (`frontend/src/features/code/protocol.ts`) and loaded from jsDelivr; CodeMirror 6 editor (lazy-loaded) | No server sandbox needed; safe and free to run |
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2 (async), Alembic | Team choice (Python); typed |
 | Database | PostgreSQL (hosted Supabase, Session pooler, port 5432) | Relational data (orgs/classes) + JSONB for content. Test DB = a separate Supabase project (`TEST_DATABASE_URL`), used only by `make test-db` and CI |
 | Auth | **Supabase Auth** (same project as the DB). FastAPI verifies its JWTs against the project JWKS (`app/core/auth.py`); our `app_user.id` = the auth user id. Teachers are invited by email; students get teacher-created accounts with a synthetic, never-emailed auth email | Don't build password, reset and invite flows ourselves; one free-tier project for DB + auth |
@@ -65,19 +65,26 @@ docs/         PRD, architecture, roadmap, specs, plans
     numbers (and so its answer) from an attempt's seed.
 - **Learning state** (tenant-owned: `TenantMixin`, composite FK `(student_id, org_id)` → `app_user`):
   - `attempt`: one row per answer submitted, with the result, time taken, hints used and the parameter seed.
-    `context` says where (`learn` in spec 004; `kp` and `remediation` in 005; later specs add more) and
-    `item_version` which version was answered. The Learn check is one try: a partial unique index allows one
-    `learn` attempt per student × item. KP and remediation answers belong to a `practice_session` at a
-    `position` (unique per session; a CHECK ties `session_id` to those contexts). `response` is `{raw}`
-    (MCQ: `{option, order}` with authored ids).
+    `context` says where (`learn` in spec 004; `kp` and `remediation` in 005; `practice` in 006; later specs
+    add more) and `item_version` which version was answered. The Learn check is one try: a partial unique index
+    allows one `learn` attempt per student × item. KP, remediation and practice answers belong to a
+    `practice_session` at a `position`; a multi-step item stores one row per answered `step` (0 otherwise), and
+    `(session_id, position, step)` is unique (a CHECK ties `session_id` to those contexts). `response` is
+    `{raw}` plus `unit` for numeric answers with a unit (MCQ: `{option, order}` with authored ids; code:
+    `{code, outputs, verdicts}`, one output per test in authored order: `{value}` | `{stdout}` | `{error}` |
+    `{timeout}`).
   - `lesson_progress` (spec 004): per student × concept, the Learn lesson's `seen_steps`, `last_step` (resume) and
     `finished_at` (set once, when the check is answered and every current `kp:` step is seen). Since spec 005 it
     is for analytics only ("Learn layer read") and gates nothing.
   - `study_time` (spec 004): append-only active seconds per student × concept × step (1–600 per row, ids only),
     for the "time in practice vs theory" metric. `activity` is `learn` (intro/check/worked examples) or
-    `practice` (spec 005: `kpq:` question steps, and `remediation` reviews logged against the prerequisite).
+    `practice` (spec 005: `kpq:` question steps, and `remediation` reviews logged against the prerequisite;
+    spec 006: the `practice` step).
   - `concept_state` (spec 005): per student × concept, stores only `in_progress` (created on the lesson's first
-    progress post) and `learned` (every active KP passed), plus `source` (lesson | diagnostic | teacher),
+    progress post) and `learned` (every active KP passed **and**, since spec 006, a passed practice session for the
+    concept when it has active practice items; concepts learned before stay learned, and a relearn after a failed
+    review needs only the KPs again because the earlier practice pass still counts), plus `source`
+    (lesson | diagnostic | teacher),
     `learned_at` and `relearn_count`. `ready` (every direct prerequisite learned) and `locked` are computed
     (`app/services/frontier.py`). **"Learned" is the gate** that opens dependants (the knowledge frontier); a
     started concept never re-locks.
@@ -85,11 +92,12 @@ docs/         PRD, architecture, roadmap, specs, plans
     `passed_at`, `failed_at` and `reopen_at` (next 00:00 Asia/Kolkata). A failed KP reopens on read: its
     remediations are resolved and the cooldown is over, or the student passed a KP in another concept or a
     remediation review since.
-  - `practice_session` (spec 005; 007 may reuse it): one try at a KP's questions (`kind = kp`) or one remediation
-    review (`kind = remediation`), with status (active | passed | failed) and the question being shown
+  - `practice_session` (spec 005; 007 may reuse it): one try at a KP's questions (`kind = kp`), one remediation
+    review (`kind = remediation`) or, since spec 006, one practice item for a concept (`kind = practice`,
+    `concept_id`; it passes or fails with that item), with status (active | passed | failed) and the question being shown
     (`current_item_id`, `current_seed`, `current_position`, `current_served_at`), stored before it's returned so
-    reloads get the same question. Partial unique indexes allow one active session per student × KP and per
-    remediation. Spec 008 reads failed sessions for negative XP.
+    reloads get the same question. Partial unique indexes allow one active session per student × KP, per
+    remediation and per student × concept (practice). Spec 008 reads failed sessions for negative XP.
   - `remediation` (spec 005): created by the 2nd (and later) fail of a KP, one per active key prerequisite
     (`kp_key_prereq`): `review_due` (a 3–5 question review) if the prerequisite is learned, else `relearn`; a failed
     review sends the prerequisite back to in progress (KPs reset, history kept). Resolved when the review passes or
@@ -108,7 +116,7 @@ docs/         PRD, architecture, roadmap, specs, plans
 | 3 | **Mastery = knowledge points.** A concept is 3–4 KPs; each KP is a worked example plus 2–5 questions (more after a wrong answer). Failing a KP ends the lesson, and the student retries **later** with new questions. Two fails at the same KP schedule reviews of its key prerequisites. A concept is *learned* when every KP passes. A concept is *ready* (on the knowledge frontier) when all of its prerequisites are learned | Proven by Math Academy (95% first-try pass rate); simple to explain; Bloom stays useful as tags | A mastery score per Bloom level as the gate (rejected Oct 2026; see research doc) |
 | 4 | Learn layer = intro + worked examples + one misconception check (Remember/Understand). Practice = KP questions, multi-step problems, code (Apply → Create). Bloom levels are **tags on items**, used for teacher analytics and depth views | Matches the two-layer idea without turning Bloom into a gate | |
 | 5 | **XP = item.expected_minutes × performance multiplier** (perfect 1.2, pass 1.0, partial 0.3, poor 0, rushing or guessing a small negative). Hints reduce it, repeats earn less, and there's no "I don't know" button. Daily goal ~30–40 XP. Progress bars count **concepts learned**, not XP | 1 XP ≈ 1 min of focused work (Math Academy); implementations earn most because they take longest; penalties stop XP farming | Bloom-weighted XP (rejected Oct 2026) |
-| 6 | Python runs client-side in Pyodide. MVP grading also runs client-side | No sandbox infrastructure needed | Judge0 / server sandbox (**v2**, when XP needs to be cheat-proof) |
+| 6 | Python runs client-side in Pyodide. The browser runs every test (visible tests, and hidden tests' *inputs*) and sends the outputs; the server compares them with expected values only it keeps (`app/grading/code.py`, the same comparison the content validator uses), so hidden expected values never reach the client. Return values travel as JSON text made by Python, so `1`, `1.0` and `True` stay distinct through JavaScript. The server never runs code and can't detect hand-crafted outputs (stored with the code for later review) | No sandbox infrastructure needed | Judge0 / server sandbox (**v2**, when XP needs to be cheat-proof) |
 | 7 | Maths and physics answers are checked **server side** with SymPy | Answers are never sent to the client | Client-side checking (leaks answers) |
 | 8 | **The AI tutor never lowers the bar.** It sees only the current item/KP content and the student's attempts. It points to the worked example, the key prerequisite, or an experiment to try; it never gives the answer or the next step. Hints are capped per item and reduce XP, and teachers see hint usage. Text only. Rate-limited per student per day. Measured in the pilot | Math Academy's critique of chat tutors plus Vizuara's "try this experiment" style; cost and DPDP | General chatbot; voice or screen-watching tutor |
 | 9 | **Spaced repetition per concept** (FSRS, starting when a concept is learned). A review is 3–5 mixed questions across that concept's KPs, judged on the trend of answers. Passing a review or lesson gives **one-level implicit credit** to prerequisites (`encompassing_weight` × credit, discounted when early), switched off for struggling students. Reviews are interleaved across concepts; daily cap ~5 | Far fewer reviews than per-item cards; uses the graph | Per-item flashcards; full multi-level FIRe (v2) |

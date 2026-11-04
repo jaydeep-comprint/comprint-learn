@@ -1,7 +1,8 @@
 """Learn layer (spec 004): student courses, course outlines with borrowed prerequisites, lessons,
 the one-try misconception check, progress and study time. Spec 005: statuses come from the
 knowledge frontier (`app/services/frontier.py`; "learned" opens dependants) and lessons interleave
-each KP's worked example with its questions (`kpq:` steps, `app/services/kp_flow.py`).
+each KP's worked example with its questions (`kpq:` steps, `app/services/kp_flow.py`). Spec 006:
+lessons end with a required `practice` step (`app/services/practice.py`).
 
 Content is global (read without `OrgScope`); learning state (`attempt`, `lesson_progress`,
 `study_time`, `concept_state`, ...) is tenant-owned and read/written only through the caller's
@@ -58,6 +59,7 @@ from app.schemas.learn import (
     HomeConcept,
     KpOut,
     Lesson,
+    LessonPractice,
     LessonWaiting,
     LockedPrereq,
     MisconceptionOut,
@@ -152,10 +154,17 @@ def shuffled_order(
     return order
 
 
-def lesson_steps(kp_slugs: Iterable[str], *, has_check: bool) -> list[str]:
-    """`intro` → `check` → per KP: `kp:<slug>` (worked example) → `kpq:<slug>` (questions)."""
+PRACTICE_STEP = "practice"
+
+
+def lesson_steps(
+    kp_slugs: Iterable[str], *, has_check: bool, has_practice: bool = False
+) -> list[str]:
+    """`intro` → `check` → per KP: `kp:<slug>` (worked example) → `kpq:<slug>` (questions) →
+    `practice` (spec 006, when the concept has practice items)."""
     kp_steps = [step for slug in kp_slugs for step in (f"kp:{slug}", f"kpq:{slug}")]
-    return ["intro", *(["check"] if has_check else []), *kp_steps]
+    practice = [PRACTICE_STEP] if has_practice else []
+    return ["intro", *(["check"] if has_check else []), *kp_steps, *practice]
 
 
 # --- the content graph (global) -------------------------------------------------------------------
@@ -356,6 +365,9 @@ def _home_concept(graph: "_Graph", view: frontier.ConceptView) -> HomeConcept:
         title=graph.nodes[view.id].title,
         kps_passed=view.kps_passed,
         kps_total=view.kps_total,
+        parts_passed=view.parts_passed,
+        parts_total=view.parts_total,
+        practice_left=view.practice_left,
         reopen_at=None if waiting is None else waiting.reopen_at,
     )
 
@@ -413,9 +425,11 @@ async def outline(scope: OrgScope, course_slug: str) -> Outline:
     pairs = graph.outline(course_slug)
     ids = [c for c, _ in pairs]
     kps_total: dict[uuid.UUID, int] = {}
+    with_practice: set[uuid.UUID] = set()
     if staff:
         for kp in await frontier.active_kps(scope, ids):
             kps_total[kp.concept_id] = kps_total.get(kp.concept_id, 0) + 1
+        with_practice = await frontier.practice_concepts(scope, ids)
         views: dict[uuid.UUID, frontier.ConceptView] = {}
     else:
         views = (await frontier.load(scope, ids, graph.prereqs)).views
@@ -435,6 +449,12 @@ async def outline(scope: OrgScope, course_slug: str) -> Outline:
                 prereqs=[graph.nodes[p].ref for p in graph.prereqs.get(cid, [])],
                 kps_passed=0 if view is None else view.kps_passed,
                 kps_total=kps_total.get(cid, 0) if view is None else view.kps_total,
+                parts_passed=0 if view is None else view.parts_passed,
+                parts_total=(
+                    kps_total.get(cid, 0) + (cid in with_practice)
+                    if view is None
+                    else view.parts_total
+                ),
                 waiting=None if waiting is None else Waiting(reopen_at=waiting.reopen_at),
                 brush_up=False if view is None else view.brush_up,
                 brush_up_id=None if view is None else view.brush_up_id,
@@ -518,10 +538,15 @@ class _LessonContent:
     concept: Concept
     kps: list[KnowledgePoint]
     check: Item | None
+    has_practice: bool = False
 
     @property
     def steps(self) -> list[str]:
-        return lesson_steps((kp.slug for kp in self.kps), has_check=self.check is not None)
+        return lesson_steps(
+            (kp.slug for kp in self.kps),
+            has_check=self.check is not None,
+            has_practice=self.has_practice,
+        )
 
     @property
     def kp_steps(self) -> set[str]:
@@ -546,7 +571,8 @@ async def _content(scope: OrgScope, concept_id: uuid.UUID) -> _LessonContent:
             Item.retired_at.is_(None),
         )
     )
-    return _LessonContent(concept, list(kps), check)
+    has_practice = concept_id in await frontier.practice_concepts(scope, [concept_id])
+    return _LessonContent(concept, list(kps), check, has_practice)
 
 
 def _shown_options(scope: OrgScope, item: Item) -> ShownOptions:
@@ -633,6 +659,10 @@ async def lesson(scope: OrgScope, course_slug: str, concept_slug: str) -> Lesson
         waiting = LessonWaiting(
             kp=wkp.slug, reopen_at=wkp.reopen_at, remediations=[ref for _, ref in refs]
         )
+    practice = LessonPractice(
+        status=(("pending" if content.has_practice else "none") if view is None else view.practice),
+        active=view is not None and await _active_practice(scope, access.node.id),
+    )
     await scope.session.commit()  # a promotion on read (frontier.load in _access)
     return Lesson(
         id=access.node.ref,
@@ -648,6 +678,7 @@ async def lesson(scope: OrgScope, course_slug: str, concept_slug: str) -> Lesson
         preview=scope.user.is_staff,
         concept_status=None if view is None else view.status,
         waiting=waiting,
+        practice=practice,
     )
 
 
@@ -686,6 +717,20 @@ async def _active_kp_sessions(scope: OrgScope, kp_ids: list[uuid.UUID]) -> set[u
         )
     )
     return {kp_id for kp_id in rows.all() if kp_id is not None}
+
+
+async def _active_practice(scope: OrgScope, concept_id: uuid.UUID) -> bool:
+    row = await scope.session.scalar(
+        scope.select(PracticeSession)
+        .with_only_columns(PracticeSession.id)
+        .where(
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.concept_id == concept_id,
+            PracticeSession.status == SessionStatus.active,
+        )
+        .limit(1)
+    )
+    return row is not None
 
 
 async def _touch_progress(scope: OrgScope, concept_id: uuid.UUID, step: str) -> LessonProgress:
@@ -764,7 +809,7 @@ async def record_progress(
         raise ApiProblem(422, "invalid_step", "That step isn't part of this lesson.")
     seconds = min(active_seconds, MAX_STEP_SECONDS)
     if seconds > 0:
-        practice = remediation or step.startswith("kpq:")
+        practice = remediation or step.startswith("kpq:") or step == PRACTICE_STEP
         scope.new(
             StudyTime,
             student_id=scope.user.id,

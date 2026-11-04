@@ -12,6 +12,7 @@ import type {
   Question,
   RemediationInfo,
   StudentCourse,
+  TestOutput,
 } from "@/lib/types";
 
 export const learnKeys = {
@@ -20,6 +21,8 @@ export const learnKeys = {
   outline: (course: string) => ["learn", "outline", course] as const,
   lesson: (concept: string) => ["learn", "lesson", concept] as const,
   question: (concept: string, kp: string) => ["learn", "question", concept, kp] as const,
+  practice: (concept: string, again: boolean) =>
+    ["learn", "practice", concept, again ? "again" : "attempt"] as const,
   remediation: (id: string) => ["learn", "remediation", id] as const,
   remediationQuestion: (id: string) => ["learn", "remediation", id, "question"] as const,
 };
@@ -86,9 +89,23 @@ export function useSubmitCheck(concept: string) {
   });
 }
 
-export type AnswerBody = {
+/** What a student enters (one question, or one step of a multi-step problem). */
+export type AnswerFields = {
+  response?: string;
+  /** Numeric with a unit only. */
+  unit?: string;
+  /** Multi-step: the step answered. */
+  step?: number;
+  /** Code: the source and one output per test (authored order). */
+  code?: string;
+  outputs?: TestOutput[];
+};
+
+export type AnswerBody = AnswerFields & {
   position: number;
-  response: string;
+  /** The session the question was shown in: an answer from an earlier one is never graded
+   * against the current one (another tab, a practice retry). */
+  session_id?: string;
   time_taken_ms: number;
   item_id?: string;
   seed?: number | null;
@@ -111,6 +128,28 @@ export function submitKpAnswer(concept: string, kp: string, body: AnswerBody) {
     method: "POST",
     body,
   });
+}
+
+/** The lesson's Practice step (spec 006). `again`: re-practice a learned concept (writes nothing). */
+export function usePracticeQuestion(concept: string, again = false, enabled = true) {
+  return useQuery({
+    queryKey: learnKeys.practice(concept, again),
+    queryFn: () =>
+      apiFetch<Question>(
+        `/api/v1/learn/concepts/${concept}/practice/question${again ? "?again=true" : ""}`,
+      ),
+    retry: retryUnlessClientError,
+    enabled,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  });
+}
+
+export function submitPracticeAnswer(concept: string, body: AnswerBody, again = false) {
+  return apiFetch<AnswerResult>(
+    `/api/v1/learn/concepts/${concept}/practice/answer${again ? "?again=true" : ""}`,
+    { method: "POST", body },
+  );
 }
 
 export function useRemediation(id: string) {

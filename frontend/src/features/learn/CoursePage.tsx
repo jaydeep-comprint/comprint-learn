@@ -137,9 +137,9 @@ function ConceptRow({
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2 font-medium">
           {concept.title}
-          {concept.status === "in_progress" && concept.kps_total > 0 && (
+          {concept.status === "in_progress" && concept.parts_total > 0 && (
             <span className="text-sm font-normal text-muted-foreground">
-              {concept.kps_passed}/{concept.kps_total}
+              {concept.parts_passed}/{concept.parts_total}
             </span>
           )}
           {concept.waiting && (

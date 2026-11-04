@@ -8,8 +8,8 @@ const IN_PROGRESS_MAX = 0.5;
  * to dark blue (learned). In-progress concepts stop short of the learned shade. */
 export function mastery(concept: OutlineConcept): number {
   if (concept.status === "learned") return 1;
-  if (concept.status !== "in_progress" || concept.kps_total === 0) return 0;
-  return Math.min(concept.kps_passed / concept.kps_total, 1) * IN_PROGRESS_MAX;
+  if (concept.status !== "in_progress" || concept.parts_total === 0) return 0;
+  return Math.min(concept.parts_passed / concept.parts_total, 1) * IN_PROGRESS_MAX;
 }
 
 /** From this mastery on, the fill is dark enough that text switches to white. */

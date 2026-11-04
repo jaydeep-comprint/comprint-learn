@@ -84,6 +84,30 @@ def multistep_item(id_: str) -> dict[str, Any]:
     }
 
 
+def code_item(id_: str, **code: Any) -> dict[str, Any]:
+    """A fixed code item whose solution passes its tests."""
+    return {
+        "id": id_,
+        "type": "code",
+        "bloom": "create",
+        "expected_minutes": 5,
+        "prompt": "Write `double(n)`.",
+        "answer": {
+            "code": {
+                "entry": "double",
+                "starter": "def double(n):\n    pass\n",
+                "solution": "def double(n):\n    return n * 2\n",
+                "tests": [
+                    {"args": [1], "expected": 2, "visible": True},
+                    {"args": [3], "expected": 6},
+                    {"args": [0], "expected": 0},
+                ],
+            }
+            | code
+        },
+    }
+
+
 def kp(n: int, concept: str = "c1") -> dict[str, Any]:
     # Pool weight: 3 param items (2 each) + 2 fixed (1 each) = 8.
     return {

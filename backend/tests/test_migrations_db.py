@@ -73,3 +73,73 @@ async def test_0005_backfills_started_lessons_as_in_progress(db_app: DbApp) -> N
     assert [(r.student_id, r.concept_id, r.status) for r in rows] == [
         (student, concept_id, ConceptStatus.in_progress)
     ]
+
+
+async def test_0006_round_trip_drops_practice_rows(db_app: DbApp) -> None:
+    """0006 down and up again with a practice session and multi-step step rows in place."""
+    issues, report = await import_tree(DEFAULT_CONTENT_ROOT, db_app.sessions)
+    assert report is not None, [str(i) for i in issues]
+    async with db_app.sessions() as session:
+        school = await seed_school(session, "AAA")
+        concept_id = await session.scalar(select(Concept.id).where(Concept.slug == "acceleration"))
+        item_id = await session.scalar(
+            text(
+                "SELECT id FROM item WHERE concept_id = :c AND kind = 'practice' AND "
+                "type = 'multistep' LIMIT 1"
+            ),
+            {"c": concept_id},
+        )
+        session_id = await session.scalar(
+            text(
+                "INSERT INTO practice_session (id, org_id, student_id, kind, concept_id, status, "
+                "current_item_id, current_position) VALUES (gen_random_uuid(), :org, :student, "
+                "'practice', :concept, 'active', :item, 1) RETURNING id"
+            ),
+            {
+                "org": school.org_id,
+                "student": school.student_ids[3],
+                "concept": concept_id,
+                "item": item_id,
+            },
+        )
+        for step in (0, 1):
+            await session.execute(
+                text(
+                    "INSERT INTO attempt (id, org_id, student_id, item_id, item_version, context, "
+                    "response, correct, time_taken_ms, session_id, position, step) VALUES "
+                    "(gen_random_uuid(), :org, :student, :item, 1, 'practice', '{}', true, 1000, "
+                    ":session, 1, :step)"
+                ),
+                {
+                    "org": school.org_id,
+                    "student": school.student_ids[3],
+                    "item": item_id,
+                    "session": session_id,
+                    "step": step,
+                },
+            )
+        await session.commit()
+
+    env = {**os.environ, "DATABASE_URL": get_settings().test_database_url or ""}
+
+    def alembic(*args: str) -> None:
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND_DIR,
+            env=env,
+            check=True,
+            capture_output=True,
+        )
+
+    await db_app.sessions.kw["bind"].dispose()
+    alembic("downgrade", "0005_kp_flow")
+    try:
+        async with db_app.sessions() as session:
+            assert await session.scalar(text("SELECT count(*) FROM attempt")) == 0
+            assert await session.scalar(text("SELECT count(*) FROM practice_session")) == 0
+        await db_app.sessions.kw["bind"].dispose()
+    finally:
+        alembic("upgrade", "head")
+    async with db_app.sessions() as session:
+        conn = await session.connection()
+        assert await conn.run_sync(_diff) == []

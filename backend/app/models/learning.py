@@ -39,6 +39,7 @@ class AttemptContext(enum.StrEnum):
     learn = "learn"
     kp = "kp"
     remediation = "remediation"
+    practice = "practice"  # spec 006: the lesson's Practice step
 
 
 class StudyActivity(enum.StrEnum):
@@ -69,6 +70,7 @@ class KpStatus(enum.StrEnum):
 class SessionKind(enum.StrEnum):
     kp = "kp"
     remediation = "remediation"
+    practice = "practice"  # spec 006: one practice item for a concept
 
 
 class SessionStatus(enum.StrEnum):
@@ -118,15 +120,18 @@ def _now() -> Mapped[datetime]:
 class Attempt(TenantMixin, Base):
     """One answer submitted. Append-only; the Learn check allows one per student and item.
 
-    KP and remediation answers (spec 005) belong to a `practice_session` at a `position`."""
+    KP, remediation and practice answers (specs 005, 006) belong to a `practice_session` at a
+    `position`; a multi-step item stores one row per answered `step` (0 otherwise)."""
 
     __tablename__ = "attempt"
     __table_args__ = (
         _student_fk("attempt"),
         _tenant_fk("session_id", "attempt", "practice_session"),
-        UniqueConstraint("session_id", "position", name="uq_attempt_session_id_position"),
+        UniqueConstraint(
+            "session_id", "position", "step", name="uq_attempt_session_id_position_step"
+        ),
         CheckConstraint(
-            "(context IN ('kp', 'remediation')) = (session_id IS NOT NULL)",
+            "(context IN ('kp', 'remediation', 'practice')) = (session_id IS NOT NULL)",
             name="session_iff_practice",
         ),
         Index("ix_attempt_org_student_created", "org_id", "student_id", "created_at"),
@@ -158,6 +163,7 @@ class Attempt(TenantMixin, Base):
     hints_used: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
     session_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     position: Mapped[int | None] = mapped_column(SmallInteger)
+    step: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -291,7 +297,8 @@ class Remediation(TenantMixin, Base):
 
 
 class PracticeSession(TenantMixin, Base):
-    """One try at a KP's questions, or one remediation review (007 may reuse it for reviews).
+    """One try at a KP's questions, one remediation review, or one practice item for a concept
+    (spec 006; 007 may reuse it for reviews).
 
     The question being shown (`current_*`) is stored before it is returned, so reloads and other
     tabs get the same item, seed and position."""
@@ -303,7 +310,8 @@ class PracticeSession(TenantMixin, Base):
         UniqueConstraint("id", "org_id", name="uq_practice_session_id_org_id"),
         CheckConstraint(
             "(kind = 'kp') = (kp_id IS NOT NULL) "
-            "AND (kind = 'remediation') = (remediation_id IS NOT NULL)",
+            "AND (kind = 'remediation') = (remediation_id IS NOT NULL) "
+            "AND (kind = 'practice') = (concept_id IS NOT NULL)",
             name="kind_links",
         ),
         Index(
@@ -312,6 +320,13 @@ class PracticeSession(TenantMixin, Base):
             "kp_id",
             unique=True,
             postgresql_where=text("status = 'active' AND kind = 'kp'"),
+        ),
+        Index(
+            "uq_practice_session_active_practice",
+            "student_id",
+            "concept_id",
+            unique=True,
+            postgresql_where=text("status = 'active' AND kind = 'practice'"),
         ),
         Index(
             "uq_practice_session_active_remediation",
@@ -329,6 +344,9 @@ class PracticeSession(TenantMixin, Base):
         UUID(as_uuid=True), _content_fk("knowledge_point.id")
     )
     remediation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    concept_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), _content_fk("concept.id")
+    )
     status: Mapped[SessionStatus] = mapped_column(
         _pg_enum(SessionStatus, "session_status"), nullable=False
     )

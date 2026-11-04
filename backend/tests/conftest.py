@@ -69,7 +69,8 @@ def _require_test_db(request: pytest.FixtureRequest) -> Iterator[None]:
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 TENANT_TABLES = (
     "organization, app_user, school_class, class_teacher, enrollment, "
-    "attempt, lesson_progress, study_time"
+    "attempt, lesson_progress, study_time, concept_state, kp_progress, practice_session, "
+    "remediation"
 )
 CONTENT_TABLES = (
     "course, chapter, concept, concept_prereq, knowledge_point, kp_key_prereq, misconception, item"

@@ -76,6 +76,10 @@ questions after each worked example). One step per screen.
   already comply). `content/README.md` documents it.
 - Options are shown in `public` order, or, if `shuffle` is true, in an order derived deterministically from
   `(student_id, item_id)` so a reload doesn't reshuffle. Staff preview uses authored order.
+- **Option ids** (decided in implementation): clients never see authored option ids, which would give the answer
+  away (authors tend to put the correct option first). They get positional ids `"1".."n"` in the order shown; the
+  server maps them back (`_ShownOptions` in `app/services/learn.py`). `option_id`, `chosen` and `correct_option`
+  in the API are positional; `attempt.response` stores authored ids. Later specs reusing MCQs must do the same.
 - **One try**. `POST …/check` with `{option_id, time_taken_ms}`:
   - Unknown option id → 422 `{"code": "invalid_option"}`.
   - Stores one `attempt` (context `learn`, `item_version`, `response = {option, order}`, `correct`, the chosen

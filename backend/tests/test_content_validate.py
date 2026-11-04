@@ -413,3 +413,41 @@ def test_misconception_check_without_params(tmp_path: Path) -> None:
     assert _issues(tmp_path, t) == [
         f"{CONCEPT}: misconception_check (check): the misconception check can't have params"
     ]
+
+
+def test_kp_needs_two_gradable_questions(tmp_path: Path) -> None:
+    t = fx.tree()
+    _concept(t)["kps"][0]["items"] = [
+        fx.fixed_item("kp1-q1"),
+        *(fx.multistep_item(f"kp1-q{n}") for n in range(2, 6)),
+    ]
+    assert _issues(tmp_path, t) == [
+        f"{CONCEPT}: kps[0] (kp1): only 1 numeric/expression/mcq questions; KP practice needs "
+        ">= 2 (code items aren't served until spec 006)"
+    ]
+
+
+def test_fixed_only_pool_needs_five(tmp_path: Path) -> None:
+    t = fx.tree()
+    _concept(t)["kps"][0]["items"] = [
+        *(fx.fixed_item(f"kp1-q{n}") for n in range(1, 5)),
+        fx.multistep_item("kp1-q5"),
+    ]
+    assert _issues(tmp_path, t) == [
+        f"{CONCEPT}: kps[0] (kp1): only 4 fixed numeric/expression/mcq questions and none with "
+        "params; a KP needs >= 5 fixed ones (or a param item) so a 5-question session never "
+        "repeats a question whose answer was shown"
+    ]
+
+
+def test_warning_few_gradable_slots(tmp_path: Path) -> None:
+    t = fx.tree()
+    _concept(t)["kps"][0]["items"] = [
+        fx.numeric_item("kp1-q1"),
+        *(fx.multistep_item(f"kp1-q{n}") for n in range(2, 6)),
+        fx.fixed_item("kp1-q6"),
+    ]
+    assert _issues(tmp_path, t, "warning") == [
+        f"{CONCEPT}: kps[0] (kp1): gradable question weight is 3; aim for >= 5 "
+        "(fixed item = 1, param item = 2) so a 5-question KP session never runs dry"
+    ]

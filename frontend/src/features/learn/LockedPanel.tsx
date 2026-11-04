@@ -5,12 +5,12 @@ import { lessonPath, STATUS_LABELS } from "@/features/learn/paths";
 import { StatusIcon } from "@/features/learn/StatusIcon";
 import type { LockedPrereq } from "@/lib/types";
 
-/** "Finish these first": the unfinished direct prerequisites of a locked concept. */
+/** "Learn these first": the direct prerequisites of a locked concept that aren't learned yet. */
 export function LockedPanel({ course, prereqs }: { course: string; prereqs: LockedPrereq[] }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        This lesson builds on these. Finish them first and it opens.
+        This lesson builds on these. Learn them first and it opens.
       </p>
       <ul className="divide-y rounded-lg border">
         {prereqs.map((p) => {

@@ -2,36 +2,46 @@
 
 import asyncio
 import uuid
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, select, text
 
-from app.cli import DEFAULT_CONTENT_ROOT
-from app.content.importer import import_tree
 from app.models import (
     Attempt,
     AttemptContext,
+    ConceptState,
     Enrollment,
+    KpProgress,
     LessonProgress,
     Misconception,
+    PracticeSession,
+    Remediation,
     SchoolClass,
     StudyTime,
     Subject,
 )
 from app.services.learn import learn_attempt_insert
 from tests.conftest import DbApp
-from tests.db_seed import School, seed_school
+from tests.learn_helpers import (
+    DIST,
+    LIN,
+    MATHS,
+    PHYSICS,
+    SPEED,
+    count,
+    get,
+    keys,
+    learn_concept,
+    post,
+    statuses,
+    url,
+    world,
+)
 
 pytestmark = pytest.mark.db
 
-PHYSICS = "physics-9-10"
-MATHS = "maths-9-10"
-DIST = f"{PHYSICS}/distance-and-displacement"
-SPEED = f"{PHYSICS}/speed-and-velocity"
-LIN = f"{MATHS}/linear-equations-two-variables"
 LEAKS = {
     "correct",
     "correct_option",
@@ -42,55 +52,13 @@ LEAKS = {
 }
 
 
-@dataclass
-class World:
-    a: School
-    b: School
-
-    @property
-    def maths_student(self) -> uuid.UUID:
-        return self.a.student_ids[0]  # 9A maths only
-
-    @property
-    def physics_student(self) -> uuid.UUID:
-        return self.a.student_ids[3]  # 9B physics only
-
-
-async def _world(db: DbApp) -> World:
-    issues, report = await import_tree(DEFAULT_CONTENT_ROOT, db.sessions)
-    assert report is not None, [str(i) for i in issues]
-    async with db.sessions() as session:
-        a = await seed_school(session, "AAA")
-        b = await seed_school(session, "BBB")
-    return World(a, b)
-
-
-def _keys(data: object) -> set[str]:
-    if isinstance(data, dict):
-        return set(data) | {k for v in data.values() for k in _keys(v)}
-    if isinstance(data, list):
-        return {k for v in data for k in _keys(v)}
-    return set()
-
-
-def _url(ref: str, tail: str = "") -> str:
-    return f"/api/v1/learn/concepts/{ref}{tail}"
-
-
-async def _get(db: DbApp, user: uuid.UUID, path: str) -> Any:
-    r = await db.client.get(path, headers=db.auth(user))
-    assert r.status_code == 200, r.text
-    return r.json()
-
-
-async def _post(db: DbApp, user: uuid.UUID, path: str, body: dict[str, Any]) -> Any:
-    r = await db.client.post(path, json=body, headers=db.auth(user))
-    assert r.status_code == 200, r.text
-    return r.json()
-
-
-def _statuses(outline: dict[str, Any]) -> dict[str, str | None]:
-    return {c["id"]: c["status"] for ch in outline["chapters"] for c in ch["concepts"]}
+_world = world
+_keys = keys
+_url = url
+_get = get
+_post = post
+_statuses = statuses
+_count = count
 
 
 # The correct option's text in each sample check (clients only see positional option ids).
@@ -114,21 +82,17 @@ async def _finish(db: DbApp, user: uuid.UUID, ref: str) -> dict[str, Any]:
     return out
 
 
-async def _count(db: DbApp, model: Any, **where: Any) -> int:
-    async with db.sessions() as session:
-        stmt = select(func.count()).select_from(model)
-        for k, v in where.items():
-            stmt = stmt.where(getattr(model, k) == v)
-        return int(await session.scalar(stmt) or 0)
-
-
 async def test_physics_student_courses_and_outline(db_app: DbApp) -> None:
     w = await _world(db_app)
     courses = await _get(db_app, w.physics_student, "/api/v1/learn/courses")
     assert [c["slug"] for c in courses] == [PHYSICS]
-    assert courses[0]["finished"] == 0
-    assert courses[0]["total"] == 4  # 3 own + the borrowed maths concept
-    assert courses[0]["continue"] == {"id": DIST, "title": "Distance and displacement"}
+    card = courses[0]
+    assert card["learned"] == 0
+    assert card["total"] == 4  # 3 own + the borrowed maths concept
+    assert "continue" not in card  # no auto-pick: the student chooses
+    assert [c["id"] for c in card["ready"]] == [DIST, LIN]
+    assert card["ready_count"] == 2
+    assert card["in_progress"] == card["waiting"] == card["brush_up"] == []
 
     outline = await _get(db_app, w.physics_student, f"/api/v1/learn/courses/{PHYSICS}/outline")
     order = list(_statuses(outline))
@@ -157,7 +121,18 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
     w = await _world(db_app)
     s = w.physics_student
     lesson = await _get(db_app, s, _url(DIST))
-    assert lesson["steps"] == ["intro", "check", "kp:kp1", "kp:kp2", "kp:kp3"]
+    assert lesson["steps"] == [
+        "intro",
+        "check",
+        "kp:kp1",
+        "kpq:kp1",
+        "kp:kp2",
+        "kpq:kp2",
+        "kp:kp3",
+        "kpq:kp3",
+    ]
+    assert lesson["concept_status"] == "ready" and lesson["waiting"] is None
+    assert [k["status"] for k in lesson["kps"]] == ["not_started"] * 3
     assert lesson["progress"] is None and lesson["check_result"] is None
     assert (
         lesson["asset_base"] == "/content-assets/physics-9-10/01-motion/distance-and-displacement/"
@@ -234,10 +209,15 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
         seconds = (await session.scalars(select(StudyTime.active_seconds))).all()
     assert sorted(seconds) == [5, 30, 600]  # 3000 clamped, 0 dropped
 
-    # SPEED still needs LIN; finish it from the Physics page.
+    # Spec 005: a "finished" (read) lesson no longer unlocks anything; only learned does.
     outline = await _get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
+    assert _statuses(outline)[DIST] == "in_progress"
     assert _statuses(outline)[SPEED] == "locked"
     await _finish(db_app, s, LIN)
+    outline = await _get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
+    assert _statuses(outline)[SPEED] == "locked"
+    await learn_concept(db_app, s, DIST)
+    await learn_concept(db_app, s, LIN)
     outline = await _get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
     assert _statuses(outline)[SPEED] == "ready"
 
@@ -263,11 +243,11 @@ async def test_progress_is_shared_across_courses(db_app: DbApp) -> None:
     courses = await _get(db_app, s, "/api/v1/learn/courses")
     assert [c["slug"] for c in courses] == [MATHS, PHYSICS]
 
-    await _finish(db_app, s, LIN)  # as a Maths student
+    await learn_concept(db_app, s, LIN)  # as a Maths student
     physics = await _get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
-    assert _statuses(physics)[LIN] == "finished"
+    assert _statuses(physics)[LIN] == "learned"
     maths = await _get(db_app, s, f"/api/v1/learn/courses/{MATHS}/outline")
-    assert _statuses(maths)[LIN] == "finished"
+    assert _statuses(maths)[LIN] == "learned"
 
 
 async def test_two_classes_same_subject_one_card_archived_ignored(db_app: DbApp) -> None:
@@ -356,7 +336,15 @@ async def test_staff_preview_writes_nothing(db_app: DbApp) -> None:
         headers=db_app.auth(t),
     )
     assert r.status_code == 204
-    for model in (Attempt, LessonProgress, StudyTime):
+    for model in (
+        Attempt,
+        LessonProgress,
+        StudyTime,
+        ConceptState,
+        KpProgress,
+        PracticeSession,
+        Remediation,
+    ):
         assert await _count(db_app, model) == 0, model
 
 

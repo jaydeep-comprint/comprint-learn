@@ -1,28 +1,38 @@
 import { cn } from "@/lib/utils";
 
+function kpNumber(index: number, steps: string[]): number {
+  return steps.slice(0, index + 1).filter((s) => s.startsWith("kp:")).length;
+}
+
 function stepLabel(step: string, index: number, steps: string[]): string {
   if (step === "intro") return "Intro";
   if (step === "check") return "Check";
-  return String(steps.slice(0, index + 1).filter((s) => s.startsWith("kp:")).length);
+  const n = kpNumber(index, steps);
+  return step.startsWith("kpq:") ? `${n}✎` : String(n);
 }
 
-function stepName(step: string, index: number, steps: string[]): string {
+function stepName(step: string, index: number, steps: string[], passed: boolean): string {
   if (step === "intro") return "Introduction";
   if (step === "check") return "Quick check";
-  return `Worked example ${stepLabel(step, index, steps)}`;
+  const n = kpNumber(index, steps);
+  if (step.startsWith("kpq:")) return `Practice ${n}${passed ? " (passed)" : ""}`;
+  return `Worked example ${n}`;
 }
 
-/** Labelled dots (Intro · Check · 1 · 2 · 3); "Step k of n" on phones. Steps past `maxIndex` are
- * disabled. */
+/** Labelled dots (Intro · Check · 1 · 1✎ · 2 · 2✎ …); "Step k of n" on phones. Steps past
+ * `maxIndex` are disabled; passed question steps get a ✓. */
 export function StepIndicator({
   steps,
   current,
   maxIndex,
+  passed = new Set<string>(),
   onJump,
 }: {
   steps: string[];
   current: number;
   maxIndex: number;
+  /** `kpq:<slug>` steps whose KP is passed. */
+  passed?: ReadonlySet<string>;
   onJump: (index: number) => void;
 }) {
   return (
@@ -30,12 +40,13 @@ export function StepIndicator({
       <ol className="flex flex-wrap items-center gap-1 sm:gap-2">
         {steps.map((step, i) => {
           const active = i === current;
+          const done = passed.has(step);
           return (
             <li key={step}>
               <button
                 type="button"
                 aria-current={active ? "step" : undefined}
-                aria-label={stepName(step, i, steps)}
+                aria-label={stepName(step, i, steps, done)}
                 disabled={i > maxIndex}
                 onClick={() => onJump(i)}
                 className={cn(
@@ -47,7 +58,10 @@ export function StepIndicator({
                 )}
               >
                 <span className="size-2 rounded-full bg-current sm:hidden" aria-hidden />
-                <span className="hidden sm:inline">{stepLabel(step, i, steps)}</span>
+                <span className="hidden sm:inline" aria-hidden>
+                  {stepLabel(step, i, steps)}
+                  {done && " ✓"}
+                </span>
               </button>
             </li>
           );

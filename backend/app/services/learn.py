@@ -1,9 +1,11 @@
 """Learn layer (spec 004): student courses, course outlines with borrowed prerequisites, lessons,
-the one-try misconception check, progress and study time.
+the one-try misconception check, progress and study time. Spec 005: statuses come from the
+knowledge frontier (`app/services/frontier.py`; "learned" opens dependants) and lessons interleave
+each KP's worked example with its questions (`kpq:` steps, `app/services/kp_flow.py`).
 
 Content is global (read without `OrgScope`); learning state (`attempt`, `lesson_progress`,
-`study_time`) is tenant-owned and read/written only through the caller's `OrgScope`. Staff get a
-preview: no statuses, no locks, and nothing is ever written for them.
+`study_time`, `concept_state`, ...) is tenant-owned and read/written only through the caller's
+`OrgScope`. Staff get a preview: no statuses, no locks, and nothing is ever written for them.
 
 The top of this module is pure (no DB) so the outline algorithm is unit-testable.
 """
@@ -14,7 +16,7 @@ import random
 import uuid
 from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import any_, case, func, literal, select, text, update
@@ -23,6 +25,7 @@ from sqlalchemy.sql.dml import ReturningInsert
 
 from app.api.deps import OrgScope
 from app.core.errors import ApiProblem, forbidden, not_found
+from app.grading.mcq import ShownOptions
 from app.models import (
     Attempt,
     AttemptContext,
@@ -33,33 +36,43 @@ from app.models import (
     Enrollment,
     Item,
     KnowledgePoint,
+    KpStatus,
     LessonProgress,
     Misconception,
+    PracticeSession,
+    Remediation,
+    RemediationState,
     SchoolClass,
+    SessionStatus,
     StudyActivity,
     StudyTime,
     Subject,
 )
 from app.models.content import ItemKind
-from app.schemas.content import CourseRef, ItemPublic, OptionPublic
+from app.schemas.content import CourseRef, ItemPublic
 from app.schemas.learn import (
     CheckPublic,
     CheckResult,
     CheckSubmitted,
     ConceptRef,
+    HomeConcept,
     KpOut,
     Lesson,
-    LessonStatus,
+    LessonWaiting,
     LockedPrereq,
     MisconceptionOut,
     Outline,
     OutlineChapter,
     OutlineConcept,
     ProgressOut,
+    RemediationRef,
     StudentCourse,
+    Waiting,
 )
+from app.services import frontier
 
 MAX_STEP_SECONDS = 600
+REMEDIATION_STEP = "remediation"  # study time on a brush-up review, logged against the prereq
 MAX_CHECK_MS = 1_800_000
 ASSET_URL_PREFIX = "/content-assets/"
 SUBJECT_ORDER = {s: i for i, s in enumerate(Subject)}
@@ -129,17 +142,6 @@ def _topo_sorted[K: Hashable](
     return out
 
 
-def lesson_status[K: Hashable](
-    concept: K, progress: Mapping[K, datetime | None], prereqs: Mapping[K, Collection[K]]
-) -> LessonStatus:
-    """`progress` maps concept → `finished_at` for every concept the student has a row for."""
-    if concept in progress:
-        return "finished" if progress[concept] is not None else "in_progress"
-    if all(progress.get(p) is not None for p in prereqs.get(concept, ())):
-        return "ready"
-    return "locked"
-
-
 def shuffled_order(
     option_ids: Sequence[str], student_id: uuid.UUID, item_id: uuid.UUID
 ) -> list[str]:
@@ -151,7 +153,9 @@ def shuffled_order(
 
 
 def lesson_steps(kp_slugs: Iterable[str], *, has_check: bool) -> list[str]:
-    return ["intro", *(["check"] if has_check else []), *(f"kp:{s}" for s in kp_slugs)]
+    """`intro` → `check` → per KP: `kp:<slug>` (worked example) → `kpq:<slug>` (questions)."""
+    kp_steps = [step for slug in kp_slugs for step in (f"kp:{slug}", f"kpq:{slug}")]
+    return ["intro", *(["check"] if has_check else []), *kp_steps]
 
 
 # --- the content graph (global) -------------------------------------------------------------------
@@ -296,13 +300,64 @@ async def _progress(
     return {r.concept_id: r for r in rows.all()}
 
 
-def _finished_map(progress: Mapping[uuid.UUID, LessonProgress]) -> dict[uuid.UUID, datetime | None]:
-    return {cid: row.finished_at for cid, row in progress.items()}
-
-
 def _require_student(scope: OrgScope) -> None:
     if scope.user.is_staff:
         raise forbidden()
+
+
+HOME_READY = 5
+
+
+def _concept_ref(graph: "_Graph", cid: uuid.UUID) -> ConceptRef:
+    return ConceptRef(id=graph.nodes[cid].ref, title=graph.nodes[cid].title)
+
+
+async def remediation_refs(
+    scope: OrgScope, graph: "_Graph", remediations: Sequence[frontier.RemediationView]
+) -> list[tuple[frontier.RemediationView, RemediationRef]]:
+    """Remediations (whose concepts are still active) with the failing KP's concept."""
+    kp_ids = {r.kp_id for r in remediations}
+    concept_of = (
+        dict(
+            (
+                await scope.session.execute(
+                    select(KnowledgePoint.id, KnowledgePoint.concept_id).where(
+                        KnowledgePoint.id.in_(kp_ids)
+                    )
+                )
+            ).all()
+        )
+        if kp_ids
+        else {}
+    )
+    out = []
+    for r in remediations:
+        cid = concept_of.get(r.kp_id)
+        if cid not in graph.nodes or r.prereq_concept_id not in graph.nodes:
+            continue
+        out.append(
+            (
+                r,
+                RemediationRef(
+                    id=str(r.id),
+                    kind="review" if r.state == RemediationState.review_due else "relearn",
+                    prereq=_concept_ref(graph, r.prereq_concept_id),
+                    concept=_concept_ref(graph, cid),
+                ),
+            )
+        )
+    return out
+
+
+def _home_concept(graph: "_Graph", view: frontier.ConceptView) -> HomeConcept:
+    waiting = view.waiting
+    return HomeConcept(
+        id=graph.nodes[view.id].ref,
+        title=graph.nodes[view.id].title,
+        kps_passed=view.kps_passed,
+        kps_total=view.kps_total,
+        reopen_at=None if waiting is None else waiting.reopen_at,
+    )
 
 
 async def student_courses(scope: OrgScope) -> list[StudentCourse]:
@@ -310,30 +365,39 @@ async def student_courses(scope: OrgScope) -> list[StudentCourse]:
     graph = await _graph(scope)
     slugs = await _student_course_slugs(scope, graph)
     outlines = {slug: [cid for cid, _ in graph.outline(slug)] for slug in slugs}
-    progress = await _progress(scope, {cid for ids in outlines.values() for cid in ids})
-    finished = _finished_map(progress)
+    front = await frontier.load(
+        scope, {cid for ids in outlines.values() for cid in ids}, graph.prereqs
+    )
+    rems = await remediation_refs(scope, graph, front.remediations)
+    await scope.session.commit()  # a promotion on read (frontier.load)
     out = []
     for slug in slugs:
         ids = outlines[slug]
-        statuses = {cid: lesson_status(cid, finished, graph.prereqs) for cid in ids}
-        in_progress = [cid for cid in ids if statuses[cid] == "in_progress"]
-        if in_progress:
-            next_id: uuid.UUID | None = max(in_progress, key=lambda cid: progress[cid].updated_at)
-        else:
-            next_id = next((cid for cid in ids if statuses[cid] == "ready"), None)
+        views = [front.views[cid] for cid in ids]
+        in_outline = set(ids)
+        ready = [v for v in views if v.status == "ready"]
         course = graph.courses[slug]
         out.append(
             StudentCourse(
                 slug=slug,
                 title=course.title,
                 subject=course.subject,
-                finished=sum(1 for s in statuses.values() if s == "finished"),
+                learned=sum(1 for v in views if v.status == "learned"),
                 total=len(ids),
-                continue_=(
-                    None
-                    if next_id is None
-                    else ConceptRef(id=graph.nodes[next_id].ref, title=graph.nodes[next_id].title)
-                ),
+                brush_up=[
+                    ref
+                    for _, ref in rems
+                    if graph.by_ref[ref.concept.id] in in_outline
+                    or graph.by_ref[ref.prereq.id] in in_outline
+                ],
+                in_progress=[
+                    _home_concept(graph, v)
+                    for v in views
+                    if v.status == "in_progress" and v.waiting is None
+                ],
+                ready=[_home_concept(graph, v) for v in ready[:HOME_READY]],
+                ready_count=len(ready),
+                waiting=[_home_concept(graph, v) for v in views if v.waiting is not None],
             )
         )
     return out
@@ -347,18 +411,33 @@ async def outline(scope: OrgScope, course_slug: str) -> Outline:
     if not staff and course_slug not in await _student_course_slugs(scope, graph):
         raise not_found()
     pairs = graph.outline(course_slug)
-    finished = {} if staff else _finished_map(await _progress(scope, [c for c, _ in pairs]))
+    ids = [c for c, _ in pairs]
+    kps_total: dict[uuid.UUID, int] = {}
+    if staff:
+        for kp in await frontier.active_kps(scope, ids):
+            kps_total[kp.concept_id] = kps_total.get(kp.concept_id, 0) + 1
+        views: dict[uuid.UUID, frontier.ConceptView] = {}
+    else:
+        views = (await frontier.load(scope, ids, graph.prereqs)).views
+        await scope.session.commit()  # a promotion on read
 
     chapters: dict[uuid.UUID, list[OutlineConcept]] = {}
     for cid, anchor in pairs:
         node = graph.nodes[cid]
+        view = views.get(cid)
+        waiting = None if view is None else view.waiting
         chapters.setdefault(graph.nodes[anchor].chapter_id, []).append(
             OutlineConcept(
                 id=node.ref,
                 title=node.title,
                 summary=node.summary,
-                status=None if staff else lesson_status(cid, finished, graph.prereqs),
+                status=None if view is None else view.status,
                 prereqs=[graph.nodes[p].ref for p in graph.prereqs.get(cid, [])],
+                kps_passed=0 if view is None else view.kps_passed,
+                kps_total=kps_total.get(cid, 0) if view is None else view.kps_total,
+                waiting=None if waiting is None else Waiting(reopen_at=waiting.reopen_at),
+                brush_up=False if view is None else view.brush_up,
+                brush_up_id=None if view is None else view.brush_up_id,
             )
         )
     course = graph.courses[course_slug]
@@ -385,27 +464,33 @@ class _Access:
     graph: _Graph
     node: _Node
     progress: LessonProgress | None
+    front: frontier.Frontier | None  # None for staff
+
+    @property
+    def view(self) -> frontier.ConceptView | None:
+        return None if self.front is None else self.front.views[self.node.id]
 
 
 def concept_locked(prereqs: list[LockedPrereq]) -> ApiProblem:
     return ApiProblem(
         403,
         "concept_locked",
-        "Finish the lessons this one builds on first.",
+        "Learn the concepts this one builds on first.",
         extra={"prereqs": [p.model_dump() for p in prereqs]},
     )
 
 
 async def _access(scope: OrgScope, course_slug: str, concept_slug: str) -> _Access:
     """The concept if this user may open it: 404 if unknown/retired/outside the student's courses,
-    403 `concept_locked` if a direct prerequisite isn't finished. Staff may open any concept."""
+    403 `concept_locked` if it's locked (a direct prerequisite isn't learned). Staff may open any
+    concept."""
     graph = await _graph(scope)
     cid = graph.by_ref.get(f"{course_slug}/{concept_slug}")
     if cid is None:
         raise not_found()
     node = graph.nodes[cid]
     if scope.user.is_staff:
-        return _Access(graph, node, None)
+        return _Access(graph, node, None, None)
 
     reachable = {
         c for slug in await _student_course_slugs(scope, graph) for c, _ in graph.outline(slug)
@@ -413,21 +498,19 @@ async def _access(scope: OrgScope, course_slug: str, concept_slug: str) -> _Acce
     if cid not in reachable:
         raise not_found()
     direct = graph.prereqs.get(cid, [])
-    progress = await _progress(scope, [cid, *direct])
-    finished = _finished_map(progress)
-    if lesson_status(cid, finished, graph.prereqs) == "locked":
+    front = await frontier.load(scope, [cid, *direct], graph.prereqs)
+    if front.status(cid) == "locked":
         raise concept_locked(
             [
                 LockedPrereq(
-                    id=graph.nodes[p].ref,
-                    title=graph.nodes[p].title,
-                    status=lesson_status(p, finished, graph.prereqs),
+                    id=graph.nodes[p].ref, title=graph.nodes[p].title, status=front.status(p)
                 )
                 for p in direct
-                if finished.get(p) is None
+                if front.status(p) != "learned"
             ]
         )
-    return _Access(graph, node, progress.get(cid))
+    progress = await _progress(scope, [cid])
+    return _Access(graph, node, progress.get(cid), front)
 
 
 @dataclass
@@ -466,39 +549,13 @@ async def _content(scope: OrgScope, concept_id: uuid.UUID) -> _LessonContent:
     return _LessonContent(concept, list(kps), check)
 
 
-@dataclass(frozen=True)
-class _ShownOptions:
-    """The check's options in the order this user sees them.
-
-    Clients never see authored option ids (they would give the answer away: authors tend to put
-    the correct option first). They get positional ids "1".."n" in shown order instead; the server
-    maps them back. Attempts store authored ids.
-    """
-
-    authored: list[OptionPublic]
-
-    def public(self) -> list[OptionPublic]:
-        return [OptionPublic(id=str(i + 1), text=o.text) for i, o in enumerate(self.authored)]
-
-    def to_authored(self, client_id: str) -> str | None:
-        if not (client_id.isascii() and client_id.isdigit()) or not 1 <= int(client_id) <= len(
-            self.authored
-        ):
-            return None
-        return self.authored[int(client_id) - 1].id
-
-    def to_client(self, authored_id: str | None) -> str:
-        ids = [o.id for o in self.authored]
-        return str(ids.index(authored_id) + 1) if authored_id in ids else ""
-
-
-def _shown_options(scope: OrgScope, item: Item) -> _ShownOptions:
+def _shown_options(scope: OrgScope, item: Item) -> ShownOptions:
     public = ItemPublic.from_row(item)
     options = list(public.options or [])
     if scope.user.is_staff or not public.shuffle:
-        return _ShownOptions(options)
+        return ShownOptions(options)
     by_id = {o.id: o for o in options}
-    return _ShownOptions([by_id[i] for i in shuffled_order(list(by_id), scope.user.id, item.id)])
+    return ShownOptions([by_id[i] for i in shuffled_order(list(by_id), scope.user.id, item.id)])
 
 
 async def _result(
@@ -508,7 +565,7 @@ async def _result(
     misconception_id: uuid.UUID | None,
     correct: bool | None = None,
 ) -> CheckResult:
-    """`chosen` is an authored id; the result speaks the client's ids (`_ShownOptions`).
+    """`chosen` is an authored id; the result speaks the client's ids (`ShownOptions`).
 
     `correct` is the stored grade for an existing attempt (else graded against the key now)."""
     shown = _shown_options(scope, item)
@@ -567,6 +624,16 @@ async def lesson(scope: OrgScope, course_slug: str, concept_slug: str) -> Lesson
                     attempt.correct,
                 )
     asset_path = content.concept.asset_path
+    view = access.view
+    kp_views = {} if view is None else {k.id: k for k in view.kps}
+    active = await _active_kp_sessions(scope, list(kp_views))
+    waiting = None
+    if view is not None and (wkp := view.waiting) is not None:
+        refs = await remediation_refs(scope, access.graph, wkp.remediations)
+        waiting = LessonWaiting(
+            kp=wkp.slug, reopen_at=wkp.reopen_at, remediations=[ref for _, ref in refs]
+        )
+    await scope.session.commit()  # a promotion on read (frontier.load in _access)
     return Lesson(
         id=access.node.ref,
         title=content.concept.title,
@@ -574,15 +641,51 @@ async def lesson(scope: OrgScope, course_slug: str, concept_slug: str) -> Lesson
         asset_base=f"{ASSET_URL_PREFIX}{asset_path}/" if asset_path else "",
         intro_md=content.concept.intro_md,
         check=check,
-        kps=[
-            KpOut(slug=k.slug, title=k.title, worked_example_md=k.worked_example_md)
-            for k in content.kps
-        ],
+        kps=[_kp_out(k, kp_views.get(k.id), k.id in active) for k in content.kps],
         steps=content.steps,
         progress=_progress_out(access.progress),
         check_result=check_result,
         preview=scope.user.is_staff,
+        concept_status=None if view is None else view.status,
+        waiting=waiting,
     )
+
+
+def _kp_out(kp: KnowledgePoint, view: frontier.KpView | None, active: bool) -> KpOut:
+    if view is None:  # staff
+        return KpOut(
+            slug=kp.slug,
+            title=kp.title,
+            worked_example_md=kp.worked_example_md,
+            status=None,
+            open=True,
+            reopen_at=None,
+            active=False,
+        )
+    return KpOut(
+        slug=kp.slug,
+        title=kp.title,
+        worked_example_md=kp.worked_example_md,
+        status="passed" if view.passed else view.status.value,
+        open=view.open,
+        reopen_at=view.reopen_at if view.status == KpStatus.failed else None,
+        active=active,
+    )
+
+
+async def _active_kp_sessions(scope: OrgScope, kp_ids: list[uuid.UUID]) -> set[uuid.UUID]:
+    if not kp_ids:
+        return set()
+    rows = await scope.session.scalars(
+        scope.select(PracticeSession)
+        .with_only_columns(PracticeSession.kp_id)
+        .where(
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.kp_id.in_(kp_ids),
+            PracticeSession.status == SessionStatus.active,
+        )
+    )
+    return {kp_id for kp_id in rows.all() if kp_id is not None}
 
 
 async def _touch_progress(scope: OrgScope, concept_id: uuid.UUID, step: str) -> LessonProgress:
@@ -617,6 +720,7 @@ async def _touch_progress(scope: OrgScope, concept_id: uuid.UUID, step: str) -> 
         .execution_options(populate_existing=True)
     )
     row = (await scope.session.scalars(stmt)).one()
+    await frontier.ensure_started(scope, concept_id)
     return row
 
 
@@ -653,24 +757,60 @@ async def record_progress(
     if scope.user.is_staff:
         return None
     content = await _content(scope, access.node.id)
-    if step not in content.steps:
+    remediation = step == REMEDIATION_STEP
+    if remediation and not await _review_due_on(scope, access.node.id):
+        raise ApiProblem(422, "invalid_step", "There's no brush-up due on this concept.")
+    if step not in content.steps and not remediation:
         raise ApiProblem(422, "invalid_step", "That step isn't part of this lesson.")
-    row = await _touch_progress(scope, access.node.id, step)
     seconds = min(active_seconds, MAX_STEP_SECONDS)
     if seconds > 0:
+        practice = remediation or step.startswith("kpq:")
         scope.new(
             StudyTime,
             student_id=scope.user.id,
             concept_id=access.node.id,
-            activity=StudyActivity.learn,
+            activity=StudyActivity.practice if practice else StudyActivity.learn,
             step=step,
             active_seconds=seconds,
         )
+    if remediation:  # time on a brush-up of this (prerequisite) concept: no lesson progress
+        await scope.session.commit()
+        return _progress_out(access.progress) or ProgressOut(
+            seen_steps=[], last_step="", finished_at=None
+        )
+    row = await _touch_progress(scope, access.node.id, step)
     row = await _maybe_finish(scope, row, content)
     out = _progress_out(row)
     await scope.session.commit()
     assert out is not None
     return out
+
+
+async def _review_due_on(scope: OrgScope, concept_id: uuid.UUID) -> bool:
+    """Brush-up time is logged only while a review on this prerequisite is due, or just ended
+    (the page reports its time when the last answer comes back, after the review closed)."""
+    on_prereq = scope.select(Remediation).where(
+        Remediation.student_id == scope.user.id,
+        Remediation.prereq_concept_id == concept_id,
+    )
+    due = await scope.session.scalar(
+        on_prereq.with_only_columns(Remediation.id)
+        .where(Remediation.state == RemediationState.review_due)
+        .limit(1)
+    )
+    if due is not None:
+        return True
+    recent = await scope.session.scalar(
+        scope.select(PracticeSession)
+        .with_only_columns(PracticeSession.id)
+        .where(
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.remediation_id.in_(on_prereq.with_only_columns(Remediation.id)),
+            PracticeSession.ended_at >= func.now() - timedelta(seconds=MAX_STEP_SECONDS),
+        )
+        .limit(1)
+    )
+    return recent is not None
 
 
 # The partial unique index's predicate, as a SQL literal. Never a bound parameter: once Postgres

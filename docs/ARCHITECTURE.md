@@ -14,7 +14,7 @@
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2 (async), Alembic | Team choice (Python); typed |
 | Database | PostgreSQL (hosted Supabase, Session pooler, port 5432) | Relational data (orgs/classes) + JSONB for content. Test DB = a separate Supabase project (`TEST_DATABASE_URL`), used only by `make test-db` and CI |
 | Auth | **Supabase Auth** (same project as the DB). FastAPI verifies its JWTs against the project JWKS (`app/core/auth.py`); our `app_user.id` = the auth user id. Teachers are invited by email; students get teacher-created accounts with a synthetic, never-emailed auth email | Don't build password, reset and invite flows ourselves; one free-tier project for DB + auth |
-| Maths answer checking | SymPy (server side) | Checks equivalent expressions and numbers with tolerance and units |
+| Maths answer checking | SymPy (server side, `app/grading/`): student expressions go through the safe AST walker, never `parse_expr`; `simplify` runs in a time-limited process pool (1 s, numeric fallback) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs) | Modern scheduler with fewer reviews than SM-2 |
 | AI | Anthropic API: Claude Haiku 5.5 (`claude-haiku-5-5`) for tutor chat, Claude Sonnet 5.5 (`claude-sonnet-5-5`) for teacher summaries | Low cost per student; better reasoning where needed |
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
@@ -65,15 +65,35 @@ docs/         PRD, architecture, roadmap, specs, plans
     numbers (and so its answer) from an attempt's seed.
 - **Learning state** (tenant-owned: `TenantMixin`, composite FK `(student_id, org_id)` → `app_user`):
   - `attempt`: one row per answer submitted, with the result, time taken, hints used and the parameter seed.
-    `context` says where (`learn` in spec 004; later specs add more) and `item_version` which version was answered.
-    The Learn check is one try: a partial unique index allows one `learn` attempt per student × item.
+    `context` says where (`learn` in spec 004; `kp` and `remediation` in 005; later specs add more) and
+    `item_version` which version was answered. The Learn check is one try: a partial unique index allows one
+    `learn` attempt per student × item. KP and remediation answers belong to a `practice_session` at a
+    `position` (unique per session; a CHECK ties `session_id` to those contexts). `response` is `{raw}`
+    (MCQ: `{option, order}` with authored ids).
   - `lesson_progress` (spec 004): per student × concept, the Learn lesson's `seen_steps`, `last_step` (resume) and
-    `finished_at` (set once, when the check is answered and every current KP step is seen). Until spec 005 a
-    concept's prerequisites must be *finished* for it to open; 005 swaps that gate to `concept_state` ("learned").
+    `finished_at` (set once, when the check is answered and every current `kp:` step is seen). Since spec 005 it
+    is for analytics only ("Learn layer read") and gates nothing.
   - `study_time` (spec 004): append-only active seconds per student × concept × step (1–600 per row, ids only),
-    for the "time in practice vs theory" metric.
-  - `kp_progress`: per student × KP, holding status (not started | in progress | passed | failed) and the fail count.
-  - `concept_state`: per student × concept, holding status (locked | ready | in progress | learned) and the source (lesson | diagnostic | teacher).
+    for the "time in practice vs theory" metric. `activity` is `learn` (intro/check/worked examples) or
+    `practice` (spec 005: `kpq:` question steps, and `remediation` reviews logged against the prerequisite).
+  - `concept_state` (spec 005): per student × concept, stores only `in_progress` (created on the lesson's first
+    progress post) and `learned` (every active KP passed), plus `source` (lesson | diagnostic | teacher),
+    `learned_at` and `relearn_count`. `ready` (every direct prerequisite learned) and `locked` are computed
+    (`app/services/frontier.py`). **"Learned" is the gate** that opens dependants (the knowledge frontier); a
+    started concept never re-locks.
+  - `kp_progress` (spec 005): per student × KP, status (not started | in progress | passed | failed), `fail_count`,
+    `passed_at`, `failed_at` and `reopen_at` (next 00:00 Asia/Kolkata). A failed KP reopens on read: its
+    remediations are resolved and the cooldown is over, or the student passed a KP in another concept or a
+    remediation review since.
+  - `practice_session` (spec 005; 007 may reuse it): one try at a KP's questions (`kind = kp`) or one remediation
+    review (`kind = remediation`), with status (active | passed | failed) and the question being shown
+    (`current_item_id`, `current_seed`, `current_position`, `current_served_at`), stored before it's returned so
+    reloads get the same question. Partial unique indexes allow one active session per student × KP and per
+    remediation. Spec 008 reads failed sessions for negative XP.
+  - `remediation` (spec 005): created by the 2nd (and later) fail of a KP, one per active key prerequisite
+    (`kp_key_prereq`): `review_due` (a 3–5 question review) if the prerequisite is learned, else `relearn`; a failed
+    review sends the prerequisite back to in progress (KPs reset, history kept). Resolved when the review passes or
+    the prerequisite is learned again.
   - `review_card`: FSRS state per student × **concept**.
   - `xp_event`: an append-only ledger of XP awarded, with the reason.
   - `quiz`: mixed timed quizzes and their items; `assignment`: a teacher target (concept or chapter, class, due date).

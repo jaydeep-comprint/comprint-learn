@@ -26,6 +26,10 @@
   --ring: oklch(0.708 0 0);
   --success: oklch(0.6 0.15 150);
   --warning: oklch(0.75 0.15 75);
+  /* Course map colour grade (spec 005 map): white = no knowledge → dark blue = learned.
+     The same in both themes: nodes set their own text colour on top. */
+  --mastery-empty: oklch(1 0 0);
+  --mastery-full: oklch(0.33 0.14 263);
 }
 
 @media (prefers-color-scheme: dark) {

@@ -45,6 +45,7 @@ from app.content.schema import (
     NumericAnswer,
 )
 from app.content.units import UnitError, parse_unit
+from app.grading.units import parse_student_unit
 
 __all__ = ["Issue", "validate"]
 
@@ -272,32 +273,34 @@ def _check_pool(v: _Validator, where: _Where, items: list[Item]) -> None:
         v.warning(where, f"{mcqs} of {len(items)} questions are MCQ; use MCQ sparingly (<= 30%)")
 
 
-GRADABLE = (ItemType.numeric, ItemType.expression, ItemType.mcq)
+QUICK = (ItemType.numeric, ItemType.expression, ItemType.mcq)
 MIN_GRADABLE_ITEMS, GOOD_GRADABLE_SLOTS, MIN_FIXED_ONLY = 2, 5, 5
+MAX_BROWSER_TIME_LIMIT_MS = 5000
 
 
 def _check_gradable_pool(v: _Validator, where: _Where, items: list[Item]) -> None:
-    """Spec 005 serves only numeric/expression/MCQ KP questions (code waits for 006). A KP session
-    takes up to 5 questions and never repeats a fixed item, so each KP needs enough of them."""
-    gradable = [item for item in items if item.type in GRADABLE]
-    slots = sum(2 if item.has_params else 1 for item in gradable)
-    if len(gradable) < MIN_GRADABLE_ITEMS:
+    """KP sessions serve every type (spec 006), take up to 5 questions and never repeat a fixed
+    item, so each KP needs enough of them. Brush-up reviews serve only quick checks
+    (numeric/expression/MCQ), so each KP needs at least one of those too."""
+    slots = sum(2 if item.has_params else 1 for item in items)
+    if not any(item.type in QUICK for item in items):
         v.error(
             where,
-            f"only {len(gradable)} numeric/expression/mcq questions; KP practice needs >= "
-            f"{MIN_GRADABLE_ITEMS} (code items aren't served until spec 006)",
+            "needs at least 1 numeric/expression/mcq question (brush-up reviews serve only those)",
         )
-    elif not any(item.has_params for item in gradable) and len(gradable) < MIN_FIXED_ONLY:
+    if len(items) < MIN_GRADABLE_ITEMS:
+        v.error(where, f"only {len(items)} questions; KP practice needs >= {MIN_GRADABLE_ITEMS}")
+    elif not any(item.has_params for item in items) and len(items) < MIN_FIXED_ONLY:
         v.error(
             where,
-            f"only {len(gradable)} fixed numeric/expression/mcq questions and none with params; "
-            f"a KP needs >= {MIN_FIXED_ONLY} fixed ones (or a param item) so a 5-question session "
-            "never repeats a question whose answer was shown",
+            f"only {len(items)} fixed questions and none with params; a KP needs >= "
+            f"{MIN_FIXED_ONLY} fixed ones (or a param item) so a 5-question session never "
+            "repeats a question whose answer was shown",
         )
     elif slots < GOOD_GRADABLE_SLOTS:
         v.warning(
             where,
-            f"gradable question weight is {slots}; aim for >= {GOOD_GRADABLE_SLOTS} "
+            f"question weight is {slots}; aim for >= {GOOD_GRADABLE_SLOTS} "
             "(fixed item = 1, param item = 2) so a 5-question KP session never runs dry",
         )
 
@@ -467,6 +470,12 @@ def _check_spec_static(v: _Validator, where: _Where, item: Item, misconceptions:
             v.error(where, f"a code item needs >= 3 tests (found {len(spec.tests)})")
         if not any(t.visible for t in spec.tests):
             v.error(where, "a code item needs at least 1 visible test")
+        if spec.time_limit_ms > MAX_BROWSER_TIME_LIMIT_MS:
+            v.error(
+                where,
+                f"time_limit_ms is {spec.time_limit_ms}; code runs in the browser, so at most "
+                f"{MAX_BROWSER_TIME_LIMIT_MS}",
+            )
         for label, source in (("starter", spec.starter), ("solution", spec.solution)):
             for problem in _import_problems(source):
                 v.error(where, f"{label}: {problem}")
@@ -489,6 +498,7 @@ def _check_answer_static(
         if spec.unit is not None:
             try:
                 parse_unit(spec.unit)
+                parse_student_unit(spec.unit)  # "Add a unit, e.g. {unit}" must be typeable
             except UnitError as exc:
                 err(str(exc))
         if spec.mode == "sigfig":

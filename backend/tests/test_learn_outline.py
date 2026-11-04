@@ -120,3 +120,16 @@ def test_shown_options_hide_authored_ids() -> None:
         assert shown.to_authored(bad) is None
     assert shown.to_client("a") == "2"
     assert shown.to_client("zzz") == ""
+
+
+def test_attempt_upsert_predicate_is_a_literal() -> None:
+    """A bound `context = $n` breaks ON CONFLICT inference under generic plans (asyncpg)."""
+    import uuid as _uuid
+
+    from sqlalchemy.dialects import postgresql
+
+    from app.services.learn import learn_attempt_insert
+
+    stmt = learn_attempt_insert(id=_uuid.uuid4(), context="learn")
+    sql = str(stmt.compile(dialect=postgresql.dialect()))  # type: ignore[no-untyped-call]
+    assert "ON CONFLICT (student_id, item_id) WHERE context = 'learn' DO NOTHING" in sql

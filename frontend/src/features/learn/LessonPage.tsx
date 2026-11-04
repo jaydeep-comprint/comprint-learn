@@ -75,6 +75,7 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
   const [finished, setFinished] = useState(false);
   const submit = useSubmitCheck(lesson.id);
   const checkShownAt = useRef<number | null>(null);
+  const lastPost = useRef<Promise<unknown>>(Promise.resolve());
   const topRef = useRef<HTMLDivElement>(null);
 
   const step = steps[index] ?? "intro";
@@ -99,7 +100,7 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
     if (finished) return;
     topRef.current?.scrollIntoView?.({ block: "start" });
     if (step === "check") checkShownAt.current = performance.now();
-    if (!preview) void postProgress(lesson.id, step, 0);
+    if (!preview) lastPost.current = postProgress(lesson.id, step, 0);
   }, [finished, lesson.id, preview, step]);
 
   const go = (i: number) => {
@@ -109,8 +110,8 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
 
   const finish = () => {
     setFinished(true);
-    // Statuses and "Continue" changed; refetch what shows them.
-    void queryClient.invalidateQueries({ queryKey: learnKeys.all });
+    // Statuses and "Continue" changed; refetch what shows them once the last step's post landed.
+    void lastPost.current.finally(() => queryClient.invalidateQueries({ queryKey: learnKeys.all }));
   };
 
   const onSubmit = (optionId: string) => {
@@ -210,7 +211,8 @@ export function LessonPage() {
   const ref = `${conceptCourse}/${conceptSlug}`;
   const lesson = useLesson(ref);
 
-  if (lesson.isPending) {
+  // Wait for this visit's fetch: a cached copy may predate progress made since (resume point).
+  if (lesson.isPending || (lesson.isFetching && !lesson.isFetchedAfterMount)) {
     return (
       <div aria-busy="true">
         <LessonHeader course={course} title={null} />

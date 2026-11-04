@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -153,6 +153,34 @@ describe("LessonPage", () => {
     await waitFor(() =>
       expect(progressCalls).toContainEqual({ step: "kp:kp1", active_seconds: 0 }),
     );
+  });
+
+  it("reopening a lesson in the app resumes from fresh progress, not the cached copy", async () => {
+    let gets = 0;
+    mockApi(lesson(), {
+      [`GET ${LESSON_URL}`]: () => {
+        gets += 1;
+        return jsonResponse(
+          200,
+          gets === 1
+            ? lesson()
+            : lesson({
+                progress: {
+                  seen_steps: ["intro", "check", "kp:kp1"],
+                  last_step: "kp:kp1",
+                  finished_at: null,
+                },
+              }),
+        );
+      },
+    });
+    const router = renderAt(`/learn/${COURSE}/${DIST}`);
+    expect(await screen.findByText("Intro text here.")).toBeInTheDocument();
+    await act(() => router.navigate(`/learn/${COURSE}`));
+    expect(await screen.findByRole("heading", { name: "Physics" })).toBeInTheDocument();
+    await act(() => router.navigate(`/learn/${COURSE}/${DIST}`));
+    expect(await screen.findByText("Example one.")).toBeInTheDocument();
+    expect(gets).toBe(2);
   });
 
   it("blocks Next on the unanswered check, then finishes", async () => {

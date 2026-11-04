@@ -45,9 +45,10 @@ export function useLesson(concept: string) {
     queryKey: learnKeys.lesson(concept),
     queryFn: () => apiFetch<Lesson>(`/api/v1/learn/concepts/${concept}`),
     retry: retryUnlessClientError,
-    // The page keeps its own step state; a background refetch must not move the student.
+    // Always fresh on open (resume point, stored check result); LessonPage waits for that fetch.
+    // A background refetch must not move the student, so no refetch on focus.
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
-    staleTime: Infinity,
   });
 }
 

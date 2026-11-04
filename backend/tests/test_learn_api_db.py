@@ -1,17 +1,19 @@
 """`/learn/*` (spec 004) on a real database with the imported sample content."""
 
+import asyncio
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 
 from app.cli import DEFAULT_CONTENT_ROOT
 from app.content.importer import import_tree
 from app.models import (
     Attempt,
+    AttemptContext,
     Enrollment,
     LessonProgress,
     Misconception,
@@ -19,6 +21,7 @@ from app.models import (
     StudyTime,
     Subject,
 )
+from app.services.learn import learn_attempt_insert
 from tests.conftest import DbApp
 from tests.db_seed import School, seed_school
 
@@ -367,3 +370,41 @@ async def test_progress_is_per_school(db_app: DbApp) -> None:
     lesson = await _get(db_app, other, _url(DIST))
     assert lesson["progress"] is None and lesson["check_result"] is None
     assert await _count(db_app, LessonProgress, org_id=w.b.org_id) == 0
+
+
+async def test_check_insert_works_under_generic_plans(db_app: DbApp) -> None:
+    """Postgres uses generic plans after ~5 runs of a prepared statement; force one now."""
+    w = await _world(db_app)
+    s = w.physics_student
+    lesson = await _get(db_app, s, _url(DIST))
+    async with db_app.sessions() as session:
+        await session.execute(text("SET plan_cache_mode = force_generic_plan"))
+        item_id = uuid.UUID(lesson["check"]["item_id"])
+        values: dict[str, Any] = {
+            "org_id": w.a.org_id,
+            "student_id": s,
+            "item_id": item_id,
+            "item_version": 1,
+            "context": AttemptContext.learn,
+            "response": {"option": "a", "order": ["a"]},
+            "correct": True,
+            "time_taken_ms": 1,
+        }
+        for _ in range(7):  # first inserts, the rest hit the conflict
+            await session.execute(learn_attempt_insert(id=uuid.uuid4(), **values))
+        await session.commit()
+    assert await _count(db_app, Attempt) == 1
+
+
+async def test_two_submits_at_once_store_one_attempt(db_app: DbApp) -> None:
+    w = await _world(db_app)
+    s = w.physics_student
+    lesson = await _get(db_app, s, _url(DIST))
+    body = {"option_id": _opt(lesson, "Distance"), "time_taken_ms": 10}
+    r1, r2 = await asyncio.gather(
+        db_app.client.post(_url(DIST, "/check"), json=body, headers=db_app.auth(s)),
+        db_app.client.post(_url(DIST, "/check"), json=body, headers=db_app.auth(s)),
+    )
+    assert r1.status_code == r2.status_code == 200, (r1.text, r2.text)
+    assert sorted([r1.json()["already_answered"], r2.json()["already_answered"]]) == [False, True]
+    assert await _count(db_app, Attempt) == 1

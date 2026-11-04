@@ -17,8 +17,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import any_, case, func, literal, select, update
+from sqlalchemy import any_, case, func, literal, select, text, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql.dml import ReturningInsert
 
 from app.api.deps import OrgScope
 from app.core.errors import ApiProblem, forbidden, not_found
@@ -637,6 +638,7 @@ async def _maybe_finish(
         )
         .values(finished_at=func.now())
         .returning(LessonProgress.finished_at)
+        .execution_options(synchronize_session=False)
     )
     if finished_at is not None:
         row.finished_at = finished_at
@@ -671,6 +673,25 @@ async def record_progress(
     return out
 
 
+# The partial unique index's predicate, as a SQL literal. Never a bound parameter: once Postgres
+# switches a prepared statement to a generic plan (after ~5 runs on a pooled connection) it can't
+# prove `context = $1` implies the index, and ON CONFLICT fails with "no unique constraint".
+LEARN_ATTEMPT_INDEX_WHERE = text("context = 'learn'")
+
+
+def learn_attempt_insert(**values: Any) -> ReturningInsert[tuple[uuid.UUID]]:
+    """Insert one Learn-check attempt; a second one for the same student and item does nothing."""
+    return (
+        insert(Attempt)
+        .values(**values)
+        .on_conflict_do_nothing(
+            index_elements=[Attempt.student_id, Attempt.item_id],
+            index_where=LEARN_ATTEMPT_INDEX_WHERE,
+        )
+        .returning(Attempt.id)
+    )
+
+
 async def submit_check(
     scope: OrgScope, course_slug: str, concept_slug: str, option_id: str, time_taken_ms: int
 ) -> CheckSubmitted:
@@ -698,8 +719,7 @@ async def submit_check(
         return CheckSubmitted(**result.model_dump(), already_answered=False)
 
     inserted = await scope.session.scalar(
-        insert(Attempt)
-        .values(
+        learn_attempt_insert(
             id=uuid.uuid4(),
             org_id=scope.org_id,
             student_id=scope.user.id,
@@ -713,11 +733,6 @@ async def submit_check(
             time_taken_ms=max(0, min(time_taken_ms, MAX_CHECK_MS)),
             hints_used=0,
         )
-        .on_conflict_do_nothing(
-            index_elements=[Attempt.student_id, Attempt.item_id],
-            index_where=Attempt.context == AttemptContext.learn,
-        )
-        .returning(Attempt.id)
     )
     if inserted is None:  # already answered (double submit, two tabs): the stored result
         attempt = await _stored_attempt(scope, item.id)

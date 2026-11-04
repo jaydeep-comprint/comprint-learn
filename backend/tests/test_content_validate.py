@@ -466,3 +466,18 @@ def test_warning_few_gradable_slots(tmp_path: Path) -> None:
         f"{CONCEPT}: kps[0] (kp1): question weight is 3; aim for >= 5 "
         "(fixed item = 1, param item = 2) so a 5-question KP session never runs dry"
     ]
+
+
+def test_single_fixed_multistep_practice_needs_params(tmp_path: Path) -> None:
+    t = fx.tree()
+    fixed = fx.multistep_item("practice-1")
+    fixed["prompt"] = "A rectangle has perimeter 20 cm and length 6 cm."
+    fixed.pop("params")
+    fixed["derived"] = {"w": "20 / 2 - 6", "p": "20"}
+    _concept(t)["practice"] = [fixed]
+    assert (
+        f"{CONCEPT}: practice (c1): a single multistep practice item needs params (a retry would "
+        "repeat the numbers whose answers were just shown); add params or another practice item"
+    ) in _issues(tmp_path, t)
+    _concept(t)["practice"].append(fx.code_item("practice-2"))
+    assert not any("single multistep" in i for i in _issues(tmp_path / "x", t))

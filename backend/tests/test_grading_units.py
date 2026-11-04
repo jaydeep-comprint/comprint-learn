@@ -116,3 +116,21 @@ def test_unit_notes() -> None:
 
 def test_unitless_answer_ignores_the_box() -> None:
     assert num({"value": "3", "mode": "exact"}, "3", None).correct
+
+
+@pytest.mark.parametrize(
+    "unit", ["((km^999)^999)^999", "((km/mm)^999)^999*m", "km^7", "s^-9", "(m^3)^3"]
+)
+def test_huge_powers_are_refused_quickly(unit: str) -> None:
+    """Security: nested powers merge into one huge exponent; never convert it (DoS)."""
+    import time
+
+    start = time.monotonic()
+    result = num({"value": "500", "mode": "exact", "unit": "m"}, "1", unit)
+    assert not result.correct and result.note == "Couldn't read that unit"
+    assert time.monotonic() - start < 1
+
+
+def test_ordinary_powers_still_work() -> None:
+    assert convert_factor("m^3", "L") == 1000
+    assert convert_factor("m s^-2", "m/s^2") == 1

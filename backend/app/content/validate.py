@@ -234,6 +234,14 @@ def _check_concept(
             v.error(
                 _Where(path, f"practice[{k}]", item.id), "practice items must be multistep or code"
             )
+    multisteps = [i for i in f.practice if i.type == ItemType.multistep]
+    if len(f.practice) == 1 and multisteps and not multisteps[0].has_params:
+        # A failed attempt shows every step's answer, and a retry serves the only item again.
+        v.error(
+            _Where(path, "practice", f.id),
+            "a single multistep practice item needs params (a retry would repeat the numbers "
+            "whose answers were just shown); add params or another practice item",
+        )
 
     item_ids = Counter(item.id for _, item, _ in _items(concept))
     misconceptions = _course_misconceptions(v.bundle, concept.course)

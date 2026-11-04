@@ -14,6 +14,10 @@ from sympy.physics.units.systems.si import SI, dimsys_SI
 from app.content.units import UnitError, parse_unit
 
 MAX_UNIT = 40
+# Real units use small powers (m^3, s^-2). A bigger one is refused before conversion: SymPy merges
+# nested powers, so `((km^999)^999)^999` would otherwise become a billion-digit integer in
+# `convert_to` and stall the whole process (it holds the GIL).
+MAX_UNIT_POWER = 6
 
 # Whole-token aliases (matching is case-sensitive, so `ms` stays milliseconds).
 ALIASES: dict[str, str] = {
@@ -65,10 +69,14 @@ def normalise(text: str) -> str:
 
 
 def parse_student_unit(text: str) -> sympy.Expr:
-    """Raises `UnitError` for anything that isn't a known unit."""
+    """Raises `UnitError` for anything that isn't a known unit (or has a power beyond ±6)."""
     if len(text) > MAX_UNIT:
         raise UnitError("unit too long")
-    return parse_unit(normalise(text))
+    expr = parse_unit(normalise(text))
+    for power in expr.atoms(sympy.Pow):
+        if abs(power.exp) > MAX_UNIT_POWER:
+            raise UnitError("unit power too large")
+    return expr
 
 
 @lru_cache(maxsize=256)
@@ -81,7 +89,10 @@ def convert_factor(student: str, authored: str) -> sympy.Rational | None:
 
     Raises `UnitError` if the student's unit can't be read."""
     ratio = parse_student_unit(student) / _authored(authored)
-    converted = sympy.nsimplify(u.convert_to(ratio, _SI_BASE))
+    try:
+        converted = sympy.nsimplify(u.convert_to(ratio, _SI_BASE))
+    except (ValueError, ArithmeticError, RecursionError) as exc:
+        raise UnitError("can't convert that unit") from exc
     if converted.free_symbols or converted.atoms(u.Quantity):
         return None
     if not isinstance(converted, sympy.Rational):

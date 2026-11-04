@@ -34,6 +34,12 @@ export const routes: RouteObject[] = [
             }),
           },
           {
+            path: "/learn/brush-up/:id",
+            lazy: async () => ({
+              Component: (await import("@/features/learn/RemediationPage")).RemediationPage,
+            }),
+          },
+          {
             path: "/learn/:course/:conceptCourse/:conceptSlug",
             lazy: async () => ({
               Component: (await import("@/features/learn/LessonPage")).LessonPage,

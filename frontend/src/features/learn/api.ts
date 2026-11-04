@@ -2,12 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError, apiFetch } from "@/lib/api";
 import type {
+  AnswerResult,
   CheckSubmitted,
   CourseSummary,
   Lesson,
   LessonProgress,
   LockedPrereq,
   Outline,
+  Question,
+  RemediationInfo,
   StudentCourse,
 } from "@/lib/types";
 
@@ -16,6 +19,9 @@ export const learnKeys = {
   courses: ["learn", "courses"] as const,
   outline: (course: string) => ["learn", "outline", course] as const,
   lesson: (concept: string) => ["learn", "lesson", concept] as const,
+  question: (concept: string, kp: string) => ["learn", "question", concept, kp] as const,
+  remediation: (id: string) => ["learn", "remediation", id] as const,
+  remediationQuestion: (id: string) => ["learn", "remediation", id, "question"] as const,
 };
 
 /** 403/404 are answers, not glitches: don't retry them. */
@@ -78,6 +84,64 @@ export function useSubmitCheck(concept: string) {
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: learnKeys.courses }),
   });
+}
+
+export type AnswerBody = {
+  position: number;
+  response: string;
+  time_taken_ms: number;
+  item_id?: string;
+  seed?: number | null;
+};
+
+/** The current question of a KP (the same one on reload). 409s are panels, not glitches. */
+export function useKpQuestion(concept: string, kp: string, enabled = true) {
+  return useQuery({
+    queryKey: learnKeys.question(concept, kp),
+    queryFn: () => apiFetch<Question>(`/api/v1/learn/concepts/${concept}/kps/${kp}/question`),
+    retry: retryUnlessClientError,
+    enabled,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  });
+}
+
+export function submitKpAnswer(concept: string, kp: string, body: AnswerBody) {
+  return apiFetch<AnswerResult>(`/api/v1/learn/concepts/${concept}/kps/${kp}/answer`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function useRemediation(id: string) {
+  return useQuery({
+    queryKey: learnKeys.remediation(id),
+    queryFn: () => apiFetch<RemediationInfo>(`/api/v1/learn/remediations/${id}`),
+    retry: retryUnlessClientError,
+  });
+}
+
+export function useRemediationQuestion(id: string, enabled = true) {
+  return useQuery({
+    queryKey: learnKeys.remediationQuestion(id),
+    queryFn: () => apiFetch<Question>(`/api/v1/learn/remediations/${id}/question`),
+    retry: retryUnlessClientError,
+    enabled,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  });
+}
+
+export function submitRemediationAnswer(id: string, body: AnswerBody) {
+  return apiFetch<AnswerResult>(`/api/v1/learn/remediations/${id}/answer`, {
+    method: "POST",
+    body,
+  });
+}
+
+/** The 409 code of a KP/remediation request (`kp_waiting`, `kp_order`, ...), else null. */
+export function conflictCode(error: unknown): string | null {
+  return error instanceof ApiError && error.status === 409 ? (error.code ?? null) : null;
 }
 
 // Progress posts for one lesson run one after another, so the server sees steps in the order the

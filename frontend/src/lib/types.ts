@@ -53,17 +53,38 @@ export const SUBJECT_LABELS: Record<Subject, string> = {
 };
 
 /** Learn layer (backend/app/schemas/learn.py). Concept ids are "<course>/<slug>". */
-export type LessonStatus = "finished" | "in_progress" | "ready" | "locked";
+export type LessonStatus = "learned" | "in_progress" | "ready" | "locked";
+export type KpStatus = "not_started" | "in_progress" | "passed" | "failed";
 
 export type ConceptRef = { id: string; title: string };
+
+/** A brush-up owed before `concept`'s failed part reopens (spec 005). */
+export type RemediationRef = {
+  id: string;
+  kind: "review" | "relearn";
+  prereq: ConceptRef;
+  concept: ConceptRef;
+};
+
+export type HomeConcept = {
+  id: string;
+  title: string;
+  kps_passed: number;
+  kps_total: number;
+  reopen_at: string | null;
+};
 
 export type StudentCourse = {
   slug: string;
   title: string;
   subject: Subject;
-  finished: number;
+  learned: number;
   total: number;
-  continue: ConceptRef | null;
+  brush_up: RemediationRef[];
+  in_progress: HomeConcept[];
+  ready: HomeConcept[];
+  ready_count: number;
+  waiting: HomeConcept[];
 };
 
 export type OutlineConcept = {
@@ -73,6 +94,10 @@ export type OutlineConcept = {
   /** null for staff (preview). */
   status: LessonStatus | null;
   prereqs: string[];
+  kps_passed: number;
+  kps_total: number;
+  waiting: { reopen_at: string | null } | null;
+  brush_up: boolean;
 };
 
 export type Outline = {
@@ -105,11 +130,70 @@ export type Lesson = {
   asset_base: string;
   intro_md: string;
   check: { item_id: string; prompt: string; options: { id: string; text: string }[] } | null;
-  kps: { slug: string; title: string; worked_example_md: string }[];
+  kps: LessonKp[];
   steps: string[];
   progress: LessonProgress | null;
   check_result: CheckResult | null;
   preview: boolean;
+  /** null for staff. */
+  concept_status: LessonStatus | null;
+  waiting: LessonWaiting | null;
+};
+
+export type LessonKp = {
+  slug: string;
+  title: string;
+  worked_example_md: string;
+  /** null for staff. */
+  status: KpStatus | null;
+  open: boolean;
+  reopen_at: string | null;
+  /** A question session is in progress: resume at its `kpq` step. */
+  active: boolean;
+};
+
+export type LessonWaiting = {
+  kp: string;
+  reopen_at: string | null;
+  remediations: RemediationRef[];
+};
+
+/** KP questions (backend/app/schemas/kp.py). */
+export type Question = {
+  session_id: string | null;
+  position: number;
+  item_id: string;
+  type: "numeric" | "expression" | "mcq";
+  prompt_md: string;
+  unit: string | null;
+  options: { id: string; text: string }[] | null;
+  variables: string[] | null;
+  results: boolean[];
+  /** Staff preview only: sent back with the answer. */
+  preview_seed: number | null;
+};
+
+export type AnswerResult = {
+  correct: boolean;
+  display_answer: string;
+  explanation_md: string | null;
+  misconception: { title: string } | null;
+  note: string | null;
+  session_status: "active" | "passed" | "failed";
+  already_answered: boolean;
+  results: boolean[];
+  concept_learned: boolean;
+  unlocked: ConceptRef[];
+  remediations: RemediationRef[];
+};
+
+export type RemediationInfo = {
+  id: string;
+  state: "review_due" | "relearn" | "resolved";
+  kind: "review" | "relearn";
+  prereq: ConceptRef;
+  concept: ConceptRef;
+  kp_title: string;
 };
 
 /** A course from GET /api/v1/courses (global content). */

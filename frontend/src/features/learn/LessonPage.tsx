@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, Eye } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Eye } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
@@ -11,22 +11,111 @@ import {
   learnKeys,
   lockedPrereqs,
   postProgress,
+  submitKpAnswer,
+  useKpQuestion,
   useLesson,
   useSubmitCheck,
 } from "@/features/learn/api";
 import { CheckStep } from "@/features/learn/CheckStep";
-import { FinishedScreen } from "@/features/learn/FinishedScreen";
+import { FailedScreen } from "@/features/learn/FailedScreen";
+import { LearnedScreen } from "@/features/learn/LearnedScreen";
 import { LockedPanel } from "@/features/learn/LockedPanel";
+import { PracticeRunner } from "@/features/learn/PracticeRunner";
 import { StepIndicator } from "@/features/learn/StepIndicator";
 import { useStepTimer } from "@/features/learn/useStepTimer";
+import { WaitingPanel } from "@/features/learn/WaitingPanel";
 import { ApiError } from "@/lib/api";
-import type { CheckResult, Lesson } from "@/lib/types";
+import type {
+  AnswerResult,
+  CheckResult,
+  ConceptRef,
+  Lesson,
+  LessonKp,
+  RemediationRef,
+} from "@/lib/types";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
+/** The first step that isn't done: an active question session, the waiting panel, a reopened
+ * part's worked example, else `last_step` (as in 004). Preview and learned concepts open at intro. */
 function initialIndex(lesson: Lesson): number {
+  const { steps, kps } = lesson;
+  if (lesson.preview || lesson.concept_status === "learned") return 0;
+  const active = kps.find((k) => k.active);
+  if (active) return steps.indexOf(`kpq:${active.slug}`);
+  if (lesson.waiting) return steps.indexOf(`kpq:${lesson.waiting.kp}`);
+  const next = kps.find((k) => k.status !== "passed");
+  if (next?.status === "failed") return steps.indexOf(`kp:${next.slug}`);
   const p = lesson.progress;
-  if (lesson.preview || !p || p.finished_at) return 0; // preview and review mode start at intro
-  return Math.max(0, lesson.steps.indexOf(p.last_step));
+  if (!p) return 0;
+  return Math.max(0, steps.indexOf(p.last_step));
+}
+
+type Ended =
+  | { kind: "learned"; unlocked: ConceptRef[] | null }
+  | { kind: "failed"; kp: LessonKp; remediations: RemediationRef[] };
+
+function Passed() {
+  return (
+    <p className="flex items-center gap-2 rounded-md bg-[var(--success)]/10 px-3 py-3 font-medium">
+      <CheckCircle2 className="size-5 text-[var(--success)]" aria-hidden />
+      Passed ✓
+    </p>
+  );
+}
+
+/** The questions of one KP (rendered only on its `kpq` step, so it fetches only then). */
+function KpPractice({
+  course,
+  lesson,
+  kp,
+  onDone,
+  onGoToCheck,
+}: {
+  course: string;
+  lesson: Lesson;
+  kp: LessonKp;
+  onDone: (result: AnswerResult) => void;
+  onGoToCheck: () => void;
+}) {
+  const query = useKpQuestion(lesson.id, kp.slug);
+  return (
+    <PracticeRunner
+      header={`Practice · ${kp.title}`}
+      query={query}
+      submit={(body) => submitKpAnswer(lesson.id, kp.slug, body)}
+      preview={lesson.preview}
+      assetBase={lesson.asset_base}
+      onDone={onDone}
+      renderConflict={(code, error) => {
+        if (code === "kp_passed") return <Passed />;
+        if (code === "kp_waiting") {
+          const body = (error instanceof ApiError ? error.body : undefined) as
+            { remediations?: RemediationRef[] } | undefined;
+          return (
+            <WaitingPanel
+              course={course}
+              kpTitle={kp.title}
+              remediations={body?.remediations ?? []}
+              exclude={lesson.id}
+            />
+          );
+        }
+        if (code === "check_first") {
+          return (
+            <div className="space-y-3 rounded-lg border p-4">
+              <p>Answer the quick check first.</p>
+              <Button variant="outline" onClick={onGoToCheck}>
+                Go to the check
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <p className="rounded-lg border p-4">Pass the earlier parts of this lesson first.</p>
+        );
+      }}
+    />
+  );
 }
 
 function furthestSeen(lesson: Lesson): number {
@@ -64,15 +153,18 @@ function LessonHeader({
 function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
   const queryClient = useQueryClient();
   const { steps, preview } = lesson;
-  const review = !preview && !!lesson.progress?.finished_at;
+  const review = !preview && lesson.concept_status === "learned";
   const allOpen = preview || review;
+  const [passed, setPassed] = useState<Set<string>>(
+    () => new Set(lesson.kps.filter((k) => k.status === "passed").map((k) => k.slug)),
+  );
+  const [ended, setEnded] = useState<Ended | null>(null);
 
   const [index, setIndex] = useState(() => initialIndex(lesson));
   const [furthest, setFurthest] = useState(() =>
     Math.max(furthestSeen(lesson), initialIndex(lesson)),
   );
   const [result, setResult] = useState<CheckResult | null>(lesson.check_result);
-  const [finished, setFinished] = useState(false);
   const submit = useSubmitCheck(lesson.id);
   const checkShownAt = useRef<number | null>(null);
   const lastPost = useRef<Promise<unknown>>(Promise.resolve());
@@ -81,12 +173,22 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
   const step = steps[index] ?? "intro";
   const checkIndex = steps.indexOf("check");
   const checkPending = checkIndex >= 0 && result === null;
-  // Jump up to the furthest step reached + 1, but never past an unanswered check.
+  // A question step can't be passed over until its KP is passed.
+  const firstUnpassed = steps.findIndex((s) => s.startsWith("kpq:") && !passed.has(s.slice(4)));
+  const passedSteps = new Set([...passed].map((slug) => `kpq:${slug}`));
+  // Jump up to the furthest step reached + 1, but never past an unanswered check or an unpassed
+  // question step.
   const maxIndex = allOpen
     ? steps.length - 1
-    : Math.min(steps.length - 1, checkPending && furthest >= checkIndex ? furthest : furthest + 1);
+    : Math.min(
+        steps.length - 1,
+        checkPending && furthest >= checkIndex ? furthest : furthest + 1,
+        firstUnpassed >= 0 ? firstUnpassed : steps.length - 1,
+      );
   const studentBlockedByCheck = !preview && checkPending && index >= checkIndex;
+  const blockedByQuestions = !allOpen && step.startsWith("kpq:") && !passed.has(step.slice(4));
   const isLast = index === steps.length - 1;
+  const finished = ended !== null;
 
   const report = useCallback(
     (s: string, seconds: number, opts: { keepalive: boolean }) =>
@@ -108,10 +210,31 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
     setFurthest((f) => Math.max(f, i));
   };
 
-  const finish = () => {
-    setFinished(true);
-    // Statuses and "Continue" changed; refetch what shows them once the last step's post landed.
+  const refreshStatuses = () =>
     void lastPost.current.finally(() => queryClient.invalidateQueries({ queryKey: learnKeys.all }));
+
+  const finish = () => {
+    setEnded({ kind: "learned", unlocked: null });
+    refreshStatuses();
+  };
+
+  const onKpDone = (kp: LessonKp, r: AnswerResult) => {
+    if (r.session_status === "failed") {
+      setEnded({ kind: "failed", kp, remediations: r.remediations });
+      refreshStatuses();
+      return;
+    }
+    setPassed((prev) => new Set(prev).add(kp.slug));
+    if (r.concept_learned) {
+      setEnded({ kind: "learned", unlocked: r.unlocked });
+      refreshStatuses();
+      return;
+    }
+    const next = index + 1;
+    if (next < steps.length) {
+      setIndex(next);
+      setFurthest((f) => Math.max(f, next));
+    }
   };
 
   const onSubmit = (optionId: string) => {
@@ -125,27 +248,46 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
     );
   };
 
-  if (finished) {
+  if (ended) {
     return (
       <>
         <LessonHeader course={course} title={lesson.title} />
-        <FinishedScreen
-          course={course}
-          conceptId={lesson.id}
-          title={lesson.title}
-          preview={preview}
-        />
+        {ended.kind === "learned" ? (
+          <LearnedScreen
+            course={course}
+            title={lesson.title}
+            unlocked={ended.unlocked}
+            preview={preview}
+          />
+        ) : (
+          <FailedScreen
+            course={course}
+            kpTitle={ended.kp.title}
+            remediations={ended.remediations}
+            exclude={lesson.id}
+          />
+        )}
       </>
     );
   }
 
   const kpIndex = steps.slice(0, index + 1).filter((s) => s.startsWith("kp:")).length;
   const kp = step.startsWith("kp:") ? lesson.kps.find((k) => `kp:${k.slug}` === step) : undefined;
+  const kpq = step.startsWith("kpq:")
+    ? lesson.kps.find((k) => `kpq:${k.slug}` === step)
+    : undefined;
+  const waitingHere = !preview && kpq !== undefined && lesson.waiting?.kp === kpq.slug;
 
   return (
     <div ref={topRef} className="scroll-mt-20">
       <LessonHeader course={course} title={lesson.title}>
-        <StepIndicator steps={steps} current={index} maxIndex={maxIndex} onJump={go} />
+        <StepIndicator
+          steps={steps}
+          current={index}
+          maxIndex={maxIndex}
+          passed={passedSteps}
+          onJump={go}
+        />
       </LessonHeader>
       {preview && (
         <p className="mx-auto mb-4 flex max-w-prose items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
@@ -155,7 +297,7 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
       )}
       {review && (
         <p className="mx-auto mb-4 max-w-prose text-sm text-muted-foreground">
-          You&apos;ve finished this lesson. Every step is open for review.
+          You&apos;ve learned this concept. Every step is open for review.
         </p>
       )}
       <article className="mx-auto max-w-prose pb-4">
@@ -177,6 +319,29 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
             <Markdown assetBase={lesson.asset_base}>{kp.worked_example_md}</Markdown>
           </div>
         )}
+        {kpq &&
+          (!preview && (review || passed.has(kpq.slug)) ? (
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-muted-foreground">Practice · {kpq.title}</p>
+              <Passed />
+            </div>
+          ) : waitingHere ? (
+            <WaitingPanel
+              course={course}
+              kpTitle={kpq.title}
+              remediations={lesson.waiting?.remediations ?? []}
+              exclude={lesson.id}
+            />
+          ) : (
+            <KpPractice
+              key={kpq.slug}
+              course={course}
+              lesson={lesson}
+              kp={kpq}
+              onDone={(r) => onKpDone(kpq, r)}
+              onGoToCheck={() => go(checkIndex)}
+            />
+          ))}
       </article>
       <div className="sticky bottom-0 -mx-4 mt-6 border-t bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none">
         <div className="mx-auto flex max-w-prose items-center justify-between gap-3">
@@ -184,13 +349,13 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
             Back
           </Button>
           {isLast ? (
-            <Button onClick={finish} disabled={studentBlockedByCheck}>
+            <Button onClick={finish} disabled={studentBlockedByCheck || blockedByQuestions}>
               Finish lesson
             </Button>
           ) : (
             <Button
               onClick={() => go(index + 1)}
-              disabled={studentBlockedByCheck && index === checkIndex}
+              disabled={(studentBlockedByCheck && index === checkIndex) || blockedByQuestions}
             >
               Next
             </Button>
@@ -229,7 +394,7 @@ export function LessonPage() {
     if (prereqs) {
       return (
         <div>
-          <LessonHeader course={course} title="Finish these first" />
+          <LessonHeader course={course} title="Learn these first" />
           <div className="mx-auto max-w-prose">
             <LockedPanel course={course} prereqs={prereqs} />
           </div>

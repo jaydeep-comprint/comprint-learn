@@ -2,6 +2,7 @@ import {
   Archive,
   ArchiveRestore,
   ArrowLeft,
+  BookOpen,
   KeyRound,
   MoreHorizontal,
   Pencil,
@@ -37,6 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AddStudentsDialog } from "@/features/classes/AddStudentsDialog";
+import { useAllCourses } from "@/features/learn/api";
 import {
   useClass,
   useClassStudents,
@@ -205,6 +207,7 @@ export function ClassDetailPage() {
   const cls = useClass(id);
   const students = useClassStudents(id);
   const update = useUpdateClass(id);
+  const allCourses = useAllCourses();
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
 
   if (cls.error instanceof ApiError && (cls.error.status === 404 || cls.error.status === 422)) {
@@ -231,6 +234,9 @@ export function ClassDetailPage() {
       },
     );
 
+  // The class's course: the active course for its subject (spec 003: one per subject).
+  const courseSlug = allCourses.data?.find((course) => course.subject === c.subject)?.slug;
+
   return (
     <div className="mx-auto max-w-5xl">
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
@@ -249,6 +255,14 @@ export function ClassDetailPage() {
         description={`${SUBJECT_LABELS[c.subject]} · Class ${c.grade}`}
         actions={
           <>
+            {courseSlug && (
+              <Button asChild variant="outline">
+                <Link to={`/learn/${courseSlug}`}>
+                  <BookOpen aria-hidden />
+                  View course
+                </Link>
+              </Button>
+            )}
             <ClassFormDialog
               title="Edit class"
               submitLabel="Save"

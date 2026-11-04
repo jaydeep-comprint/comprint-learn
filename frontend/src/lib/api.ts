@@ -7,12 +7,15 @@ export class ApiError extends Error {
   readonly status: number;
   /** Machine-readable code from the API body (`unauthenticated`, `not_found`, ...), if any. */
   readonly code: string | undefined;
+  /** The parsed JSON body, if any (e.g. `prereqs` on `concept_locked`). */
+  readonly body: unknown;
 
-  constructor(status: number, path: string, code?: string, message?: string) {
+  constructor(status: number, path: string, code?: string, message?: string, body?: unknown) {
     super(message ?? `${path} failed with HTTP ${status}`);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.body = body;
   }
 }
 
@@ -34,13 +37,20 @@ export async function apiGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-type FetchOptions = { method?: string; body?: unknown; signal?: AbortSignal };
+type FetchOptions = {
+  method?: string;
+  body?: unknown;
+  signal?: AbortSignal;
+  /** Let the request outlive the page (pagehide / tab hidden). */
+  keepalive?: boolean;
+};
 
 async function errorFromResponse(response: Response, path: string): Promise<ApiError> {
   let code: string | undefined;
   let message: string | undefined;
+  let body: unknown;
   try {
-    const body: unknown = await response.json();
+    body = await response.json();
     if (body && typeof body === "object") {
       const b = body as { code?: unknown; message?: unknown; detail?: unknown };
       if (typeof b.code === "string") code = b.code;
@@ -53,7 +63,7 @@ async function errorFromResponse(response: Response, path: string): Promise<ApiE
   } catch {
     // Not JSON: keep the generic message.
   }
-  return new ApiError(response.status, path, code, message);
+  return new ApiError(response.status, path, code, message, body);
 }
 
 /**
@@ -72,6 +82,7 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal,
+    keepalive: options.keepalive,
   });
 
   if (!response.ok) {

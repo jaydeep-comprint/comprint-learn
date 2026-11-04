@@ -25,6 +25,20 @@ export const routes: RouteObject[] = [
         element: <AppShell />,
         children: [
           { path: "/", element: <HomePage /> },
+          // Any signed-in role: students learn, staff preview (nothing is saved).
+          // Lazy: these pull in react-markdown + KaTeX, which staff admin pages don't need.
+          {
+            path: "/learn/:course",
+            lazy: async () => ({
+              Component: (await import("@/features/learn/CoursePage")).CoursePage,
+            }),
+          },
+          {
+            path: "/learn/:course/:conceptCourse/:conceptSlug",
+            lazy: async () => ({
+              Component: (await import("@/features/learn/LessonPage")).LessonPage,
+            }),
+          },
           {
             element: <RequireRole access="staff" />,
             children: [

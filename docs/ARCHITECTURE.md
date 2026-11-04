@@ -51,7 +51,9 @@ docs/         PRD, architecture, roadmap, specs, plans
   (the identity), `content_hash` + `version` (+1 when the authored content changes), `position`, and `retired_at`
   (removed content is retired, never deleted).
   - `course` (one active per subject) → `chapter` (`grade` 9/10) → `concept` (node, `intro_md`) → `knowledge_point`
-    (3–4 per concept, ordered; `worked_example_md`) → `item`; `misconception` per course.
+    (3–4 per concept, ordered; `worked_example_md`) → `item`; `misconception` per course. `concept.asset_path`
+    (`<course>/<chapter-folder>/<concept>`, derived on import) is where its images are served:
+    `/content-assets/<asset_path>/img/...`.
   - `concept_prereq` (edge; may cross courses) has `encompassing_weight` (0–1: how much of the prerequisite is practised
     inside the concept). `kp_key_prereq` links a KP to the concept(s) that step really depends on, used for remediation.
   - `item` has `kind` (kp_question | practice | misconception_check), a `bloom_level` tag, `type` (numeric | expression |
@@ -61,8 +63,15 @@ docs/         PRD, architecture, roadmap, specs, plans
     code solution + hidden tests). API item shapes are built only from `public` (`ItemPublic.from_row`).
   - Randomised numbers: `app.content.params.sample(item, seed)` is the one implementation that derives an item's
     numbers (and so its answer) from an attempt's seed.
-- **Learning state**:
+- **Learning state** (tenant-owned: `TenantMixin`, composite FK `(student_id, org_id)` → `app_user`):
   - `attempt`: one row per answer submitted, with the result, time taken, hints used and the parameter seed.
+    `context` says where (`learn` in spec 004; later specs add more) and `item_version` which version was answered.
+    The Learn check is one try: a partial unique index allows one `learn` attempt per student × item.
+  - `lesson_progress` (spec 004): per student × concept, the Learn lesson's `seen_steps`, `last_step` (resume) and
+    `finished_at` (set once, when the check is answered and every current KP step is seen). Until spec 005 a
+    concept's prerequisites must be *finished* for it to open; 005 swaps that gate to `concept_state` ("learned").
+  - `study_time` (spec 004): append-only active seconds per student × concept × step (1–600 per row, ids only),
+    for the "time in practice vs theory" metric.
   - `kp_progress`: per student × KP, holding status (not started | in progress | passed | failed) and the fail count.
   - `concept_state`: per student × concept, holding status (locked | ready | in progress | learned) and the source (lesson | diagnostic | teacher).
   - `review_card`: FSRS state per student × **concept**.

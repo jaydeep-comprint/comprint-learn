@@ -1,6 +1,6 @@
 # Spec 004: Learn layer
 
-Status: draft
+Status: implemented (feat/004-learn-layer)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 3; Phase 1 of docs/ROADMAP.md)
 
 ## Summary

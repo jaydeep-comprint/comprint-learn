@@ -395,3 +395,21 @@ def test_warning_too_many_mcqs(tmp_path: Path) -> None:
     assert _issues(tmp_path, t, "warning") == [
         f"{CONCEPT}: kps[0] (kp1): 2 of 6 questions are MCQ; use MCQ sparingly (<= 30%)"
     ]
+
+
+def test_misconception_check_must_be_mcq(tmp_path: Path) -> None:
+    t = fx.tree()
+    _concept(t)["misconception_check"] = fx.fixed_item("check", bloom="understand")
+    assert _issues(tmp_path, t) == [
+        f"{CONCEPT}: misconception_check (check): the misconception check must be type mcq"
+    ]
+
+
+def test_misconception_check_without_params(tmp_path: Path) -> None:
+    t = fx.tree()
+    check = _concept(t)["misconception_check"]
+    check["prompt"] = "Which is a solution of x + 1 = {{a}}?"
+    check["params"] = {"a": {"min": 2, "max": 9, "step": 1}}
+    assert _issues(tmp_path, t) == [
+        f"{CONCEPT}: misconception_check (check): the misconception check can't have params"
+    ]

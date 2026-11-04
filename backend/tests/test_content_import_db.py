@@ -83,6 +83,11 @@ async def test_import_sample_then_again_is_a_no_op(db_app: DbApp) -> None:
     assert await _count(db_app, Item) == n_items
     assert await _count(db_app, ConceptPrereq) == sum(len(c.file.prereqs) for c in bundle.concepts)
     assert sum(lv["items"].created for lv in report.courses.values()) == n_items
+    async with db_app.sessions() as session:
+        rows = (await session.execute(select(Concept.slug, Concept.asset_path))).all()
+    paths = {slug: path for slug, path in rows}
+    assert paths["distance-and-displacement"] == "physics-9-10/01-motion/distance-and-displacement"
+    assert all(paths.values())
 
     before = await _snapshot(db_app)
     again = await _import(db_app, DEFAULT_CONTENT_ROOT)

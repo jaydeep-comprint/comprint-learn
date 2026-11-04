@@ -122,6 +122,9 @@ class Concept(ContentMixin, Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     intro_md: Mapped[str] = mapped_column(Text, nullable=False)
+    # `<course>/<chapter-folder>/<concept>` under content/; its images are served at
+    # `/content-assets/<asset_path>/img/...`. Derived on import; no version bump.
+    asset_path: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
 
 
 class ConceptPrereq(Base):

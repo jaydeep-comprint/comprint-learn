@@ -106,9 +106,11 @@ def _run(entry, args_json, stdin, returns):
     return json.dumps({"json": text})
 
 
-def _passes(output_json, expected, expected_stdout):
+def _passes(output_json, want_json):
     """Run's check of a visible test, with the server's comparison (compare.py)."""
     output = json.loads(output_json)
+    want = json.loads(want_json)
+    expected, expected_stdout = want.get("expected"), want.get("expected_stdout")
     if expected_stdout is not None:
         return "stdout" in output and lines(output["stdout"]) == lines(expected_stdout)
     if expected is None or "json" not in output:
@@ -160,10 +162,13 @@ function run(code: string, entry: string, tests: RunTest[]) {
     let passed: boolean | null = null;
     if (test.visible) {
       passed =
-        call(py, "str(_passes(_out, _expected, _expected_stdout))", {
+        call(py, "str(_passes(_out, _want))", {
           _out: output,
-          _expected: test.expected ?? null,
-          _expected_stdout: test.expected_stdout ?? null,
+          // One JSON string: a JS null would arrive as `jsnull`, not None.
+          _want: JSON.stringify({
+            expected: test.expected ?? null,
+            expected_stdout: test.expected_stdout ?? null,
+          }),
         }) === "True";
     }
     post({ type: "progress", index, output: JSON.parse(output), passed });

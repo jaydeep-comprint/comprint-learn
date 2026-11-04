@@ -67,7 +67,10 @@ def _require_test_db(request: pytest.FixtureRequest) -> Iterator[None]:
 # --- Real-database fixtures (only used by `db` tests) ---------------------------------------------
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-TENANT_TABLES = "organization, app_user, school_class, class_teacher, enrollment"
+TENANT_TABLES = (
+    "organization, app_user, school_class, class_teacher, enrollment, "
+    "attempt, lesson_progress, study_time"
+)
 CONTENT_TABLES = (
     "course, chapter, concept, concept_prereq, knowledge_point, kp_key_prereq, misconception, item"
 )

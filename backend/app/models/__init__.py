@@ -10,6 +10,13 @@ from app.models.content import (
     KpKeyPrereq,
     Misconception,
 )
+from app.models.learning import (
+    Attempt,
+    AttemptContext,
+    LessonProgress,
+    StudyActivity,
+    StudyTime,
+)
 from app.models.tenancy import (
     AppUser,
     ClassTeacher,
@@ -24,6 +31,8 @@ from app.models.tenancy import (
 
 __all__ = [
     "AppUser",
+    "Attempt",
+    "AttemptContext",
     "Chapter",
     "ClassTeacher",
     "Concept",
@@ -33,10 +42,13 @@ __all__ = [
     "Item",
     "KnowledgePoint",
     "KpKeyPrereq",
+    "LessonProgress",
     "Misconception",
     "Organization",
     "Role",
     "SchoolClass",
+    "StudyActivity",
+    "StudyTime",
     "Subject",
     "TenantMixin",
     "UserStatus",

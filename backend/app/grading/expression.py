@@ -34,7 +34,7 @@ MAX_EXPONENT = 100
 TIME_LIMIT_S = 1.0  # per check, measured inside the worker
 SAFETY_S = 30.0  # queue + run: only a hung worker gets here
 WARMUP_S = 60.0
-WORKERS = 4
+WORKERS = 2  # each holds SymPy (~100 MB): sized for a 512 MB free-tier instance
 NUMERIC_POINTS = 5
 NUMERIC_TOL = 1e-9
 MIN_POINTS = 3
@@ -102,7 +102,7 @@ def answer_text(spec: dict[str, Any], values: dict[str, Value]) -> str:
 # --- the time-limited SymPy work ------------------------------------------------------------------
 
 
-class _OutOfTimeError(Exception):
+class _OutOfTimeError(BaseException):  # not swallowed by any `except Exception`
     pass
 
 
@@ -111,7 +111,7 @@ def _on_alarm(signum: int, frame: Any) -> None:
 
 
 def _timed[T](fn: Callable[..., T], *args: Any) -> tuple[bool, T | None]:
-    """Runs in a worker process: `fn(*args)` with its own CPU-time budget (a SIGALRM in the
+    """Runs in a worker process: `fn(*args)` with its own wall-clock budget (a SIGALRM in the
     worker's main thread), so time spent queueing in the parent never counts. (False, None) when
     it runs out of time; the worker survives and takes the next job."""
     signal.signal(signal.SIGALRM, _on_alarm)
@@ -171,6 +171,8 @@ class _Limiter:
             return None
         try:
             finished, value = pool.apply_async(_timed, (fn, *args)).get(SAFETY_S)
+        except _OutOfTimeError:  # the alarm landed just outside `_timed`'s handler
+            return None
         except multiprocessing.TimeoutError:
             log.error("expression grading pool stopped responding; restarting it")
             self._reset(pool)

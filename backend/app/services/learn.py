@@ -16,6 +16,7 @@ import random
 import uuid
 from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import any_, case, func, literal, select, text, update
@@ -786,18 +787,30 @@ async def record_progress(
 
 
 async def _review_due_on(scope: OrgScope, concept_id: uuid.UUID) -> bool:
-    """Brush-up time is logged only while a review on this prerequisite is due."""
-    found = await scope.session.scalar(
-        scope.select(Remediation)
-        .with_only_columns(Remediation.id)
+    """Brush-up time is logged only while a review on this prerequisite is due, or just ended
+    (the page reports its time when the last answer comes back, after the review closed)."""
+    on_prereq = scope.select(Remediation).where(
+        Remediation.student_id == scope.user.id,
+        Remediation.prereq_concept_id == concept_id,
+    )
+    due = await scope.session.scalar(
+        on_prereq.with_only_columns(Remediation.id)
+        .where(Remediation.state == RemediationState.review_due)
+        .limit(1)
+    )
+    if due is not None:
+        return True
+    recent = await scope.session.scalar(
+        scope.select(PracticeSession)
+        .with_only_columns(PracticeSession.id)
         .where(
-            Remediation.student_id == scope.user.id,
-            Remediation.prereq_concept_id == concept_id,
-            Remediation.state == RemediationState.review_due,
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.remediation_id.in_(on_prereq.with_only_columns(Remediation.id)),
+            PracticeSession.ended_at >= func.now() - timedelta(seconds=MAX_STEP_SECONDS),
         )
         .limit(1)
     )
-    return found is not None
+    return recent is not None
 
 
 # The partial unique index's predicate, as a SQL literal. Never a bound parameter: once Postgres

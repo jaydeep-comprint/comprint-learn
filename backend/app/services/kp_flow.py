@@ -829,17 +829,12 @@ def _resolve_review(rem: Remediation, session: PracticeSession | None) -> None:
 
 
 async def _kp_unblocked(scope: OrgScope, rem: Remediation) -> bool:
-    """No other open remediation still blocks the KP this one was created for."""
-    others = await scope.session.scalar(
-        scope.select(Remediation)
-        .with_only_columns(func.count())
-        .where(
-            Remediation.student_id == scope.user.id,
-            Remediation.kp_id == rem.kp_id,
-            Remediation.id != rem.id,
-            Remediation.state != RemediationState.resolved,
-        )
+    """No other open remediation still blocks the KP this one was created for (the same rule as
+    the frontier: remediations on retired prerequisites don't block)."""
+    blocking = frontier.open_remediations(scope).where(
+        Remediation.kp_id == rem.kp_id, Remediation.id != rem.id
     )
+    others = await scope.session.scalar(blocking.with_only_columns(func.count()))
     return not others
 
 
@@ -863,6 +858,17 @@ async def remediation_question(scope: OrgScope, remediation_id: str) -> Question
     except EmptyPoolError:  # the prereq's questions were retired: don't block the KP forever
         log.warning("remediation %s has no questions left; resolving it", rem.id)
         _resolve_review(rem, session)
+        # A session opened just before the pool turned out empty mustn't stay active.
+        await scope.session.execute(
+            update(PracticeSession)
+            .where(
+                PracticeSession.org_id == scope.org_id,
+                PracticeSession.remediation_id == rem.id,
+                PracticeSession.status == SessionStatus.active,
+            )
+            .values(status=SessionStatus.passed, ended_at=func.now())
+            .execution_options(synchronize_session="fetch")
+        )
         await scope.session.commit()
         raise _conflict("not_due", "This brush-up has no questions.", state="resolved") from None
 
@@ -920,7 +926,19 @@ async def _review_question(
 
 async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerIn) -> AnswerResult:
     _check_response(body.response)
-    rem = await _remediation(scope, remediation_id, for_update=True)
+    rem = await _remediation(scope, remediation_id)
+    # Serialise every review on this prerequisite (prereq row, then remediation, then session):
+    # two reviews on the same prereq failing at once would otherwise each hold their own
+    # session and wait for the other's in `close_review_sessions` (a deadlock).
+    await scope.session.execute(
+        scope.select(ConceptState)
+        .where(
+            ConceptState.student_id == scope.user.id,
+            ConceptState.concept_id == rem.prereq_concept_id,
+        )
+        .with_for_update()
+    )
+    await scope.session.refresh(rem, with_for_update=True)
     session = await _locked_review_session(scope, rem)
     if rem.state != RemediationState.review_due:
         # A repeat of an answered position still gets its stored result; nothing else may be

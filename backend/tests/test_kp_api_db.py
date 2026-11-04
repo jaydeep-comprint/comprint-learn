@@ -490,6 +490,11 @@ async def test_passed_review_says_whether_the_kp_is_unblocked(db_app: DbApp) -> 
     rid = await _two_fails(db_app, s, SPEED, "kp1")
     res = await _review(db_app, s, rid, "CCC")
     assert res["session_status"] == "passed" and res["kp_open"] is True
+    # The page reports the review's time after the last answer closed it: still logged.
+    await post(db_app, s, url(DIST, "/progress"), {"step": "remediation", "active_seconds": 40})
+    async with db_app.sessions() as session:
+        steps = (await session.scalars(select(StudyTime.step))).all()
+    assert "remediation" in steps
 
 
 async def test_retired_item_is_replaced_at_the_same_position(db_app: DbApp) -> None:

@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal
 
-from sqlalchemy import func, select, update
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope
@@ -144,6 +144,24 @@ class Frontier:
         return view.status if view is not None else "locked"
 
 
+def open_remediations(scope: OrgScope) -> Select[Remediation]:
+    """The student's unresolved remediations that can still block a KP. One on retired content
+    can never resolve, so it doesn't count."""
+    return (
+        scope.select(Remediation)
+        .join(Concept, Concept.id == Remediation.prereq_concept_id)
+        .join(Chapter, Chapter.id == Concept.chapter_id)
+        .join(Course, Course.id == Concept.course_id)
+        .where(
+            Remediation.student_id == scope.user.id,
+            Remediation.state != RemediationState.resolved,
+            Concept.retired_at.is_(None),
+            Chapter.retired_at.is_(None),
+            Course.retired_at.is_(None),
+        )
+    )
+
+
 async def active_kps(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> list[KpView]:
     """Active KPs of these concepts in position order, with whether each has gradable questions."""
     if not concept_ids:
@@ -220,21 +238,7 @@ async def load(
     remediations = [
         RemediationView(r.id, r.kp_id, r.prereq_concept_id, r.state)
         for r in (
-            await scope.session.scalars(
-                scope.select(Remediation)
-                # A remediation on retired content can never resolve: it mustn't block a KP.
-                .join(Concept, Concept.id == Remediation.prereq_concept_id)
-                .join(Chapter, Chapter.id == Concept.chapter_id)
-                .join(Course, Course.id == Concept.course_id)
-                .where(
-                    Remediation.student_id == student,
-                    Remediation.state != RemediationState.resolved,
-                    Concept.retired_at.is_(None),
-                    Chapter.retired_at.is_(None),
-                    Course.retired_at.is_(None),
-                )
-                .order_by(Remediation.created_at)
-            )
+            await scope.session.scalars(open_remediations(scope).order_by(Remediation.created_at))
         ).all()
     ]
     by_kp: dict[uuid.UUID, list[RemediationView]] = {}

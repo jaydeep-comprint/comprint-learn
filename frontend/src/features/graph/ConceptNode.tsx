@@ -62,7 +62,7 @@ export function ConceptNode({ data }: NodeProps<ConceptFlowNode>) {
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 font-medium leading-tight">{concept.title}</span>
           {status && (
-            <span className={cn("block text-xs", dark ? "text-white/80" : "text-slate-600")}>
+            <span className={cn("block text-xs", dark ? "text-white" : "text-slate-800")}>
               {STATUS_LABELS[status]}
             </span>
           )}

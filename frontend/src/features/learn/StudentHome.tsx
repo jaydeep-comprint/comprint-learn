@@ -33,8 +33,10 @@ function Row({ to, children }: { to: string; children: ReactNode }) {
   );
 }
 
+/** "N of M parts": KPs plus Practice (spec 006). */
 function parts(c: HomeConcept): string {
-  return `${c.kps_passed} of ${c.kps_total} parts`;
+  if (c.practice_left) return "Practice left";
+  return `${c.parts_passed} of ${c.parts_total} parts`;
 }
 
 function CourseCard({ course }: { course: StudentCourse }) {

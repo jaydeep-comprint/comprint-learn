@@ -7,6 +7,7 @@ function kpNumber(index: number, steps: string[]): number {
 function stepLabel(step: string, index: number, steps: string[]): string {
   if (step === "intro") return "Intro";
   if (step === "check") return "Check";
+  if (step === "practice") return "Practice";
   const n = kpNumber(index, steps);
   return step.startsWith("kpq:") ? `${n}✎` : String(n);
 }
@@ -14,6 +15,7 @@ function stepLabel(step: string, index: number, steps: string[]): string {
 function stepName(step: string, index: number, steps: string[], passed: boolean): string {
   if (step === "intro") return "Introduction";
   if (step === "check") return "Quick check";
+  if (step === "practice") return `Practice${passed ? " (passed)" : ""}`;
   const n = kpNumber(index, steps);
   if (step.startsWith("kpq:")) return `Practice ${n}${passed ? " (passed)" : ""}`;
   return `Worked example ${n}`;

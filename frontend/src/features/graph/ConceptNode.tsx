@@ -29,12 +29,12 @@ const BORDER = {
 export function ConceptNode({ data }: NodeProps<ConceptFlowNode>) {
   const { concept, selected, onSelect } = data;
   const status = concept.status;
-  const fill = concept.kps_total ? (concept.kps_passed / concept.kps_total) * 100 : 0;
+  const fill = concept.parts_total ? (concept.parts_passed / concept.parts_total) * 100 : 0;
   const m = mastery(concept);
   const dark = m >= DARK_FROM;
   const label = status
     ? `${concept.title}, ${STATUS_LABELS[status]}${
-        status === "in_progress" ? `, ${concept.kps_passed} of ${concept.kps_total} parts` : ""
+        status === "in_progress" ? `, ${concept.parts_passed} of ${concept.parts_total} parts` : ""
       }`
     : concept.title;
   return (
@@ -69,7 +69,7 @@ export function ConceptNode({ data }: NodeProps<ConceptFlowNode>) {
         </span>
         {concept.waiting && <Clock className="size-4 shrink-0" aria-label="Waiting" />}
         {concept.brush_up && <RotateCcw className="size-4 shrink-0" aria-label="Brush up" />}
-        {status === "in_progress" && concept.kps_total > 0 && (
+        {status === "in_progress" && concept.parts_total > 0 && (
           <span className="absolute inset-x-0 bottom-0 h-1 bg-current/20" aria-hidden>
             <span className="block h-full bg-current/70" style={{ width: `${fill}%` }} />
           </span>

@@ -69,7 +69,7 @@ describe("QuestionStep", () => {
     await user.type(screen.getByLabelText("Your answer"), " 8 ");
     expect(submit).toBeEnabled();
     await user.click(submit);
-    expect(onSubmit).toHaveBeenCalledWith("8");
+    expect(onSubmit).toHaveBeenCalledWith({ response: "8" });
   });
 
   it("shows this session's answers as dots, the current one hollow", () => {
@@ -116,7 +116,7 @@ describe("QuestionStep", () => {
     const { onSubmit } = setup({ question: mcq });
     await user.click(screen.getByRole("radio", { name: "18 km/h" }));
     await user.click(screen.getByRole("button", { name: "Submit" }));
-    expect(onSubmit).toHaveBeenCalledWith("2");
+    expect(onSubmit).toHaveBeenCalledWith({ response: "2" });
   });
 
   it("staff preview: no dots, Another question", () => {

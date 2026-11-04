@@ -47,7 +47,9 @@ function Body({
   outline: Outline;
   concept: OutlineConcept;
 }) {
-  const part = Math.min(concept.kps_passed + 1, concept.kps_total);
+  const part = Math.min(concept.parts_passed + 1, concept.parts_total);
+  const onPractice =
+    concept.parts_total > concept.kps_total && concept.kps_passed === concept.kps_total;
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{concept.summary}</p>
@@ -55,9 +57,9 @@ function Body({
         <p className="flex items-center gap-2 text-sm">
           <StatusIcon status={concept.status} />
           {STATUS_LABELS[concept.status]}
-          {concept.status === "in_progress" && concept.kps_total > 0 && (
+          {concept.status === "in_progress" && concept.parts_total > 0 && (
             <span className="text-muted-foreground">
-              · Part {part} of {concept.kps_total}
+              · {onPractice ? "Practice left" : `Part ${part} of ${concept.parts_total}`}
             </span>
           )}
         </p>

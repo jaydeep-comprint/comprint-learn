@@ -7,11 +7,43 @@ import { ExpressionInput } from "@/features/learn/ExpressionInput";
 import { NumericInput } from "@/features/learn/NumericInput";
 import { toTex } from "@/features/learn/toTex";
 
+function WithUnit() {
+  const [value, setValue] = useState("");
+  const [unit, setUnit] = useState("");
+  return (
+    <NumericInput
+      id="n"
+      value={value}
+      unit="m/s"
+      unitRequired
+      unitValue={unit}
+      onChange={setValue}
+      onUnitChange={setUnit}
+    />
+  );
+}
+
 describe("NumericInput", () => {
-  it("brings up the decimal keyboard and shows the unit as a suffix", () => {
-    render(<NumericInput id="n" value="" unit="m/s" onChange={() => {}} />);
+  it("has a unit box with a live preview when the answer has a unit", async () => {
+    const user = userEvent.setup();
+    render(<WithUnit />);
+    expect(screen.getByRole("textbox", { name: "" })).toHaveAttribute("inputmode", "decimal");
+    const unit = screen.getByRole("textbox", { name: "Unit" });
+    expect(unit).toHaveAttribute("placeholder", "unit, e.g. m/s");
+    expect(unit).toHaveAttribute("inputmode", "text");
+    expect(screen.queryByTestId("unit-suffix")).not.toBeInTheDocument();
+    await user.type(unit, "km/hr");
+    expect(screen.getByText("Read as: km·h⁻¹")).toBeInTheDocument();
+    await user.clear(unit);
+    await user.type(unit, "furlongs");
+    expect(screen.getByText("Not a unit we know")).toBeInTheDocument();
+  });
+
+  it("has the number box only when the answer is unitless", () => {
+    render(<NumericInput id="n" value="" unit={null} onChange={() => {}} />);
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(screen.getByRole("textbox")).toHaveAttribute("inputmode", "decimal");
-    expect(screen.getByTestId("unit-suffix")).toHaveTextContent("m/s");
+    expect(screen.queryByRole("textbox", { name: "Unit" })).not.toBeInTheDocument();
   });
 });
 

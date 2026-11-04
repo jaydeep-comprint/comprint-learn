@@ -109,8 +109,8 @@ def test_lesson_steps() -> None:
 
 
 def test_shown_options_hide_authored_ids() -> None:
+    from app.grading.mcq import ShownOptions as _ShownOptions
     from app.schemas.content import OptionPublic
-    from app.services.learn import _ShownOptions
 
     shown = _ShownOptions([OptionPublic(id="c", text="C"), OptionPublic(id="a", text="A")])
     assert [(o.id, o.text) for o in shown.public()] == [("1", "C"), ("2", "A")]

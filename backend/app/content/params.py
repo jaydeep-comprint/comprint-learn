@@ -10,6 +10,7 @@ import math
 import random
 import re
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import sympy
@@ -50,10 +51,10 @@ MAX_LITERAL_DIGITS = 30
 MAX_NODES = 200
 
 
-def _pow(base: Any, exponent: Any) -> Any:
+def _pow(base: Any, exponent: Any, max_exponent: int = MAX_EXPONENT) -> Any:
     if getattr(exponent, "is_number", False):
-        if abs(exponent) > MAX_EXPONENT:
-            raise ExpressionError(f"exponents above {MAX_EXPONENT} aren't allowed")
+        if abs(exponent) > max_exponent:
+            raise ExpressionError(f"exponents above {max_exponent} aren't allowed")
         if getattr(base, "is_number", False) and base != 0:
             bits = abs(float(sympy.log(abs(base), 2).evalf(15))) * abs(float(exponent))
             if bits > MAX_RESULT_BITS:
@@ -92,8 +93,11 @@ def parse(
     names: Mapping[str, Any],
     *,
     functions: Mapping[str, Callable[..., Any]] = FUNCTIONS,
+    max_exponent: int = MAX_EXPONENT,
 ) -> Any:
-    """Parses `text` into a SymPy object; names resolve only via `names`, `functions`, constants."""
+    """Parses `text` into a SymPy object; names resolve only via `names`, `functions`, constants.
+
+    `max_exponent` is lowered for student input (spec 005 grading)."""
     if isinstance(text, bool):
         raise ExpressionError("expected a number or an expression")
     if isinstance(text, int | float):
@@ -108,7 +112,7 @@ def parse(
     if sum(1 for _ in ast.walk(tree)) > MAX_NODES:
         raise ExpressionError("expression is too long")
     try:
-        return _Walker(names, functions).visit(tree.body)
+        return _Walker(names, functions, max_exponent).visit(tree.body)
     except (RecursionError, MemoryError) as exc:
         raise ExpressionError(f"can't evaluate {text!r}: too complex") from exc
     except (TypeError, ValueError, ZeroDivisionError, AttributeError) as exc:
@@ -126,10 +130,14 @@ def _number(n: int | float) -> sympy.Rational:
 
 class _Walker:
     def __init__(
-        self, names: Mapping[str, Any], functions: Mapping[str, Callable[..., Any]]
+        self,
+        names: Mapping[str, Any],
+        functions: Mapping[str, Callable[..., Any]],
+        max_exponent: int = MAX_EXPONENT,
     ) -> None:
         self.names = names
         self.functions = functions
+        self.max_exponent = max_exponent
 
     def visit(self, node: ast.AST) -> Any:
         match node:
@@ -145,6 +153,8 @@ class _Walker:
                 if name in CONSTANTS:
                     return CONSTANTS[name]
                 raise ExpressionError(f"unknown name {name!r}")
+            case ast.BinOp(left=left, op=ast.Pow(), right=right):
+                return _pow(self.visit(left), self.visit(right), self.max_exponent)
             case ast.BinOp(left=left, op=op, right=right) if type(op) in _BINOPS:
                 return _BINOPS[type(op)](self.visit(left), self.visit(right))
             case ast.UnaryOp(op=ast.USub(), operand=operand):
@@ -214,7 +224,7 @@ def holds(constraint: str, values: Mapping[str, Value]) -> bool:
     raise ExpressionError(f"constraint {constraint!r} is not a true/false condition")
 
 
-def sample(item: Item, seed: int) -> dict[str, Value]:
+def sample(item: "Item | _SampleSource", seed: int) -> dict[str, Value]:
     """Params drawn in declaration order (retried until `constraints` hold), then `derived`.
 
     Deterministic for a given item and seed. Raises `SampleError` if no draw satisfies the
@@ -234,6 +244,30 @@ def sample(item: Item, seed: int) -> dict[str, Value]:
         except ExpressionError as exc:
             raise ExpressionError(f"derived {name} {exc}") from exc
     return values
+
+
+def sample_answer(answer: Mapping[str, Any], seed: int | None) -> dict[str, Value]:
+    """`sample` for a stored item: rebuilds the params/constraints/derived from `item.answer`.
+
+    Fixed items (no params) and a missing seed give no values beyond `derived`."""
+    params = answer.get("params") or {}
+    if not params and not answer.get("derived"):
+        return {}
+    stub = _SampleSource(
+        params={k: RangeOrChoices.model_validate(v) for k, v in params.items()},
+        constraints=list(answer.get("constraints") or []),
+        derived=dict(answer.get("derived") or {}),
+    )
+    return sample(stub, 0 if seed is None else seed)
+
+
+@dataclass(frozen=True)
+class _SampleSource:
+    """The parts of a schema `Item` that `sample` reads."""
+
+    params: dict[str, RangeOrChoices]
+    constraints: list[str]
+    derived: dict[str, str]
 
 
 # --- rendering ------------------------------------------------------------------------------------

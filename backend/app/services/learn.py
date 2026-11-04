@@ -23,6 +23,7 @@ from sqlalchemy.sql.dml import ReturningInsert
 
 from app.api.deps import OrgScope
 from app.core.errors import ApiProblem, forbidden, not_found
+from app.grading.mcq import ShownOptions
 from app.models import (
     Attempt,
     AttemptContext,
@@ -41,7 +42,7 @@ from app.models import (
     Subject,
 )
 from app.models.content import ItemKind
-from app.schemas.content import CourseRef, ItemPublic, OptionPublic
+from app.schemas.content import CourseRef, ItemPublic
 from app.schemas.learn import (
     CheckPublic,
     CheckResult,
@@ -466,39 +467,13 @@ async def _content(scope: OrgScope, concept_id: uuid.UUID) -> _LessonContent:
     return _LessonContent(concept, list(kps), check)
 
 
-@dataclass(frozen=True)
-class _ShownOptions:
-    """The check's options in the order this user sees them.
-
-    Clients never see authored option ids (they would give the answer away: authors tend to put
-    the correct option first). They get positional ids "1".."n" in shown order instead; the server
-    maps them back. Attempts store authored ids.
-    """
-
-    authored: list[OptionPublic]
-
-    def public(self) -> list[OptionPublic]:
-        return [OptionPublic(id=str(i + 1), text=o.text) for i, o in enumerate(self.authored)]
-
-    def to_authored(self, client_id: str) -> str | None:
-        if not (client_id.isascii() and client_id.isdigit()) or not 1 <= int(client_id) <= len(
-            self.authored
-        ):
-            return None
-        return self.authored[int(client_id) - 1].id
-
-    def to_client(self, authored_id: str | None) -> str:
-        ids = [o.id for o in self.authored]
-        return str(ids.index(authored_id) + 1) if authored_id in ids else ""
-
-
-def _shown_options(scope: OrgScope, item: Item) -> _ShownOptions:
+def _shown_options(scope: OrgScope, item: Item) -> ShownOptions:
     public = ItemPublic.from_row(item)
     options = list(public.options or [])
     if scope.user.is_staff or not public.shuffle:
-        return _ShownOptions(options)
+        return ShownOptions(options)
     by_id = {o.id: o for o in options}
-    return _ShownOptions([by_id[i] for i in shuffled_order(list(by_id), scope.user.id, item.id)])
+    return ShownOptions([by_id[i] for i in shuffled_order(list(by_id), scope.user.id, item.id)])
 
 
 async def _result(
@@ -508,7 +483,7 @@ async def _result(
     misconception_id: uuid.UUID | None,
     correct: bool | None = None,
 ) -> CheckResult:
-    """`chosen` is an authored id; the result speaks the client's ids (`_ShownOptions`).
+    """`chosen` is an authored id; the result speaks the client's ids (`ShownOptions`).
 
     `correct` is the stored grade for an existing attempt (else graded against the key now)."""
     shown = _shown_options(scope, item)

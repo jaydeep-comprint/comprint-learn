@@ -68,6 +68,12 @@ practice:                       # >= 1 item, type multistep or code
 **Pool size**: a fixed item counts 1, an item with `params` counts 2. Each KP pool needs at least 6 (error)
 and should have at least 8 (warning). Keep MCQs to at most 30% of a pool (warning).
 
+**KP practice (spec 005)** serves only `numeric`, `expression` and `mcq` questions, one at a time; `code`
+(and `multistep`) items stay in the pool but aren't served until spec 006. So each KP needs at least 2 of those
+gradable questions (error), and their weight (same counting) should be at least 5 (warning), so a 5-question
+session never runs out of new questions. Write explanations with `{{name}}` placeholders freely: they're
+rendered with the student's numbers after each answer.
+
 **Misconception check**: one MCQ with fixed numbers (`type: mcq`, no `params`; both errors). Students get one try
 in the lesson; afterwards they see the correct option, the `explanation`, and, for a tagged wrong option, the
 misconception's `title` as "Common mix-up: …" (write titles for students; `description` is for teachers only).

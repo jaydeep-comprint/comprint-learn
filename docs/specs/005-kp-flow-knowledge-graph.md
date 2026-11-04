@@ -1,6 +1,6 @@
 # Spec 005: KP flow + knowledge graph
 
-Status: draft
+Status: implemented
 PRD link: docs/PRD.md#mvp-scope-v1 (item 5; Phase 1 of docs/ROADMAP.md)
 Builds on: [spec 004](004-learn-layer.md) (Learn layer). Research: [COMPETITOR-INSIGHTS](../research/COMPETITOR-INSIGHTS.md) (Math Academy).
 

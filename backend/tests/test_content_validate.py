@@ -466,4 +466,3 @@ def test_warning_few_gradable_slots(tmp_path: Path) -> None:
         f"{CONCEPT}: kps[0] (kp1): question weight is 3; aim for >= 5 "
         "(fixed item = 1, param item = 2) so a 5-question KP session never runs dry"
     ]
-

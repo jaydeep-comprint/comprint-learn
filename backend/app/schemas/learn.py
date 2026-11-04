@@ -16,6 +16,7 @@ from app.schemas.content import CourseRef, OptionPublic
 
 LessonStatus = Literal["learned", "in_progress", "ready", "locked"]
 KpStatus = Literal["not_started", "in_progress", "passed", "failed"]
+PracticeStatus = Literal["none", "pending", "passed"]
 
 
 class ConceptRef(BaseModel):
@@ -37,6 +38,10 @@ class HomeConcept(BaseModel):
     title: str
     kps_passed: int
     kps_total: int
+    # Spec 006: Practice counts as one more part when the concept has practice.
+    parts_passed: int
+    parts_total: int
+    practice_left: bool = False  # every KP passed; only Practice is left
     reopen_at: datetime | None = None  # waiting concepts only
 
 
@@ -67,6 +72,8 @@ class OutlineConcept(BaseModel):
     prereqs: list[str]
     kps_passed: int
     kps_total: int
+    parts_passed: int  # KPs passed + practice passed (spec 006)
+    parts_total: int  # KPs + 1 when the concept has practice
     waiting: Waiting | None  # the next KP failed and isn't open yet
     brush_up: bool  # a remediation review is due for one of its KPs
     brush_up_id: uuid.UUID | None  # that review (the map's "Brush up first" button)
@@ -104,6 +111,13 @@ class KpOut(BaseModel):
     open: bool  # its questions may be started now (only a failed KP waits)
     reopen_at: datetime | None
     active: bool  # a question session is in progress (resume at its `kpq` step)
+
+
+class LessonPractice(BaseModel):
+    """The lesson's Practice step (spec 006)."""
+
+    status: PracticeStatus  # none: no practice items (no `practice` step)
+    active: bool  # an attempt is in progress (resume at the `practice` step)
 
 
 class LessonWaiting(BaseModel):
@@ -150,6 +164,7 @@ class Lesson(BaseModel):
     preview: bool
     concept_status: LessonStatus | None  # null for staff
     waiting: LessonWaiting | None
+    practice: LessonPractice
 
 
 class ProgressIn(BaseModel):

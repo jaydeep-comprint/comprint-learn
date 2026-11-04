@@ -2,7 +2,8 @@
 
 Per student and concept: `learned` / `in_progress` are stored (`concept_state`); `ready` (no row,
 every direct prerequisite learned) and `locked` are computed. A concept is learned when every active
-KP is passed. KP state, reopening and remediations come from a fixed number of queries whatever
+KP is passed and (spec 006) it has no active practice item or the student passed a practice
+attempt for it. KP state, reopening and remediations come from a fixed number of queries whatever
 the number of concepts (no N+1). Used by the outline, home, lesson and KP services.
 """
 
@@ -17,7 +18,7 @@ from sqlalchemy import Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope
-from app.grading import QUICK_TYPES
+from app.grading import ALL_TYPES, QUICK_TYPES
 from app.models import (
     Chapter,
     Concept,
@@ -42,6 +43,7 @@ from app.services import kp_flow
 log = logging.getLogger(__name__)
 
 Status = Literal["learned", "in_progress", "ready", "locked"]
+PracticeStatus = Literal["none", "pending", "passed"]
 
 
 def concept_status(
@@ -73,7 +75,8 @@ class KpView:
     concept_id: uuid.UUID
     slug: str
     title: str
-    gradable: bool  # has at least one numeric/expression/mcq question
+    gradable: bool  # has at least one active question (any type, spec 006)
+    quick: bool = True  # has a numeric/expression/mcq question (brush-up reviews serve only those)
     status: KpStatus = KpStatus.not_started
     fail_count: int = 0
     reopen_at: datetime | None = None
@@ -91,6 +94,28 @@ class ConceptView:
     id: uuid.UUID
     status: Status
     kps: list[KpView]
+    has_practice: bool = False  # an active practice item exists (spec 006)
+    practice_passed: bool = False  # the student passed a practice attempt for it
+
+    @property
+    def practice(self) -> PracticeStatus:
+        """A concept learned before its practice existed (or before 006) counts as passed."""
+        if not self.has_practice:
+            return "none"
+        return "passed" if self.practice_passed or self.status == "learned" else "pending"
+
+    @property
+    def practice_left(self) -> bool:
+        """Every KP passed; Practice is the next part."""
+        return self.next_kp is None and self.practice == "pending"
+
+    @property
+    def parts_passed(self) -> int:
+        return self.kps_passed + (self.practice == "passed")
+
+    @property
+    def parts_total(self) -> int:
+        return self.kps_total + self.has_practice
 
     @property
     def kps_passed(self) -> int:
@@ -163,7 +188,8 @@ def open_remediations(scope: OrgScope) -> Select[Remediation]:
 
 
 async def active_kps(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> list[KpView]:
-    """Active KPs of these concepts in position order, with whether each has gradable questions."""
+    """Active KPs of these concepts in position order, with whether each has questions (and
+    quick-check questions for reviews)."""
     if not concept_ids:
         return []
     rows = (
@@ -179,26 +205,68 @@ async def active_kps(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> lis
         )
     ).all()
     kp_ids = [r[0] for r in rows]
-    gradable = set(
-        (
-            await scope.session.scalars(
-                select(Item.kp_id)
-                .where(
-                    Item.kp_id.in_(kp_ids),
-                    Item.kind == ItemKind.kp_question,
-                    Item.type.in_(QUICK_TYPES),
-                    Item.retired_at.is_(None),
-                )
-                .distinct()
+    types: dict[uuid.UUID, set[str]] = {}
+    for kp_id, item_type in (
+        await scope.session.execute(
+            select(Item.kp_id, Item.type)
+            .where(
+                Item.kp_id.in_(kp_ids),
+                Item.kind == ItemKind.kp_question,
+                Item.type.in_(ALL_TYPES),
+                Item.retired_at.is_(None),
             )
-        ).all()
-    )
+            .distinct()
+        )
+    ).all():
+        if kp_id is not None:
+            types.setdefault(kp_id, set()).add(item_type.value)
     out = []
     for kp_id, concept_id, slug, title in rows:
-        if kp_id not in gradable:
-            log.warning("KP %s has no gradable questions; treating it as passed", kp_id)
-        out.append(KpView(kp_id, concept_id, slug, title, kp_id in gradable))
+        kinds = types.get(kp_id, set())
+        if not kinds:
+            log.warning("KP %s has no questions; treating it as passed", kp_id)
+        out.append(
+            KpView(kp_id, concept_id, slug, title, bool(kinds), quick=bool(kinds & QUICK_TYPES))
+        )
     return out
+
+
+async def practice_concepts(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
+    """The concepts among `concept_ids` that have an active practice item (spec 006)."""
+    if not concept_ids:
+        return set()
+    rows = await scope.session.scalars(
+        select(Item.concept_id)
+        .where(
+            Item.concept_id.in_(concept_ids),
+            Item.kind == ItemKind.practice,
+            Item.retired_at.is_(None),
+        )
+        .distinct()
+    )
+    return set(rows.all())
+
+
+async def _practice_passed(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
+    if not concept_ids:
+        return set()
+    rows = await scope.session.scalars(
+        scope.select(PracticeSession)
+        .with_only_columns(PracticeSession.concept_id)
+        .where(
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.kind == SessionKind.practice,
+            PracticeSession.status == SessionStatus.passed,
+            PracticeSession.concept_id.in_(concept_ids),
+        )
+        .distinct()
+    )
+    return {c for c in rows.all() if c is not None}
+
+
+def complete(view: "ConceptView") -> bool:
+    """Every active KP passed and the practice (if any) passed: the concept is learned."""
+    return view.next_kp is None and view.practice != "pending"
 
 
 async def load(
@@ -276,21 +344,26 @@ async def load(
     for kp in kps:
         kps_by_concept.setdefault(kp.concept_id, []).append(kp)
 
+    with_practice = await practice_concepts(scope, concept_ids)
+    practice_passed = await _practice_passed(scope, with_practice)
+
+    def view(cid: uuid.UUID) -> ConceptView:
+        return ConceptView(
+            cid,
+            concept_status(cid, stored, prereqs),
+            kps_by_concept.get(cid, []),
+            has_practice=cid in with_practice,
+            practice_passed=cid in practice_passed,
+        )
+
     if promote:
         for cid in concept_ids:
-            ckps = kps_by_concept.get(cid, [])
-            if (
-                stored.get(cid) == ConceptStatus.in_progress
-                and ckps
-                and all(k.passed for k in ckps)
-            ):
+            v = view(cid)
+            if stored.get(cid) == ConceptStatus.in_progress and v.kps and complete(v):
                 await mark_learned(scope, cid)
                 stored[cid] = ConceptStatus.learned
 
-    views = {
-        cid: ConceptView(cid, concept_status(cid, stored, prereqs), kps_by_concept.get(cid, []))
-        for cid in concept_ids
-    }
+    views = {cid: view(cid) for cid in concept_ids}
     return Frontier(stored, views, remediations, kp_concept)
 
 

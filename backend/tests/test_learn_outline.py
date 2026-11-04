@@ -106,3 +106,17 @@ def test_shuffled_order_is_stable_per_student_and_item() -> None:
 def test_lesson_steps() -> None:
     assert lesson_steps(["kp1", "kp2"], has_check=True) == ["intro", "check", "kp:kp1", "kp:kp2"]
     assert lesson_steps(["kp1"], has_check=False) == ["intro", "kp:kp1"]
+
+
+def test_shown_options_hide_authored_ids() -> None:
+    from app.schemas.content import OptionPublic
+    from app.services.learn import _ShownOptions
+
+    shown = _ShownOptions([OptionPublic(id="c", text="C"), OptionPublic(id="a", text="A")])
+    assert [(o.id, o.text) for o in shown.public()] == [("1", "C"), ("2", "A")]
+    assert shown.to_authored("2") == "a"
+    assert shown.to_authored("1") == "c"
+    for bad in ["0", "3", "a", "", "-1", "1.0", "²"]:
+        assert shown.to_authored(bad) is None
+    assert shown.to_client("a") == "2"
+    assert shown.to_client("zzz") == ""

@@ -465,13 +465,39 @@ async def _content(scope: OrgScope, concept_id: uuid.UUID) -> _LessonContent:
     return _LessonContent(concept, list(kps), check)
 
 
-def _shown_options(scope: OrgScope, item: Item) -> list[OptionPublic]:
+@dataclass(frozen=True)
+class _ShownOptions:
+    """The check's options in the order this user sees them.
+
+    Clients never see authored option ids (they would give the answer away: authors tend to put
+    the correct option first). They get positional ids "1".."n" in shown order instead; the server
+    maps them back. Attempts store authored ids.
+    """
+
+    authored: list[OptionPublic]
+
+    def public(self) -> list[OptionPublic]:
+        return [OptionPublic(id=str(i + 1), text=o.text) for i, o in enumerate(self.authored)]
+
+    def to_authored(self, client_id: str) -> str | None:
+        if not (client_id.isascii() and client_id.isdigit()) or not 1 <= int(client_id) <= len(
+            self.authored
+        ):
+            return None
+        return self.authored[int(client_id) - 1].id
+
+    def to_client(self, authored_id: str | None) -> str:
+        ids = [o.id for o in self.authored]
+        return str(ids.index(authored_id) + 1) if authored_id in ids else ""
+
+
+def _shown_options(scope: OrgScope, item: Item) -> _ShownOptions:
     public = ItemPublic.from_row(item)
     options = list(public.options or [])
     if scope.user.is_staff or not public.shuffle:
-        return options
+        return _ShownOptions(options)
     by_id = {o.id: o for o in options}
-    return [by_id[i] for i in shuffled_order(list(by_id), scope.user.id, item.id)]
+    return _ShownOptions([by_id[i] for i in shuffled_order(list(by_id), scope.user.id, item.id)])
 
 
 async def _result(
@@ -481,7 +507,10 @@ async def _result(
     misconception_id: uuid.UUID | None,
     correct: bool | None = None,
 ) -> CheckResult:
-    """`correct` is the stored grade for an existing attempt (else graded against the key now)."""
+    """`chosen` is an authored id; the result speaks the client's ids (`_ShownOptions`).
+
+    `correct` is the stored grade for an existing attempt (else graded against the key now)."""
+    shown = _shown_options(scope, item)
     title = None
     if misconception_id is not None:
         title = await scope.session.scalar(
@@ -489,8 +518,8 @@ async def _result(
         )
     return CheckResult(
         correct=chosen == item.answer.get("correct") if correct is None else correct,
-        chosen=chosen,
-        correct_option=str(item.answer.get("correct")),
+        chosen=shown.to_client(chosen),
+        correct_option=shown.to_client(item.answer.get("correct")),
         explanation_md=item.answer.get("explanation"),
         misconception=None if title is None else MisconceptionOut(title=title),
     )
@@ -524,7 +553,7 @@ async def lesson(scope: OrgScope, course_slug: str, concept_slug: str) -> Lesson
         check = CheckPublic(
             item_id=str(content.check.id),
             prompt=public.prompt,
-            options=_shown_options(scope, content.check),
+            options=_shown_options(scope, content.check).public(),
         )
         if not scope.user.is_staff:
             attempt = await _stored_attempt(scope, content.check.id)
@@ -651,8 +680,10 @@ async def submit_check(
     if item is None:
         raise not_found()
     shown = _shown_options(scope, item)
-    if option_id not in {o.id for o in shown}:
+    authored = shown.to_authored(option_id)
+    if authored is None:
         raise ApiProblem(422, "invalid_option", "That isn't one of the options.")
+    option_id = authored
 
     misconception_id = None
     slug = (item.answer.get("misconceptions") or {}).get(option_id)
@@ -676,7 +707,7 @@ async def submit_check(
             item_version=item.version,
             context=AttemptContext.learn,
             seed=None,
-            response={"option": option_id, "order": [o.id for o in shown]},
+            response={"option": option_id, "order": [o.id for o in shown.authored]},
             correct=option_id == item.answer.get("correct"),
             misconception_id=misconception_id,
             time_taken_ms=max(0, min(time_taken_ms, MAX_CHECK_MS)),

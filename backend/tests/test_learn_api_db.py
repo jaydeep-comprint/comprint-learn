@@ -90,8 +90,19 @@ def _statuses(outline: dict[str, Any]) -> dict[str, str | None]:
     return {c["id"]: c["status"] for ch in outline["chapters"] for c in ch["concepts"]}
 
 
-async def _finish(db: DbApp, user: uuid.UUID, ref: str, option: str = "a") -> dict[str, Any]:
+# The correct option's text in each sample check (clients only see positional option ids).
+CORRECT = {DIST: "Displacement", LIN: "Infinitely many"}
+DIST_AUTHORED = {"Displacement": "a", "Distance": "b", "Both distance and displacement": "c"}
+
+
+def _opt(lesson: dict[str, Any], text: str) -> str:
+    """The client-side id of the option with this text."""
+    return str(next(o["id"] for o in lesson["check"]["options"] if o["text"] == text))
+
+
+async def _finish(db: DbApp, user: uuid.UUID, ref: str) -> dict[str, Any]:
     lesson = await _get(db, user, _url(ref))
+    option = _opt(lesson, CORRECT[ref])
     await _post(db, user, _url(ref, "/check"), {"option_id": option, "time_taken_ms": 5000})
     out: dict[str, Any] = {}
     for step in lesson["steps"]:
@@ -152,6 +163,9 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
     assert not (_keys(lesson) & LEAKS), _keys(lesson) & LEAKS
     again = await _get(db_app, s, _url(DIST))
     assert again["check"]["options"] == lesson["check"]["options"]  # stable shuffle
+    # Positional ids only: authored ids ("a" is usually correct) never reach the client.
+    assert [o["id"] for o in lesson["check"]["options"]] == ["1", "2", "3"]
+    wrong, right = _opt(lesson, "Distance"), _opt(lesson, "Displacement")
 
     out = await _post(db_app, s, _url(DIST, "/progress"), {"step": "intro", "active_seconds": 30})
     assert out == {"seen_steps": ["intro"], "last_step": "intro", "finished_at": None}
@@ -177,17 +191,17 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
 
     # Wrong, tagged option: misconception title (not description) + explanation.
     result = await _post(
-        db_app, s, _url(DIST, "/check"), {"option_id": "b", "time_taken_ms": 9_999_999}
+        db_app, s, _url(DIST, "/check"), {"option_id": wrong, "time_taken_ms": 9_999_999}
     )
     assert result["correct"] is False
-    assert result["chosen"] == "b" and result["correct_option"] == "a"
+    assert result["chosen"] == wrong and result["correct_option"] == right
     assert result["misconception"] == {"title": "Displacement is the same as distance"}
     assert "Displacement is a vector" in result["explanation_md"]
     assert result["already_answered"] is False
     assert "description" not in _keys(result)
 
     again_result = await _post(
-        db_app, s, _url(DIST, "/check"), {"option_id": "a", "time_taken_ms": 1}
+        db_app, s, _url(DIST, "/check"), {"option_id": right, "time_taken_ms": 1}
     )
     assert again_result == {**result, "already_answered": True}
     async with db_app.sessions() as session:
@@ -200,8 +214,8 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
     assert att.item_version == 1 and att.context == "learn" and att.seed is None
     assert att.misconception_id == misconception_id
     assert att.time_taken_ms == 1_800_000 and att.hints_used == 0
-    assert att.response["option"] == "b"
-    assert sorted(att.response["order"]) == ["a", "b", "c"]
+    assert att.response["option"] == "b"  # stored as the authored id
+    assert att.response["order"] == [DIST_AUTHORED[o["text"]] for o in lesson["check"]["options"]]
 
     # Check answered, kp1 seen: not finished until kp2 and kp3 are seen.
     out = await _post(db_app, s, _url(DIST, "/progress"), {"step": "kp:kp2", "active_seconds": 0})
@@ -210,7 +224,7 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
     assert out["finished_at"] is not None
 
     reviewed = await _get(db_app, s, _url(DIST))
-    assert reviewed["check_result"]["chosen"] == "b"
+    assert reviewed["check_result"]["chosen"] == wrong
     assert reviewed["check_result"]["misconception"]["title"]
 
     async with db_app.sessions() as session:
@@ -220,7 +234,7 @@ async def test_lesson_flow_check_resume_and_finish(db_app: DbApp) -> None:
     # SPEED still needs LIN; finish it from the Physics page.
     outline = await _get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
     assert _statuses(outline)[SPEED] == "locked"
-    await _finish(db_app, s, LIN, "c")
+    await _finish(db_app, s, LIN)
     outline = await _get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
     assert _statuses(outline)[SPEED] == "ready"
 
@@ -231,7 +245,7 @@ async def test_finish_requires_the_check(db_app: DbApp) -> None:
     for step in ["intro", "kp:kp1", "kp:kp2", "kp:kp3"]:
         out = await _post(db_app, s, _url(DIST, "/progress"), {"step": step, "active_seconds": 1})
     assert out["finished_at"] is None
-    await _post(db_app, s, _url(DIST, "/check"), {"option_id": "a", "time_taken_ms": 100})
+    await _post(db_app, s, _url(DIST, "/check"), {"option_id": "1", "time_taken_ms": 100})
     lesson = await _get(db_app, s, _url(DIST))
     assert lesson["progress"]["finished_at"] is not None
     assert "check" in lesson["progress"]["seen_steps"]
@@ -246,7 +260,7 @@ async def test_progress_is_shared_across_courses(db_app: DbApp) -> None:
     courses = await _get(db_app, s, "/api/v1/learn/courses")
     assert [c["slug"] for c in courses] == [MATHS, PHYSICS]
 
-    await _finish(db_app, s, LIN, "c")  # as a Maths student
+    await _finish(db_app, s, LIN)  # as a Maths student
     physics = await _get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
     assert _statuses(physics)[LIN] == "finished"
     maths = await _get(db_app, s, f"/api/v1/learn/courses/{MATHS}/outline")
@@ -313,7 +327,7 @@ async def test_concept_outside_courses_is_404(db_app: DbApp) -> None:
         assert r.json()["code"] == "not_found"
     r = await db_app.client.post(
         _url("python-basics/variables-and-types", "/check"),
-        json={"option_id": "a", "time_taken_ms": 1},
+        json={"option_id": "1", "time_taken_ms": 1},
         headers=db_app.auth(s),
     )
     assert r.status_code == 404
@@ -327,9 +341,11 @@ async def test_staff_preview_writes_nothing(db_app: DbApp) -> None:
     lesson = await _get(db_app, t, _url(SPEED))  # locked for students, open for staff
     assert lesson["preview"] is True and lesson["progress"] is None
     dist = await _get(db_app, t, _url(DIST))
-    assert [o["id"] for o in dist["check"]["options"]] == ["a", "b", "c"]  # authored order
+    options = dist["check"]["options"]
+    assert [o["text"] for o in options] == list(DIST_AUTHORED)  # authored order
+    assert [o["id"] for o in options] == ["1", "2", "3"]
 
-    result = await _post(db_app, t, _url(DIST, "/check"), {"option_id": "b", "time_taken_ms": 5})
+    result = await _post(db_app, t, _url(DIST, "/check"), {"option_id": "2", "time_taken_ms": 5})
     assert result["correct"] is False and result["misconception"] is not None
     r = await db_app.client.post(
         _url(DIST, "/progress"),

@@ -22,8 +22,8 @@ from app.api.deps import OrgScope
 from app.content import params
 from app.core.errors import ApiProblem, forbidden, not_found
 from app.grading import (
-    GRADABLE_TYPES,
     MAX_RESPONSE,
+    QUICK_TYPES,
     GradeResult,
     InvalidOptionError,
     ShownOptions,
@@ -193,7 +193,7 @@ async def _pool(scope: OrgScope, kp_id: uuid.UUID) -> list[Item]:
         .where(
             Item.kp_id == kp_id,
             Item.kind == ItemKind.kp_question,
-            Item.type.in_(GRADABLE_TYPES),
+            Item.type.in_(QUICK_TYPES),
             Item.retired_at.is_(None),
         )
         .order_by(Item.position)

@@ -1,6 +1,8 @@
-"""Numeric answers (spec 005): the student types a number only; the unit is shown beside the box.
+"""Numeric answers (spec 005; units since 006).
 
-Exact decimal arithmetic throughout (`Decimal`), so significant figures and rounding are exact.
+The student types a number and, when the answer has a unit, a unit of their choice: the answer is
+converted into the student's unit (`v' = v / f`) and the mode is applied there. Exact decimal
+arithmetic throughout (`Decimal`), so significant figures and rounding are exact.
 """
 
 import re
@@ -12,9 +14,12 @@ import sympy
 
 from app.content import params
 from app.content.params import Value
+from app.content.units import UnitError
+from app.grading import units
 
 NOTE_NOT_A_NUMBER = "Enter a number, e.g. 12.5 or 3.0e8"
 NOTE_SCI = "Write it in scientific notation"
+NOTE_BAD_UNIT = "Couldn't read that unit"
 MAX_EXPONENT = 400
 _PRECISION = 60
 
@@ -151,12 +156,15 @@ class NumericGrade:
     note: str | None
 
 
-def grade_numeric(spec: dict[str, Any], values: dict[str, Value], response: str) -> NumericGrade:
-    v = to_decimal(params.evaluate(spec["value"], values))
-    display = _with_unit(_display(spec, v), spec.get("unit"))
-    parsed = parse_number(response)
-    if parsed is None:
-        return NumericGrade(False, display, NOTE_NOT_A_NUMBER)
+def _finite_decimal(r: sympy.Rational) -> bool:
+    q = int(r.q)
+    for p in (2, 5):
+        while q % p == 0:
+            q //= p
+    return q == 1
+
+
+def _judge(spec: dict[str, Any], parsed: Parsed, v: Decimal) -> tuple[bool, str | None]:
     x = parsed.value
     mode = spec["mode"]
     note: str | None = None
@@ -172,5 +180,40 @@ def grade_numeric(spec: dict[str, Any], values: dict[str, Value], response: str)
     else:
         correct = _within(spec, x, v)
     if correct and spec.get("sci_notation") and not is_sci_form(parsed):
-        return NumericGrade(False, display, NOTE_SCI)
+        return False, NOTE_SCI
+    return correct, note
+
+
+def grade_numeric(
+    spec: dict[str, Any], values: dict[str, Value], response: str, unit: str | None = None
+) -> NumericGrade:
+    """`unit` is what the student typed in the unit box (only for answers with a unit)."""
+    value = params.evaluate(spec["value"], values)
+    v = to_decimal(value)
+    authored = spec.get("unit")
+    display = _with_unit(_display(spec, v), authored)
+    parsed = parse_number(response)
+    if parsed is None:
+        return NumericGrade(False, display, NOTE_NOT_A_NUMBER)
+    if authored:
+        if unit is None or not unit.strip():
+            return NumericGrade(False, display, f"Add a unit, e.g. {authored}")
+        try:
+            f = units.convert_factor(unit, authored)
+        except UnitError:
+            return NumericGrade(False, display, NOTE_BAD_UNIT)
+        if f is None:
+            quantity = units.quantity_name(authored)
+            return NumericGrade(False, display, f"That unit doesn't measure {quantity}")
+        if f != 1:
+            if isinstance(value, sympy.Rational):
+                converted = value / f
+                if spec["mode"] == "exact" and not _finite_decimal(converted):
+                    return NumericGrade(False, display, f"Give it in {authored}")
+                v = to_decimal(converted)
+            else:
+                with localcontext() as ctx:
+                    ctx.prec = _PRECISION
+                    v = v / to_decimal(f)
+    correct, note = _judge(spec, parsed, v)
     return NumericGrade(correct, display, note)

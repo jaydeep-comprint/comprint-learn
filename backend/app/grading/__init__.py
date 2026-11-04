@@ -13,12 +13,16 @@ from app.grading.expression import grade_expression
 from app.grading.mcq import InvalidOptionError, ShownOptions, grade_mcq
 from app.grading.numeric import grade_numeric
 
-GRADABLE_TYPES = frozenset({"numeric", "expression", "mcq"})
+# Quick checks: served by remediation reviews (spec 006 keeps them on these).
+QUICK_TYPES = frozenset({"numeric", "expression", "mcq"})
+# Every type a KP session serves (spec 006).
+ALL_TYPES = frozenset({"numeric", "expression", "mcq", "multistep", "code"})
 MAX_RESPONSE = 200
 
 __all__ = [
-    "GRADABLE_TYPES",
+    "ALL_TYPES",
     "MAX_RESPONSE",
+    "QUICK_TYPES",
     "GradeResult",
     "InvalidOptionError",
     "ShownOptions",
@@ -42,11 +46,14 @@ def grade(
     response: str,
     *,
     shown: ShownOptions | None = None,
+    unit: str | None = None,
 ) -> GradeResult:
-    """Raises `InvalidOptionError` for an MCQ id that wasn't shown; other bad input is wrong."""
+    """One numeric / expression / MCQ answer (an item, or one step of a multi-step item).
+
+    Raises `InvalidOptionError` for an MCQ id that wasn't shown; other bad input is wrong."""
     spec = answer.get("spec") or {}
     if item_type == "numeric":
-        n = grade_numeric(spec, values, response)
+        n = grade_numeric(spec, values, response, unit)
         return GradeResult(n.correct, n.display_answer, n.note)
     if item_type == "expression":
         e = grade_expression(spec, values, response)

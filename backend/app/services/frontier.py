@@ -17,7 +17,7 @@ from sqlalchemy import Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope
-from app.grading import GRADABLE_TYPES
+from app.grading import QUICK_TYPES
 from app.models import (
     Chapter,
     Concept,
@@ -186,7 +186,7 @@ async def active_kps(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> lis
                 .where(
                     Item.kp_id.in_(kp_ids),
                     Item.kind == ItemKind.kp_question,
-                    Item.type.in_(GRADABLE_TYPES),
+                    Item.type.in_(QUICK_TYPES),
                     Item.retired_at.is_(None),
                 )
                 .distinct()

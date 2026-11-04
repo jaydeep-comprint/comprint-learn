@@ -30,7 +30,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 async def _api_problem_handler(_request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, ApiProblem)
-    body = {"code": exc.code, "message": exc.message or exc.code}
+    body = {**exc.extra, "code": exc.code, "message": exc.message or exc.code}
     headers = {"WWW-Authenticate": "Bearer"} if exc.status == 401 else None
     return JSONResponse(body, status_code=exc.status, headers=headers)
 

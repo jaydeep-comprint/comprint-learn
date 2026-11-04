@@ -1,12 +1,22 @@
 """API errors with a stable machine-readable `code` (the frontend switches on it) and a message."""
 
+from typing import Any
+
 
 class ApiProblem(Exception):  # noqa: N818 - "problem" as in RFC 9457
-    def __init__(self, status: int, code: str, message: str | None = None) -> None:
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        message: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__(message or code)
         self.status = status
         self.code = code
         self.message = message
+        # Extra body fields (e.g. `prereqs` on `concept_locked`). Never personal data.
+        self.extra = extra or {}
 
 
 def not_found() -> ApiProblem:

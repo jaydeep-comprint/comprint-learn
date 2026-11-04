@@ -1,4 +1,4 @@
-"""API shapes for the Learn layer (spec 004).
+"""API shapes for the Learn layer (spec 004) and its spec 005 statuses (the knowledge frontier).
 
 The check is built only from the item's `public` document (`ItemPublic.from_row`). `CheckResult` is
 the only shape that carries the correct option, the explanation or a misconception's title, and it
@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr
 from app.models import Subject
 from app.schemas.content import CourseRef, OptionPublic
 
-LessonStatus = Literal["finished", "in_progress", "ready", "locked"]
+LessonStatus = Literal["learned", "in_progress", "ready", "locked"]
+KpStatus = Literal["not_started", "in_progress", "passed", "failed"]
 
 
 class ConceptRef(BaseModel):
@@ -21,13 +22,40 @@ class ConceptRef(BaseModel):
     title: str
 
 
+class RemediationRef(BaseModel):
+    """A brush-up the student owes: review (or relearn) `prereq` before `concept`'s KP reopens."""
+
+    id: str
+    kind: Literal["review", "relearn"]
+    prereq: ConceptRef
+    concept: ConceptRef
+
+
+class HomeConcept(BaseModel):
+    id: str
+    title: str
+    kps_passed: int
+    kps_total: int
+    reopen_at: datetime | None = None  # waiting concepts only
+
+
 class StudentCourse(BaseModel):
+    """One home card. No auto-picked "continue": the student chooses (spec 005)."""
+
     slug: str
     title: str
     subject: Subject
-    finished: int
+    learned: int
     total: int
-    continue_: ConceptRef | None = Field(serialization_alias="continue")
+    brush_up: list[RemediationRef]
+    in_progress: list[HomeConcept]
+    ready: list[HomeConcept]  # the first few, in outline order
+    ready_count: int
+    waiting: list[HomeConcept]
+
+
+class Waiting(BaseModel):
+    reopen_at: datetime | None
 
 
 class OutlineConcept(BaseModel):
@@ -36,6 +64,10 @@ class OutlineConcept(BaseModel):
     summary: str
     status: LessonStatus | None  # null for staff
     prereqs: list[str]
+    kps_passed: int
+    kps_total: int
+    waiting: Waiting | None  # the next KP failed and isn't open yet
+    brush_up: bool  # a remediation review is due for one of its KPs
 
 
 class OutlineChapter(BaseModel):
@@ -66,6 +98,18 @@ class KpOut(BaseModel):
     slug: str
     title: str
     worked_example_md: str
+    status: KpStatus | None  # null for staff
+    open: bool  # its questions may be started now (only a failed KP waits)
+    reopen_at: datetime | None
+    active: bool  # a question session is in progress (resume at its `kpq` step)
+
+
+class LessonWaiting(BaseModel):
+    """The next KP failed and isn't open yet: retry later, or brush up first."""
+
+    kp: str
+    reopen_at: datetime | None
+    remediations: list[RemediationRef]
 
 
 class ProgressOut(BaseModel):
@@ -102,6 +146,8 @@ class Lesson(BaseModel):
     progress: ProgressOut | None
     check_result: CheckResult | None
     preview: bool
+    concept_status: LessonStatus | None  # null for staff
+    waiting: LessonWaiting | None
 
 
 class ProgressIn(BaseModel):

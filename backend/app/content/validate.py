@@ -215,6 +215,7 @@ def _check_concept(
             if _resolve(ref, concept.course) not in direct:
                 v.error(where, f"key prereq {ref!r} is not one of this concept's direct prereqs")
         _check_pool(v, where, kp.items)
+        _check_gradable_pool(v, where, kp.items)
 
     check = f.misconception_check
     check_where = _Where(path, "misconception_check", check.id)
@@ -269,6 +270,29 @@ def _check_pool(v: _Validator, where: _Where, items: list[Item]) -> None:
     mcqs = sum(item.type == ItemType.mcq for item in items)
     if items and mcqs / len(items) > MAX_MCQ_SHARE:
         v.warning(where, f"{mcqs} of {len(items)} questions are MCQ; use MCQ sparingly (<= 30%)")
+
+
+GRADABLE = (ItemType.numeric, ItemType.expression, ItemType.mcq)
+MIN_GRADABLE_ITEMS, GOOD_GRADABLE_SLOTS = 2, 5
+
+
+def _check_gradable_pool(v: _Validator, where: _Where, items: list[Item]) -> None:
+    """Spec 005 serves only numeric/expression/MCQ KP questions (code waits for 006). A KP session
+    takes up to 5 questions and never repeats a fixed item, so each KP needs enough of them."""
+    gradable = [item for item in items if item.type in GRADABLE]
+    slots = sum(2 if item.has_params else 1 for item in gradable)
+    if len(gradable) < MIN_GRADABLE_ITEMS:
+        v.error(
+            where,
+            f"only {len(gradable)} numeric/expression/mcq questions; KP practice needs >= "
+            f"{MIN_GRADABLE_ITEMS} (code items aren't served until spec 006)",
+        )
+    elif slots < GOOD_GRADABLE_SLOTS:
+        v.warning(
+            where,
+            f"gradable question weight is {slots}; aim for >= {GOOD_GRADABLE_SLOTS} "
+            "(fixed item = 1, param item = 2) so a 5-question KP session never runs dry",
+        )
 
 
 def _check_refs(v: _Validator, where: _Where | Path, concept: LoadedConcept, text: str) -> None:

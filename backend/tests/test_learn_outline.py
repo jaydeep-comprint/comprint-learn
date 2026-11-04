@@ -1,9 +1,10 @@
 """Pure Learn-layer helpers: outline borrowing/placement, lesson status, stable option shuffle."""
 
 import uuid
-from datetime import UTC, datetime
 
-from app.services.learn import build_outline, lesson_status, lesson_steps, shuffled_order
+from app.models import ConceptStatus
+from app.services.frontier import concept_status
+from app.services.learn import build_outline, lesson_steps, shuffled_order
 
 # Concepts are "<course>/<slug>"; the tie-break key is (course, slug) here.
 KEY = {"maths": 0, "physics": 1, "python": 2}
@@ -77,19 +78,20 @@ def test_no_prereqs() -> None:
     assert _order(["maths/a"], {}) == ["maths/a"]
 
 
-def test_lesson_status() -> None:
-    done = datetime(2026, 11, 1, tzinfo=UTC)
-    prereqs = {"b": ["a"], "c": ["b"]}
-    assert lesson_status("a", {}, prereqs) == "ready"
-    assert lesson_status("b", {}, prereqs) == "locked"
-    assert lesson_status("c", {}, prereqs) == "locked"
-    assert lesson_status("b", {"a": None}, prereqs) == "locked"  # a only in progress
-    assert lesson_status("b", {"a": done}, prereqs) == "ready"
-    assert lesson_status("a", {"a": None}, prereqs) == "in_progress"
-    assert lesson_status("a", {"a": done}, prereqs) == "finished"
-    # In progress or finished never re-locks (e.g. a prereq added after starting).
-    assert lesson_status("c", {"c": None}, prereqs) == "in_progress"
-    assert lesson_status("c", {"c": done}, prereqs) == "finished"
+def test_concept_status() -> None:
+    a, b, c = (uuid.uuid4() for _ in range(3))
+    prereqs = {b: [a], c: [b]}
+    ip, learned = ConceptStatus.in_progress, ConceptStatus.learned
+    assert concept_status(a, {}, prereqs) == "ready"
+    assert concept_status(b, {}, prereqs) == "locked"
+    assert concept_status(c, {}, prereqs) == "locked"
+    assert concept_status(b, {a: ip}, prereqs) == "locked"  # a only in progress
+    assert concept_status(b, {a: learned}, prereqs) == "ready"
+    assert concept_status(a, {a: ip}, prereqs) == "in_progress"
+    assert concept_status(a, {a: learned}, prereqs) == "learned"
+    # In progress or learned never re-locks (e.g. a prereq being relearned).
+    assert concept_status(c, {c: ip}, prereqs) == "in_progress"
+    assert concept_status(c, {c: learned, b: ip}, prereqs) == "learned"
 
 
 def test_shuffled_order_is_stable_per_student_and_item() -> None:
@@ -104,8 +106,15 @@ def test_shuffled_order_is_stable_per_student_and_item() -> None:
 
 
 def test_lesson_steps() -> None:
-    assert lesson_steps(["kp1", "kp2"], has_check=True) == ["intro", "check", "kp:kp1", "kp:kp2"]
-    assert lesson_steps(["kp1"], has_check=False) == ["intro", "kp:kp1"]
+    assert lesson_steps(["kp1", "kp2"], has_check=True) == [
+        "intro",
+        "check",
+        "kp:kp1",
+        "kpq:kp1",
+        "kp:kp2",
+        "kpq:kp2",
+    ]
+    assert lesson_steps(["kp1"], has_check=False) == ["intro", "kp:kp1", "kpq:kp1"]
 
 
 def test_shown_options_hide_authored_ids() -> None:

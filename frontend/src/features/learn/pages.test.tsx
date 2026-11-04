@@ -589,6 +589,8 @@ describe("LessonPage · Practice step (spec 006)", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("Concept learned ✓")).toBeInTheDocument();
     expect(bodies.map((b) => b.step)).toEqual([0, 1]);
+    // Answers name the session they were shown in (a stale tab can't answer a new attempt).
+    expect(bodies.map((b) => b.session_id)).toEqual(["sess1", "sess1"]);
     await waitFor(() =>
       expect(progressCalls).toContainEqual({ step: "practice", active_seconds: 0 }),
     );

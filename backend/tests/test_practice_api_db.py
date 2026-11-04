@@ -474,6 +474,7 @@ async def test_a_resent_passing_answer_gets_its_result(db_app: DbApp) -> None:
     assert first["concept_learned"] is True
     resent = await post(db_app, s, p_url(PY_VARS, "answer"), body)
     assert resent["already_answered"] is True and resent["correct"] is True
+    assert resent["concept_learned"] is True
     assert resent["solution"]
     code, problem = await _post_status(db_app, s, p_url(PY_VARS, "answer"), dict(body, position=2))
     assert code == 409 and problem["code"] == "practice_passed"
@@ -560,3 +561,19 @@ async def test_a_retired_practice_item_is_replaced_and_its_steps_discarded(db_ap
     assert again["session_id"] == q["session_id"] and again["item_id"] == str(replacement.id)
     assert again["position"] == 1 and again["step"] == 0 and again["step_results"] == []
     assert await count(db_app, Attempt, session_id=session_id) == 0
+
+
+async def test_a_practice_session_id_never_answers_through_a_kp_route(db_app: DbApp) -> None:
+    """Security: a failed practice task's solution must not come back through the KP route
+    (KP answers always show the solution)."""
+    w = await world(db_app)
+    s = await _python_student(db_app, w.a.org_id, w.a.teacher_id)
+    lesson = await _pass_kps(db_app, s, PY_VARS)
+    q = await get(db_app, s, p_url(PY_VARS, "question"))
+    body = {"position": 1, "time_taken_ms": 1, **await answer_fields(db_app, q, correct=False)}
+    failed = await post(db_app, s, p_url(PY_VARS, "answer"), body)
+    assert failed["session_status"] == "failed" and failed["solution"] is None
+    kp = lesson["kps"][0]["slug"]
+    code, problem = await _post_status(db_app, s, url(PY_VARS, f"/kps/{kp}/answer"), body)
+    assert code == 409 and problem["code"] == "stale_question"
+    assert "solution" not in problem

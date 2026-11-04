@@ -9,7 +9,7 @@ Staff previews and "Practise again" on a learned concept grade without writing a
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
 
@@ -30,6 +30,13 @@ from app.services import frontier, kp_flow, learn
 
 # Index predicate as a SQL literal, never a bound parameter (see learn.LEARN_ATTEMPT_INDEX_WHERE).
 _ACTIVE_PRACTICE_WHERE = text("status = 'active' AND kind = 'practice'")
+
+
+def _owner(concept_id: uuid.UUID) -> ColumnElement[bool]:
+    """Sessions an answer to this concept's Practice may refer to."""
+    return (PracticeSession.kind == SessionKind.practice) & (
+        PracticeSession.concept_id == concept_id
+    )
 
 
 def _conflict(code: str, detail: str) -> ApiProblem:
@@ -217,11 +224,13 @@ async def practice_answer(
                     AttemptContext.practice,
                     kp_flow.single_item_outcome,
                     "on_pass",
+                    owner=_owner(cid),
                 )
             except ApiProblem:
                 stored = None  # not a repeat: 409 practice_passed below
             if isinstance(stored, AnswerResult):
                 await scope.session.rollback()
+                stored.concept_learned = view.status == "learned"  # the lost response said so
                 return stored
     if _preview_mode(scope, view, again):
         return await kp_flow.preview_answer(scope, pool, body)
@@ -235,6 +244,7 @@ async def practice_answer(
         AttemptContext.practice,
         kp_flow.single_item_outcome,
         rule="on_pass",
+        owner=_owner(cid),
     )
     if isinstance(answered, AnswerResult):
         await scope.session.rollback()

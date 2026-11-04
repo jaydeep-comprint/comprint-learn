@@ -18,7 +18,7 @@ from datetime import UTC, datetime, time, timedelta
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import ColumnElement, delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope
@@ -716,18 +716,27 @@ async def _stored_at(
     )
 
 
-async def _answer_from_other_session(
-    scope: OrgScope, body: AnswerIn, step: int, rule: SolutionRule
-) -> AnswerResult:
-    """A repeat of an answer given in an earlier session gets its stored result; anything else
-    from an earlier session is stale (it must not be graded against the current one)."""
+def _session_uuid(body: AnswerIn) -> uuid.UUID | None:
     try:
-        other_id = uuid.UUID(str(body.session_id))
+        return None if body.session_id is None else uuid.UUID(body.session_id)
     except ValueError:
         raise _conflict("stale_question", "That question is no longer current.") from None
+
+
+async def _answer_from_other_session(
+    scope: OrgScope,
+    other_id: uuid.UUID,
+    body: AnswerIn,
+    step: int,
+    rule: SolutionRule,
+    owner: ColumnElement[bool],
+) -> AnswerResult:
+    """A repeat of an answer given in an earlier session *of the same KP / review / practice*
+    (`owner`) gets its stored result; anything else is stale. Without `owner`, a failed practice
+    session posted to a KP route would come back under the KP's "always" solution rule."""
     other = await scope.session.scalar(
         scope.select(PracticeSession).where(
-            PracticeSession.id == other_id, PracticeSession.student_id == scope.user.id
+            PracticeSession.id == other_id, PracticeSession.student_id == scope.user.id, owner
         )
     )
     stored = None if other is None else await _stored_at(scope, other, body.position, step)
@@ -743,6 +752,8 @@ async def answer_in_session(
     context: AttemptContext,
     judge: Callable[[Sequence[bool]], Outcome],
     rule: SolutionRule = "always",
+    *,
+    owner: ColumnElement[bool],
 ) -> _Answered | AnswerResult:
     """Grade and store one answer at the session's current position (the session row is locked).
 
@@ -750,8 +761,9 @@ async def answer_in_session(
     results and outcome move only once its last step is answered. Returns the stored result for a
     repeat of an answered position/step; 409 `stale_question` for any other mismatch."""
     step = body.step or 0
-    if body.session_id is not None and (session is None or body.session_id != str(session.id)):
-        return await _answer_from_other_session(scope, body, step, rule)
+    sent = _session_uuid(body)
+    if sent is not None and (session is None or sent != session.id):
+        return await _answer_from_other_session(scope, sent, body, step, rule, owner)
     if session is None:
         raise _conflict("stale_question", "That question is no longer current.")
     if session.status != SessionStatus.active or body.position != session.current_position:
@@ -1000,7 +1012,14 @@ async def answer(
         return await preview_answer(scope, pool, body)
 
     session = await _locked_kp_session(scope, ctx.kp.id)
-    answered = await answer_in_session(scope, session, body, AttemptContext.kp, kp_outcome)
+    answered = await answer_in_session(
+        scope,
+        session,
+        body,
+        AttemptContext.kp,
+        kp_outcome,
+        owner=(PracticeSession.kind == SessionKind.kp) & (PracticeSession.kp_id == ctx.kp.id),
+    )
     if isinstance(answered, AnswerResult):
         await scope.session.rollback()
         return answered
@@ -1334,13 +1353,23 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
     if rem.state != RemediationState.review_due:
         # A repeat of an answered position still gets its stored result; nothing else may be
         # answered once the brush-up stopped being due (e.g. a relearn closed it in another tab).
-        if session is not None and session.status != SessionStatus.active:
+        sent = _session_uuid(body)
+        if (
+            session is not None
+            and session.status != SessionStatus.active
+            and (sent is None or sent == session.id)
+        ):
             stored = await _stored_at(scope, session, body.position, body.step or 0)
             if stored is not None:
                 return await _stored_result(scope, session, stored, "always")
         raise _conflict("not_due", "This brush-up isn't due.", state=rem.state.value)
     answered = await answer_in_session(
-        scope, session, body, AttemptContext.remediation, review_outcome
+        scope,
+        session,
+        body,
+        AttemptContext.remediation,
+        review_outcome,
+        owner=PracticeSession.remediation_id == rem.id,
     )
     if isinstance(answered, AnswerResult):
         await scope.session.rollback()

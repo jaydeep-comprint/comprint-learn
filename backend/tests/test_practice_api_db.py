@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -441,3 +442,121 @@ async def test_code_items_spec_round_trip(db_app: DbApp) -> None:
         items = (await session.scalars(select(Item).where(Item.type == ItemType.code))).all()
     assert items and all(code_spec(i.answer).tests for i in items)
     assert {i.kind for i in items} == {ItemKind.kp_question, ItemKind.practice}
+
+
+async def test_an_answer_from_an_earlier_attempt_never_lands_in_the_new_one(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = await _python_student(db_app, w.a.org_id, w.a.teacher_id)
+    await _pass_kps(db_app, s, PY_VARS)
+    q1 = await get(db_app, s, p_url(PY_VARS, "question"))
+    stale = {"position": 1, "time_taken_ms": 1, **await answer_fields(db_app, q1, correct=False)}
+    failed = await post(db_app, s, p_url(PY_VARS, "answer"), stale)
+    assert failed["session_status"] == "failed"
+    q2 = await get(db_app, s, p_url(PY_VARS, "question"))  # Try again in one tab
+    assert q2["session_id"] != q1["session_id"]
+    # The other tab resends its answer to the first attempt: its stored result, nothing new.
+    again = await post(db_app, s, p_url(PY_VARS, "answer"), stale)
+    assert again["already_answered"] is True and again["correct"] is False
+    # A different answer to the old attempt is stale.
+    other = dict(stale, position=2)
+    code, body = await _post_status(db_app, s, p_url(PY_VARS, "answer"), other)
+    assert code == 409 and body["code"] == "stale_question"
+    assert await count(db_app, Attempt, session_id=uuid.UUID(q2["session_id"])) == 0
+
+
+async def test_a_resent_passing_answer_gets_its_result(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = await _python_student(db_app, w.a.org_id, w.a.teacher_id)
+    await _pass_kps(db_app, s, PY_VARS)
+    q = await get(db_app, s, p_url(PY_VARS, "question"))
+    body = {"position": 1, "time_taken_ms": 1, **await answer_fields(db_app, q)}
+    first = await post(db_app, s, p_url(PY_VARS, "answer"), body)
+    assert first["concept_learned"] is True
+    resent = await post(db_app, s, p_url(PY_VARS, "answer"), body)
+    assert resent["already_answered"] is True and resent["correct"] is True
+    assert resent["solution"]
+    code, problem = await _post_status(db_app, s, p_url(PY_VARS, "answer"), dict(body, position=2))
+    assert code == 409 and problem["code"] == "practice_passed"
+
+
+async def test_multistep_item_in_a_kp_session_counts_once(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    await post(db_app, s, url(DIST, "/progress"), {"step": "intro", "active_seconds": 5})
+    await answer_check(db_app, s, DIST)
+    path = url(DIST, "/kps/kp1")
+    q = await get(db_app, s, f"{path}/question")
+    async with db_app.sessions() as session:
+        ms = await session.scalar(
+            select(Item).where(
+                Item.concept_id.in_(select(Concept.id).where(Concept.slug == DIST.split("/")[1])),
+                Item.type == ItemType.multistep,
+            )
+        )
+        assert ms is not None
+        kp1 = await session.scalar(
+            select(KnowledgePoint.id).where(
+                KnowledgePoint.concept_id == ms.concept_id, KnowledgePoint.slug == "kp1"
+            )
+        )
+        # No sample KP pool holds a multi-step item yet: move the practice problem into kp1's.
+        await session.execute(
+            update(Item).where(Item.id == ms.id).values(kind=ItemKind.kp_question, kp_id=kp1)
+        )
+        await session.execute(
+            update(PracticeSession)
+            .where(PracticeSession.id == uuid.UUID(q["session_id"]))
+            .values(current_item_id=ms.id, current_seed=7)
+        )
+        await session.commit()
+    q = await get(db_app, s, f"{path}/question")
+    assert q["type"] == "multistep" and q["step"] == 0
+    steps = len(q["steps"])
+    for i in range(steps):
+        res = await post(
+            db_app,
+            s,
+            f"{path}/answer",
+            {"position": 1, "time_taken_ms": 1, **await answer_fields(db_app, q)},
+        )
+        assert res["step"] == i
+        if i < steps - 1:
+            assert res["item_done"] is False and res["results"] == []
+            assert res["session_status"] == "active" and res["solution"] is None
+            q = await get(db_app, s, f"{path}/question")
+            assert q["position"] == 1 and q["step"] == i + 1
+    assert res["item_done"] is True and res["results"] == [True]
+    nxt = await get(db_app, s, f"{path}/question")
+    assert nxt["position"] == 2 and nxt["results"] == [True]
+
+
+async def test_a_retired_practice_item_is_replaced_and_its_steps_discarded(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    await _pass_kps(db_app, s, DIST)
+    q = await get(db_app, s, p_url(DIST, "question"))
+    await _answer_step(db_app, s, DIST, q, correct=True)
+    session_id = uuid.UUID(q["session_id"])
+    assert await count(db_app, Attempt, session_id=session_id) == 1
+    async with db_app.sessions() as session:
+        replacement = Item(
+            **{
+                c.name: getattr(await session.get(Item, uuid.UUID(q["item_id"])), c.name)
+                for c in Item.__table__.columns
+                if c.name not in ("id", "slug", "position")
+            },
+            id=uuid.uuid4(),
+            slug="practice-2",
+            position=99,
+        )
+        session.add(replacement)
+        await session.execute(
+            update(Item)
+            .where(Item.id == uuid.UUID(q["item_id"]))
+            .values(retired_at=datetime.now(UTC))
+        )
+        await session.commit()
+    again = await get(db_app, s, p_url(DIST, "question"))
+    assert again["session_id"] == q["session_id"] and again["item_id"] == str(replacement.id)
+    assert again["position"] == 1 and again["step"] == 0 and again["step_results"] == []
+    assert await count(db_app, Attempt, session_id=session_id) == 0

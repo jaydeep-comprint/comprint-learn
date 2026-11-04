@@ -103,6 +103,9 @@ export type AnswerFields = {
 
 export type AnswerBody = AnswerFields & {
   position: number;
+  /** The session the question was shown in: an answer from an earlier one is never graded
+   * against the current one (another tab, a practice retry). */
+  session_id?: string;
   time_taken_ms: number;
   item_id?: string;
   seed?: number | null;

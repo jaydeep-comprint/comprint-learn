@@ -716,6 +716,26 @@ async def _stored_at(
     )
 
 
+async def _answer_from_other_session(
+    scope: OrgScope, body: AnswerIn, step: int, rule: SolutionRule
+) -> AnswerResult:
+    """A repeat of an answer given in an earlier session gets its stored result; anything else
+    from an earlier session is stale (it must not be graded against the current one)."""
+    try:
+        other_id = uuid.UUID(str(body.session_id))
+    except ValueError:
+        raise _conflict("stale_question", "That question is no longer current.") from None
+    other = await scope.session.scalar(
+        scope.select(PracticeSession).where(
+            PracticeSession.id == other_id, PracticeSession.student_id == scope.user.id
+        )
+    )
+    stored = None if other is None else await _stored_at(scope, other, body.position, step)
+    if other is None or stored is None:
+        raise _conflict("stale_question", "That question is no longer current.")
+    return await _stored_result(scope, other, stored, rule)
+
+
 async def answer_in_session(
     scope: OrgScope,
     session: PracticeSession | None,
@@ -729,9 +749,11 @@ async def answer_in_session(
     A multi-step item takes one answer per step, in order (409 `step_order`); the session's
     results and outcome move only once its last step is answered. Returns the stored result for a
     repeat of an answered position/step; 409 `stale_question` for any other mismatch."""
+    step = body.step or 0
+    if body.session_id is not None and (session is None or body.session_id != str(session.id)):
+        return await _answer_from_other_session(scope, body, step, rule)
     if session is None:
         raise _conflict("stale_question", "That question is no longer current.")
-    step = body.step or 0
     if session.status != SessionStatus.active or body.position != session.current_position:
         stored = await _stored_at(scope, session, body.position, step)
         if stored is None:

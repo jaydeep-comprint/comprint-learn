@@ -27,7 +27,9 @@ function post(message: WorkerOut) {
 }
 
 // Helpers defined once in the Python runtime. User code runs with its own builtins whose
-// `__import__` refuses the JS bridge and the package installer.
+// `__import__` refuses the JS bridge and the package installer. Best effort, not a sandbox
+// (`sys.modules` can still reach them): only the student's own code runs here, in their own
+// browser, and the server never trusts results computed here.
 const SETUP = String.raw`
 import builtins, contextlib, io, json, math, sys
 

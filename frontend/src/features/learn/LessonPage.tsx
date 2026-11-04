@@ -369,7 +369,7 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
           </Button>
           {isLast ? (
             // With a Practice step, passing it finishes the lesson (spec 006).
-            (step !== "practice" || preview) && (
+            (step !== "practice" || preview || review) && (
               <Button onClick={finish} disabled={studentBlockedByCheck || blockedByQuestions}>
                 Finish lesson
               </Button>

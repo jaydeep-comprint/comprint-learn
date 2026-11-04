@@ -75,6 +75,9 @@ class QuestionPublic(BaseModel):
 
 class AnswerIn(BaseModel):
     position: StrictInt = Field(ge=1)
+    # The session the question was shown in (`QuestionPublic.session_id`). An answer from an
+    # earlier session (another tab, before a practice retry) never lands in the current one.
+    session_id: StrictStr | None = Field(default=None, max_length=60)
     # Limits the spec states (200 / 40 / 20,000 / 10,000) → 422 `invalid_response` (service).
     response: StrictStr = Field(default="", max_length=10_000)
     unit: StrictStr | None = Field(default=None, max_length=1_000)

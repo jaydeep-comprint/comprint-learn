@@ -77,6 +77,8 @@ export function PracticeRunner({
       if (preview) {
         body.item_id = question.item_id;
         body.seed = question.preview_seed;
+      } else if (question.session_id) {
+        body.session_id = question.session_id;
       }
       let next = await submit(body);
       // A preview keeps no state: carry the earlier steps of a multi-step problem along here.

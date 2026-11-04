@@ -153,6 +153,13 @@ async def answer_fields(
     item, seed = await _item_and_seed(db, question)
     kind = item.type.value
     values = sample_answer(item.answer, seed)
+    session = {"session_id": question["session_id"]} if question.get("session_id") else {}
+    return session | await _answer_body(item, kind, values, question, correct=correct)
+
+
+async def _answer_body(
+    item: Item, kind: str, values: dict[str, Any], question: dict[str, Any], *, correct: bool
+) -> dict[str, Any]:
     if kind == "code":
         spec = code_spec(item.answer)
         source = spec.solution if correct else spec.starter

@@ -205,6 +205,24 @@ async def practice_answer(
     if not pool:
         raise not_found()
     view = access.view
+    if not again and view is not None and view.practice == "passed":
+        # A resent passing answer (lost response) still gets its stored result.
+        session = await _locked_session(scope, cid)
+        if session is not None and session.status != SessionStatus.active:
+            try:
+                stored = await kp_flow.answer_in_session(
+                    scope,
+                    session,
+                    body,
+                    AttemptContext.practice,
+                    kp_flow.single_item_outcome,
+                    "on_pass",
+                )
+            except ApiProblem:
+                stored = None  # not a repeat: 409 practice_passed below
+            if isinstance(stored, AnswerResult):
+                await scope.session.rollback()
+                return stored
     if _preview_mode(scope, view, again):
         return await kp_flow.preview_answer(scope, pool, body)
     assert view is not None

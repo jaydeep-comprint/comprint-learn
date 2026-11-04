@@ -1,8 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, RotateCcw } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { submitPracticeAnswer, usePracticeQuestion } from "@/features/learn/api";
+import { learnKeys, submitPracticeAnswer, usePracticeQuestion } from "@/features/learn/api";
 import { PracticeRunner } from "@/features/learn/PracticeRunner";
 import type { AnswerResult, ConceptRef, Lesson } from "@/lib/types";
 
@@ -24,6 +26,7 @@ function Attempt({
   onPassed: (unlocked: ConceptRef[] | null) => void;
 }) {
   const query = usePracticeQuestion(lesson.id, again);
+  const queryClient = useQueryClient();
   const [attempt, setAttempt] = useState(0);
   return (
     <PracticeRunner
@@ -37,7 +40,13 @@ function Attempt({
       continueLabel={continueLabel}
       onDone={async (r) => {
         if (r.session_status === "passed") {
-          onPassed(r.concept_learned ? r.unlocked : []);
+          if (r.concept_learned || lesson.preview || again) {
+            onPassed(r.concept_learned ? r.unlocked : null);
+            return;
+          }
+          // Passed, but a part was added since: the concept isn't learned yet.
+          toast.info("Practice passed. Finish the remaining part to learn this concept.");
+          void queryClient.invalidateQueries({ queryKey: learnKeys.all });
           return;
         }
         // Try again: a new attempt starts now (a code task keeps the student's code).

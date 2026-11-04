@@ -51,7 +51,7 @@ prereqs:
   - {concept: speed-and-velocity, weight: 0.7}       # weight: how much of the prereq is practised here, 0 < w <= 1
   - {concept: maths-9-10/linear-equations-two-variables, weight: 0.2}
 intro: intro.md
-misconception_check:            # exactly one item, bloom remember | understand (Learn layer)
+misconception_check:            # exactly one item: type mcq, no params, bloom remember | understand (Learn layer)
   id: check
   type: mcq
   ...
@@ -67,6 +67,10 @@ practice:                       # >= 1 item, type multistep or code
 
 **Pool size**: a fixed item counts 1, an item with `params` counts 2. Each KP pool needs at least 6 (error)
 and should have at least 8 (warning). Keep MCQs to at most 30% of a pool (warning).
+
+**Misconception check**: one MCQ with fixed numbers (`type: mcq`, no `params`; both errors). Students get one try
+in the lesson; afterwards they see the correct option, the `explanation`, and, for a tagged wrong option, the
+misconception's `title` as "Common mix-up: …" (write titles for students; `description` is for teachers only).
 
 ## Items
 

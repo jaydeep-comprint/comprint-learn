@@ -306,6 +306,7 @@ async def _import(session: AsyncSession, bundle: ContentBundle) -> ImportReport:
                     "title": c.file.title,
                     "summary": c.file.summary,
                     "intro_md": c.markdown.get(c.file.intro, ""),
+                    "asset_path": c.dir.relative_to(bundle.root).as_posix(),
                     "position": c.position,
                 },
                 hashing.concept_hash(c),

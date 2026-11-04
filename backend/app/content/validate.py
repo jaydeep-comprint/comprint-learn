@@ -216,11 +216,15 @@ def _check_concept(
                 v.error(where, f"key prereq {ref!r} is not one of this concept's direct prereqs")
         _check_pool(v, where, kp.items)
 
-    if f.misconception_check.bloom not in (Bloom.remember, Bloom.understand):
-        v.error(
-            _Where(path, "misconception_check", f.misconception_check.id),
-            "bloom must be remember or understand (Learn layer)",
-        )
+    check = f.misconception_check
+    check_where = _Where(path, "misconception_check", check.id)
+    if check.bloom not in (Bloom.remember, Bloom.understand):
+        v.error(check_where, "bloom must be remember or understand (Learn layer)")
+    # Spec 004: the Learn layer grades the check as a one-try MCQ with fixed numbers.
+    if check.type != ItemType.mcq:
+        v.error(check_where, "the misconception check must be type mcq")
+    if check.params:
+        v.error(check_where, "the misconception check can't have params")
     if not f.practice:
         v.error(_Where(path, "practice", f.id), "needs at least 1 practice item")
     for k, item in enumerate(f.practice):

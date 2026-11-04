@@ -5,6 +5,7 @@ the only shape that carries the correct option, the explanation or a misconcepti
 is sent only after an attempt (or to staff after they pick).
 """
 
+import uuid
 from datetime import datetime
 from typing import Literal
 
@@ -68,6 +69,7 @@ class OutlineConcept(BaseModel):
     kps_total: int
     waiting: Waiting | None  # the next KP failed and isn't open yet
     brush_up: bool  # a remediation review is due for one of its KPs
+    brush_up_id: uuid.UUID | None  # that review (the map's "Brush up first" button)
 
 
 class OutlineChapter(BaseModel):

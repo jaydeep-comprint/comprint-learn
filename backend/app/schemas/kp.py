@@ -48,6 +48,7 @@ class AnswerResult(BaseModel):
     concept_learned: bool = False  # this pass made the concept learned
     unlocked: list[ConceptRef] = Field(default_factory=list)  # newly ready concepts
     remediations: list[RemediationRef] = Field(default_factory=list)  # created by this fail
+    kp_open: bool | None = None  # passed brush-up: the KP it was for is no longer blocked
 
 
 class KpWaiting(BaseModel):

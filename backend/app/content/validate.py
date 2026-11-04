@@ -273,7 +273,7 @@ def _check_pool(v: _Validator, where: _Where, items: list[Item]) -> None:
 
 
 GRADABLE = (ItemType.numeric, ItemType.expression, ItemType.mcq)
-MIN_GRADABLE_ITEMS, GOOD_GRADABLE_SLOTS = 2, 5
+MIN_GRADABLE_ITEMS, GOOD_GRADABLE_SLOTS, MIN_FIXED_ONLY = 2, 5, 5
 
 
 def _check_gradable_pool(v: _Validator, where: _Where, items: list[Item]) -> None:
@@ -286,6 +286,13 @@ def _check_gradable_pool(v: _Validator, where: _Where, items: list[Item]) -> Non
             where,
             f"only {len(gradable)} numeric/expression/mcq questions; KP practice needs >= "
             f"{MIN_GRADABLE_ITEMS} (code items aren't served until spec 006)",
+        )
+    elif not any(item.has_params for item in gradable) and len(gradable) < MIN_FIXED_ONLY:
+        v.error(
+            where,
+            f"only {len(gradable)} fixed numeric/expression/mcq questions and none with params; "
+            f"a KP needs >= {MIN_FIXED_ONLY} fixed ones (or a param item) so a 5-question session "
+            "never repeats a question whose answer was shown",
         )
     elif slots < GOOD_GRADABLE_SLOTS:
         v.warning(

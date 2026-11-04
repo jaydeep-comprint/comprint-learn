@@ -19,9 +19,12 @@ from sqlalchemy.dialects.postgresql import insert
 from app.api.deps import OrgScope
 from app.grading import GRADABLE_TYPES
 from app.models import (
+    Chapter,
+    Concept,
     ConceptSource,
     ConceptState,
     ConceptStatus,
+    Course,
     Item,
     KnowledgePoint,
     KpProgress,
@@ -114,6 +117,17 @@ class ConceptView:
         return any(
             r.state == RemediationState.review_due for kp in self.kps for r in kp.remediations
         )
+
+    @property
+    def brush_up_id(self) -> uuid.UUID | None:
+        """The first due review for one of its KPs (the map's "Brush up first" button)."""
+        due = (
+            r.id
+            for kp in self.kps
+            for r in kp.remediations
+            if r.state == RemediationState.review_due
+        )
+        return next(due, None)
 
 
 @dataclass
@@ -208,9 +222,16 @@ async def load(
         for r in (
             await scope.session.scalars(
                 scope.select(Remediation)
+                # A remediation on retired content can never resolve: it mustn't block a KP.
+                .join(Concept, Concept.id == Remediation.prereq_concept_id)
+                .join(Chapter, Chapter.id == Concept.chapter_id)
+                .join(Course, Course.id == Concept.course_id)
                 .where(
                     Remediation.student_id == student,
                     Remediation.state != RemediationState.resolved,
+                    Concept.retired_at.is_(None),
+                    Chapter.retired_at.is_(None),
+                    Course.retired_at.is_(None),
                 )
                 .order_by(Remediation.created_at)
             )
@@ -312,8 +333,34 @@ async def ensure_started(scope: OrgScope, concept_id: uuid.UUID) -> None:
     )
 
 
+async def close_review_sessions(scope: OrgScope, concept_id: uuid.UUID) -> None:
+    """End the active review sessions of open remediations on this prerequisite (its state is
+    about to change, so a review left open in another tab must not be answerable)."""
+    open_ids = (
+        scope.select(Remediation)
+        .with_only_columns(Remediation.id)
+        .where(
+            Remediation.student_id == scope.user.id,
+            Remediation.prereq_concept_id == concept_id,
+            Remediation.state != RemediationState.resolved,
+        )
+    )
+    await scope.session.execute(
+        update(PracticeSession)
+        .where(
+            PracticeSession.org_id == scope.org_id,
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.remediation_id.in_(open_ids),
+            PracticeSession.status == SessionStatus.active,
+        )
+        .values(status=SessionStatus.failed, ended_at=func.now())
+        .execution_options(synchronize_session="fetch")
+    )
+
+
 async def mark_learned(scope: OrgScope, concept_id: uuid.UUID) -> None:
     """Concept learned; remediations waiting on it being relearned resolve."""
+    await close_review_sessions(scope, concept_id)
     await scope.session.execute(
         update(ConceptState)
         .where(

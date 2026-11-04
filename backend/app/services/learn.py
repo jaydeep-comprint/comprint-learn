@@ -39,6 +39,7 @@ from app.models import (
     LessonProgress,
     Misconception,
     PracticeSession,
+    Remediation,
     RemediationState,
     SchoolClass,
     SessionStatus,
@@ -435,6 +436,7 @@ async def outline(scope: OrgScope, course_slug: str) -> Outline:
                 kps_total=kps_total.get(cid, 0) if view is None else view.kps_total,
                 waiting=None if waiting is None else Waiting(reopen_at=waiting.reopen_at),
                 brush_up=False if view is None else view.brush_up,
+                brush_up_id=None if view is None else view.brush_up_id,
             )
         )
     course = graph.courses[course_slug]
@@ -755,6 +757,8 @@ async def record_progress(
         return None
     content = await _content(scope, access.node.id)
     remediation = step == REMEDIATION_STEP
+    if remediation and not await _review_due_on(scope, access.node.id):
+        raise ApiProblem(422, "invalid_step", "There's no brush-up due on this concept.")
     if step not in content.steps and not remediation:
         raise ApiProblem(422, "invalid_step", "That step isn't part of this lesson.")
     seconds = min(active_seconds, MAX_STEP_SECONDS)
@@ -779,6 +783,21 @@ async def record_progress(
     await scope.session.commit()
     assert out is not None
     return out
+
+
+async def _review_due_on(scope: OrgScope, concept_id: uuid.UUID) -> bool:
+    """Brush-up time is logged only while a review on this prerequisite is due."""
+    found = await scope.session.scalar(
+        scope.select(Remediation)
+        .with_only_columns(Remediation.id)
+        .where(
+            Remediation.student_id == scope.user.id,
+            Remediation.prereq_concept_id == concept_id,
+            Remediation.state == RemediationState.review_due,
+        )
+        .limit(1)
+    )
+    return found is not None
 
 
 # The partial unique index's predicate, as a SQL literal. Never a bound parameter: once Postgres

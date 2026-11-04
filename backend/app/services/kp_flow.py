@@ -155,6 +155,10 @@ _ACTIVE_REMEDIATION_WHERE = text("status = 'active'")
 _OPEN_REMEDIATION_WHERE = text("state <> 'resolved'")
 
 
+class EmptyPoolError(Exception):
+    """A KP has no active gradable questions left (retired mid-session)."""
+
+
 def _conflict(code: str, detail: str, **extra: Any) -> ApiProblem:
     return ApiProblem(409, code, detail, extra=extra or None)
 
@@ -234,7 +238,11 @@ async def _session_attempts(scope: OrgScope, session_id: uuid.UUID) -> list[Atte
 async def _serve(
     scope: OrgScope, session: PracticeSession, pool: list[Item], position: int, order_key: uuid.UUID
 ) -> Item:
-    """Choose the next item (`choose_next_item`) with a fresh seed, stored before it's returned."""
+    """Choose the next item (`choose_next_item`) with a fresh seed, stored before it's returned.
+
+    Raises `EmptyPoolError` when the pool has no active gradable items (retired content)."""
+    if not pool:
+        raise EmptyPoolError(order_key)
     served = {a.item_id for a in await _session_attempts(scope, session.id)}
     pool_ids = [i.id for i in pool]
     history = dict(
@@ -251,8 +259,10 @@ async def _serve(
     order = [by_id[k].id for k in learn.shuffled_order(list(by_id), scope.user.id, order_key)]
     params_ids = {i.id for i in pool if i.has_params}
     chosen = choose_next_item(order, history, served, params_ids)
-    if chosen is None:  # a tiny pool of fixed items (the validator warns): repeat the oldest
-        log.warning("KP pool %s exhausted within a session; repeating an item", order_key)
+    if chosen is None:
+        # Only invalid content gets here (the validator requires >= 5 fixed items or a param
+        # item): repeating means repeating an item whose answer was shown.
+        log.error("KP pool %s exhausted within a session; repeating an item", order_key)
         chosen = choose_next_item(order, history, set(), params_ids)
     assert chosen is not None
     item = next(i for i in pool if i.id == chosen)
@@ -505,10 +515,16 @@ async def current_question(
         )
 
     session = await _locked_kp_session(scope, ctx.kp.id)
-    if session is None or session.status != SessionStatus.active:
-        session = await _start_kp_session(scope, ctx, pool)
-    elif session.current_item_id not in {i.id for i in pool}:  # retired mid-session
-        await _serve(scope, session, pool, session.current_position, ctx.kp.id)
+    try:
+        if session is None or session.status != SessionStatus.active:
+            session = await _start_kp_session(scope, ctx, pool)
+        elif session.current_item_id not in {i.id for i in pool}:  # retired mid-session
+            await _serve(scope, session, pool, session.current_position, ctx.kp.id)
+    except EmptyPoolError:
+        await _end_active_kp_sessions(scope, ctx.kp.id)
+        await _on_kp_passed(scope, ctx)
+        await scope.session.commit()
+        raise _conflict("kp_passed", "This part has no questions left.") from None
     current = await scope.session.get(Item, session.current_item_id)
     assert current is not None
     results = [a.correct for a in await _session_attempts(scope, session.id)]
@@ -600,13 +616,34 @@ async def answer(
     assert session is not None
     out = answered.result
     if answered.outcome == "active":
-        await _serve(scope, session, pool, session.current_position + 1, ctx.kp.id)
-    elif answered.outcome == "passed":
+        try:
+            await _serve(scope, session, pool, session.current_position + 1, ctx.kp.id)
+        except EmptyPoolError:  # every question retired mid-session: the KP doesn't block
+            out.session_status = "passed"
+            answered = _Answered(out, "passed", answered.item)
+            await _end_active_kp_sessions(scope, ctx.kp.id)
+    if answered.outcome == "passed":
         out.concept_learned, out.unlocked = await _on_kp_passed(scope, ctx)
-    else:
+    elif answered.outcome == "failed":
         out.remediations = await _on_kp_failed(scope, ctx)
     await scope.session.commit()
     return out
+
+
+async def _end_active_kp_sessions(scope: OrgScope, kp_id: uuid.UUID) -> None:
+    """A KP whose gradable questions were all retired counts as passed (spec edge case)."""
+    log.warning("KP %s has no gradable questions left; marking it passed", kp_id)
+    await scope.session.execute(
+        update(PracticeSession)
+        .where(
+            PracticeSession.org_id == scope.org_id,
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.kp_id == kp_id,
+            PracticeSession.status == SessionStatus.active,
+        )
+        .values(status=SessionStatus.passed, ended_at=func.now())
+        .execution_options(synchronize_session="fetch")
+    )
 
 
 async def _reachable(scope: OrgScope, graph: "learn._Graph") -> set[uuid.UUID]:
@@ -735,7 +772,9 @@ async def _on_kp_failed(scope: OrgScope, ctx: _KpCtx) -> list[RemediationRef]:
 # --- remediation reviews --------------------------------------------------------------------------
 
 
-async def _remediation(scope: OrgScope, remediation_id: str) -> Remediation:
+async def _remediation(
+    scope: OrgScope, remediation_id: str, *, for_update: bool = False
+) -> Remediation:
     """The caller's own remediation (404 for anyone else's; staff 403)."""
     if scope.user.is_staff:
         raise forbidden()
@@ -743,7 +782,7 @@ async def _remediation(scope: OrgScope, remediation_id: str) -> Remediation:
         rid = uuid.UUID(remediation_id)
     except ValueError as exc:
         raise not_found() from exc
-    rem = await scope.get(Remediation, rid)
+    rem = await scope.get(Remediation, rid, for_update=for_update)
     if rem.student_id != scope.user.id:
         raise not_found()
     return rem
@@ -774,8 +813,34 @@ async def _review_pool(
     scope: OrgScope, kps: list["frontier.KpView"], position: int
 ) -> tuple[list[Item], uuid.UUID]:
     """Round-robin across the prereq's KPs: position p draws from KP (p - 1) mod n."""
+    if not kps:
+        raise EmptyPoolError(None)
     kp = kps[(position - 1) % len(kps)]
     return await _pool(scope, kp.id), kp.id
+
+
+def _resolve_review(rem: Remediation, session: PracticeSession | None) -> None:
+    rem.state = RemediationState.resolved
+    rem.outcome = RemediationOutcome.review_passed
+    rem.resolved_at = datetime.now(UTC)
+    if session is not None and session.status == SessionStatus.active:
+        session.status = SessionStatus.passed
+        session.ended_at = rem.resolved_at
+
+
+async def _kp_unblocked(scope: OrgScope, rem: Remediation) -> bool:
+    """No other open remediation still blocks the KP this one was created for."""
+    others = await scope.session.scalar(
+        scope.select(Remediation)
+        .with_only_columns(func.count())
+        .where(
+            Remediation.student_id == scope.user.id,
+            Remediation.kp_id == rem.kp_id,
+            Remediation.id != rem.id,
+            Remediation.state != RemediationState.resolved,
+        )
+    )
+    return not others
 
 
 async def _locked_review_session(scope: OrgScope, rem: Remediation) -> PracticeSession | None:
@@ -789,13 +854,25 @@ async def _locked_review_session(scope: OrgScope, rem: Remediation) -> PracticeS
 
 
 async def remediation_question(scope: OrgScope, remediation_id: str) -> QuestionPublic:
-    rem = await _remediation(scope, remediation_id)
+    rem = await _remediation(scope, remediation_id, for_update=True)
     if rem.state != RemediationState.review_due:
         raise _conflict("not_due", "This brush-up isn't due.", state=rem.state.value)
+    session = await _locked_review_session(scope, rem)
+    try:
+        return await _review_question(scope, rem, session)
+    except EmptyPoolError:  # the prereq's questions were retired: don't block the KP forever
+        log.warning("remediation %s has no questions left; resolving it", rem.id)
+        _resolve_review(rem, session)
+        await scope.session.commit()
+        raise _conflict("not_due", "This brush-up has no questions.", state="resolved") from None
+
+
+async def _review_question(
+    scope: OrgScope, rem: Remediation, session: PracticeSession | None
+) -> QuestionPublic:
     kps = await _review_kps(scope, rem)
     if not kps:
-        raise _conflict("not_due", "This brush-up has no questions.", state=rem.state.value)
-    session = await _locked_review_session(scope, rem)
+        raise EmptyPoolError(rem.id)
     if session is None or session.status != SessionStatus.active:
         session_id = await scope.session.scalar(
             insert(PracticeSession)
@@ -843,9 +920,19 @@ async def remediation_question(scope: OrgScope, remediation_id: str) -> Question
 
 async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerIn) -> AnswerResult:
     _check_response(body.response)
-    rem = await _remediation(scope, remediation_id)
+    rem = await _remediation(scope, remediation_id, for_update=True)
     session = await _locked_review_session(scope, rem)
-    if session is None and rem.state != RemediationState.review_due:
+    if rem.state != RemediationState.review_due:
+        # A repeat of an answered position still gets its stored result; nothing else may be
+        # answered once the brush-up stopped being due (e.g. a relearn closed it in another tab).
+        if session is not None and session.status != SessionStatus.active:
+            stored = await scope.session.scalar(
+                scope.select(Attempt).where(
+                    Attempt.session_id == session.id, Attempt.position == body.position
+                )
+            )
+            if stored is not None:
+                return await _stored_result(scope, session, stored)
         raise _conflict("not_due", "This brush-up isn't due.", state=rem.state.value)
     answered = await _answer_in_session(
         scope, session, body, AttemptContext.remediation, review_outcome
@@ -854,23 +941,30 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
         await scope.session.rollback()
         return answered
     assert session is not None
-    if answered.outcome == "active":
-        kps = await _review_kps(scope, rem)
-        pool, key = await _review_pool(scope, kps, session.current_position + 1)
-        await _serve(scope, session, pool, session.current_position + 1, key)
-    elif answered.outcome == "passed":
-        rem.state = RemediationState.resolved
-        rem.outcome = RemediationOutcome.review_passed
-        rem.resolved_at = datetime.now(UTC)
-    else:
+    out = answered.result
+    outcome = answered.outcome
+    if outcome == "active":
+        try:
+            kps = await _review_kps(scope, rem)
+            pool, key = await _review_pool(scope, kps, session.current_position + 1)
+            await _serve(scope, session, pool, session.current_position + 1, key)
+        except EmptyPoolError:
+            log.warning("remediation %s ran out of questions; resolving it", rem.id)
+            outcome = out.session_status = "passed"
+    if outcome == "passed":
+        _resolve_review(rem, session)
+        out.kp_open = await _kp_unblocked(scope, rem)
+    elif outcome == "failed":
         await _relearn(scope, rem.prereq_concept_id)
     await scope.session.commit()
-    return answered.result
+    return out
 
 
 async def _relearn(scope: OrgScope, concept_id: uuid.UUID) -> None:
     """A failed review: the prereq goes back to in progress with every KP reset (history kept);
-    its open reviews become relearns, resolved when it's learned again."""
+    its open reviews become relearns (their active sessions end), resolved when it's learned
+    again."""
+    await frontier.close_review_sessions(scope, concept_id)
     await scope.session.execute(
         update(ConceptState)
         .where(

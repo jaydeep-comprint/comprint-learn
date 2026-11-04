@@ -1,8 +1,9 @@
 """Expression answers (spec 005), parsed with the app's own safe AST walker (never `parse_expr`).
 
 `simplify` can take unbounded time on adversarial input and a SymPy call can't be interrupted in a
-thread, so `equivalent`/`simplified` checks run in a small process pool with a time limit. On a
-timeout the pool is terminated and recreated, and `equivalent` falls back to a numeric check.
+thread, so `equivalent`/`simplified` checks run in a small process pool, each with its own 1 s
+budget enforced inside the worker. Out of time, `equivalent` falls back to a numeric check and
+`simplified` accepts an equivalent answer.
 """
 
 import atexit
@@ -10,6 +11,7 @@ import logging
 import multiprocessing
 import random
 import re
+import signal
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -29,10 +31,13 @@ NOTE_SIMPLIFY = "Simplify your answer"
 HINT = "Use ^ for powers, e.g. 3x^2 + 2"
 MAX_INPUT = 200
 MAX_EXPONENT = 100
-TIME_LIMIT_S = 1.0
+TIME_LIMIT_S = 1.0  # per check, measured inside the worker
+SAFETY_S = 30.0  # queue + run: only a hung worker gets here
 WARMUP_S = 60.0
+WORKERS = 4
 NUMERIC_POINTS = 5
 NUMERIC_TOL = 1e-9
+MIN_POINTS = 3
 
 _TOKEN = re.compile(r"\s+|\d+\.?\d*|\.\d+|[A-Za-z_][A-Za-z0-9_]*|\*\*|.", re.DOTALL)
 
@@ -97,6 +102,28 @@ def answer_text(spec: dict[str, Any], values: dict[str, Value]) -> str:
 # --- the time-limited SymPy work ------------------------------------------------------------------
 
 
+class _OutOfTimeError(Exception):
+    pass
+
+
+def _on_alarm(signum: int, frame: Any) -> None:
+    raise _OutOfTimeError
+
+
+def _timed[T](fn: Callable[..., T], *args: Any) -> tuple[bool, T | None]:
+    """Runs in a worker process: `fn(*args)` with its own CPU-time budget (a SIGALRM in the
+    worker's main thread), so time spent queueing in the parent never counts. (False, None) when
+    it runs out of time; the worker survives and takes the next job."""
+    signal.signal(signal.SIGALRM, _on_alarm)
+    signal.setitimer(signal.ITIMER_REAL, TIME_LIMIT_S)
+    try:
+        return True, fn(*args)
+    except _OutOfTimeError:
+        return False, None
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+
+
 def _warm() -> bool:
     return bool(sympy.simplify(sympy.Symbol("x") - sympy.Symbol("x")) == 0)
 
@@ -110,18 +137,24 @@ def _ops(student: Any, answer: Any) -> tuple[int, int]:
 
 
 class _Limiter:
-    """A lazily started process pool; terminated (killing stuck workers) on a timeout."""
+    """A lazily started process pool. Each job carries its own time limit (`_timed`); the pool
+    is only torn down if a worker stops responding altogether (`SAFETY_S`)."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._pool: Pool | None = None
 
-    def _get(self) -> Pool:
+    def _get(self) -> Pool | None:
         with self._lock:
             if self._pool is None:
-                pool = multiprocessing.get_context("spawn").Pool(processes=2)
-                # Importing SymPy in a fresh process takes a while; don't count it in the budget.
-                pool.apply_async(_warm).get(WARMUP_S)
+                pool = multiprocessing.get_context("spawn").Pool(processes=WORKERS)
+                try:
+                    # Importing SymPy in a fresh process takes a while; never count it per check.
+                    pool.apply_async(_warm).get(WARMUP_S)
+                except Exception:
+                    log.exception("couldn't start the expression grading pool")
+                    pool.terminate()
+                    return None
                 self._pool = pool
             return self._pool
 
@@ -132,14 +165,20 @@ class _Limiter:
         pool.terminate()
 
     def run[T](self, fn: Callable[..., T], *args: Any) -> T | None:
-        """`fn(*args)` in a worker; None if it took longer than the time limit."""
+        """`fn(*args)` in a worker; None if it ran out of time (or the pool is unavailable)."""
         pool = self._get()
+        if pool is None:
+            return None
         try:
-            return pool.apply_async(fn, args).get(TIME_LIMIT_S)
+            finished, value = pool.apply_async(_timed, (fn, *args)).get(SAFETY_S)
         except multiprocessing.TimeoutError:
-            log.warning("expression check timed out; restarting the grading pool")
+            log.error("expression grading pool stopped responding; restarting it")
             self._reset(pool)
             return None
+        if not finished:
+            log.warning("expression check ran out of time")
+            return None
+        return value
 
     def close(self) -> None:
         with self._lock:
@@ -153,20 +192,23 @@ atexit.register(_limiter.close)
 
 
 def _numeric_equal(a: Any, b: Any, variables: list[str]) -> bool:
-    """`a == b` at random points (fallback when simplify runs out of time)."""
+    """`a == b` at random points (fallback when simplify runs out of time). Needs at least
+    `MIN_POINTS` points where both sides evaluate; otherwise it can't tell, so not equal."""
     symbols = [sympy.Symbol(v) for v in variables]
     rng = random.Random(0)
     fa = sympy.lambdify(symbols, a, "math")
     fb = sympy.lambdify(symbols, b, "math")
-    for _ in range(NUMERIC_POINTS * max(1, len(symbols))):
+    compared = 0
+    for _ in range(NUMERIC_POINTS * max(1, len(symbols)) * 2):
         point = [rng.uniform(-10, 10) for _ in symbols]
         try:
             x, y = complex(fa(*point)), complex(fb(*point))
-        except (ValueError, ZeroDivisionError, OverflowError):
+        except (ValueError, ZeroDivisionError, OverflowError, TypeError):
             continue
         if abs(x - y) > NUMERIC_TOL * max(1.0, abs(y)):
             return False
-    return True
+        compared += 1
+    return compared >= MIN_POINTS
 
 
 def _equivalent(student: Any, answer: Any, variables: list[str]) -> bool:
@@ -200,8 +242,8 @@ def grade_expression(
         return ExpressionGrade(False, display, None)
     if mode == "simplified":
         ops = _limiter.run(_ops, student, answer)
-        if ops is None:
-            return ExpressionGrade(False, display, NOTE_UNREADABLE)
-        if ops[0] > ops[1]:
+        # Out of time: simplification can't be judged, and the answer is equivalent; accept it
+        # rather than fail a student for our time limit (a KP fail is final).
+        if ops is not None and ops[0] > ops[1]:
             return ExpressionGrade(False, display, NOTE_SIMPLIFY)
     return ExpressionGrade(True, display, None)

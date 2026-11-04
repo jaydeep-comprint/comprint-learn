@@ -235,10 +235,26 @@ def test_expression_falls_back_to_numeric_check_on_timeout(monkeypatch: pytest.M
     assert not expr(EQUIV, "5(t+3)", VALUES).correct
 
 
-def test_time_limit_terminates_a_stuck_check(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_time_limit_is_per_check_and_keeps_the_pool(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.grading import expression
 
-    monkeypatch.setattr(expression, "TIME_LIMIT_S", 0.2)
-    assert expression._limiter.run(__import__("time").sleep, 5) is None
-    monkeypatch.setattr(expression, "TIME_LIMIT_S", 5.0)
-    assert expression._limiter.run(expression._warm) is True  # a fresh pool afterwards
+    assert expression._limiter.run(__import__("time").sleep, 5) is None  # 1 s budget in the worker
+    pool = expression._limiter._pool
+    assert expression._limiter.run(expression._warm) is True
+    assert expression._limiter._pool is pool  # a slow check doesn't restart the pool
+
+
+def test_numeric_fallback_needs_real_comparisons() -> None:
+    from app.grading.expression import _numeric_equal
+
+    x = sympy.Symbol("x")
+    assert not _numeric_equal(sympy.log(-1 - x**2), x, ["x"])  # never evaluates: can't tell
+    assert _numeric_equal(2 * x + 2, 2 * (x + 1), ["x"])
+
+
+def test_simplified_accepts_when_out_of_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.grading import expression
+
+    monkeypatch.setattr(expression._limiter, "run", lambda *_a: None)
+    simplified = {"value": "x + 1", "variables": ["x"], "sympy_mode": "simplified"}
+    assert expr(simplified, "1 + x").correct

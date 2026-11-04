@@ -13,6 +13,7 @@ from app.models import (
     ConceptState,
     ConceptStatus,
     Enrollment,
+    Item,
     KnowledgePoint,
     KpProgress,
     KpStatus,
@@ -384,19 +385,167 @@ async def test_learning_every_kp_learns_the_concept_and_unlocks(db_app: DbApp) -
     assert activities == {"learn"}  # practice time is posted by the client on kpq steps
 
 
-async def test_practice_time_on_kpq_and_remediation_steps(db_app: DbApp) -> None:
+async def test_practice_time_on_kpq_steps_and_brush_ups_only_when_due(db_app: DbApp) -> None:
     w = await world(db_app)
     s = w.physics_student
     await post(db_app, s, url(DIST, "/progress"), {"step": "kpq:kp1", "active_seconds": 20})
-    await post(db_app, s, url(DIST, "/progress"), {"step": "remediation", "active_seconds": 7})
+    r = await db_app.client.post(
+        url(DIST, "/progress"),
+        json={"step": "remediation", "active_seconds": 7},
+        headers=db_app.auth(s),
+    )
+    assert r.status_code == 422  # no brush-up due on this concept
     async with db_app.sessions() as session:
         rows = (await session.scalars(select(StudyTime).order_by(StudyTime.id))).all()
         progress = await session.scalar(select(LessonProgress))
-    assert [(r.activity, r.step, r.active_seconds) for r in rows] == [
-        ("practice", "kpq:kp1", 20),
-        ("practice", "remediation", 7),
-    ]
+    assert [(r.activity, r.step, r.active_seconds) for r in rows] == [("practice", "kpq:kp1", 20)]
     assert progress is not None and progress.seen_steps == ["kpq:kp1"]
+
+
+async def _two_fails(db: DbApp, s: uuid.UUID, ref: str, kp: str) -> str:
+    await answer_kp(db, s, ref, kp, "WWW")
+    await _cooldown_over(db, s)
+    second = await answer_kp(db, s, ref, kp, "WWW")
+    return str(second[-1]["remediations"][0]["id"])
+
+
+async def _review(db: DbApp, s: uuid.UUID, rid: str, pattern: str) -> dict[str, Any]:
+    res: dict[str, Any] = {}
+    for c in pattern:
+        q = await get(db, s, f"/api/v1/learn/remediations/{rid}/question")
+        body = {
+            "position": q["position"],
+            "response": await response_for(db, q, correct=c == "C"),
+            "time_taken_ms": 100,
+        }
+        res = await post(db, s, f"/api/v1/learn/remediations/{rid}/answer", body)
+    return res
+
+
+async def test_a_stale_review_can_not_be_answered_after_a_relearn(db_app: DbApp) -> None:
+    """kp1 and kp2 of SPEED both have key prereq DIST: failing one review relearns DIST, and
+    the other review (open in another tab) must not be answerable any more."""
+    w = await world(db_app)
+    s = w.physics_student
+    await learn_concept(db_app, s, DIST)
+    await learn_concept(db_app, s, LIN)
+    await _open_lesson(db_app, s, SPEED)
+    r1 = await _two_fails(db_app, s, SPEED, "kp1")
+    # A second open review on another KP with the same prereq (kp2's second fail would make it).
+    async with db_app.sessions() as session:
+        kp2 = await session.scalar(
+            select(KnowledgePoint.id).where(
+                KnowledgePoint.slug == "kp2",
+                KnowledgePoint.concept_id.in_(_concept_ids("speed-and-velocity")),
+            )
+        )
+        dist_id = await session.scalar(_concept_ids("distance-and-displacement"))
+        r2 = Remediation(
+            id=uuid.uuid4(),
+            org_id=w.a.org_id,
+            student_id=s,
+            kp_id=kp2,
+            prereq_concept_id=dist_id,
+            state=RemediationState.review_due,
+        )
+        session.add(r2)
+        await session.commit()
+    q2 = await get(db_app, s, f"/api/v1/learn/remediations/{r2.id}/question")  # tab 2
+    failed = await _review(db_app, s, r1, "WWW")
+    assert failed["session_status"] == "failed"
+    r = await db_app.client.post(
+        f"/api/v1/learn/remediations/{r2.id}/answer",
+        json={
+            "position": q2["position"],
+            "response": await response_for(db_app, q2),
+            "time_taken_ms": 100,
+        },
+        headers=db_app.auth(s),
+    )
+    assert r.status_code == 409 and r.json()["code"] == "not_due"
+    async with db_app.sessions() as session:
+        rem2 = await session.get(Remediation, r2.id)
+        active = await session.scalar(
+            select(PracticeSession).where(
+                PracticeSession.remediation_id == r2.id,
+                PracticeSession.status == "active",
+            )
+        )
+        dist = await session.scalar(
+            select(ConceptState).where(
+                ConceptState.student_id == s, ConceptState.concept_id == dist_id
+            )
+        )
+    assert rem2 is not None and rem2.state == RemediationState.relearn
+    assert active is None
+    assert dist is not None and dist.relearn_count == 1
+
+
+async def test_passed_review_says_whether_the_kp_is_unblocked(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    await learn_concept(db_app, s, DIST)
+    await learn_concept(db_app, s, LIN)
+    await _open_lesson(db_app, s, SPEED)
+    rid = await _two_fails(db_app, s, SPEED, "kp1")
+    res = await _review(db_app, s, rid, "CCC")
+    assert res["session_status"] == "passed" and res["kp_open"] is True
+
+
+async def test_retired_item_is_replaced_at_the_same_position(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    await _open_lesson(db_app, s, DIST)
+    q = await get(db_app, s, q_url(DIST, "kp1"))
+    async with db_app.sessions() as session:
+        await session.execute(
+            update(Item)
+            .where(Item.id == uuid.UUID(q["item_id"]))
+            .values(retired_at=datetime.now(UTC))
+        )
+        await session.commit()
+    again = await get(db_app, s, q_url(DIST, "kp1"))
+    assert again["position"] == q["position"] and again["item_id"] != q["item_id"]
+
+
+async def test_retired_kp_no_longer_blocks_learned(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    await _open_lesson(db_app, s, DIST)
+    await answer_kp(db_app, s, DIST, "kp1", "CC")
+    await answer_kp(db_app, s, DIST, "kp2", "CC")
+    async with db_app.sessions() as session:
+        await session.execute(
+            update(KnowledgePoint)
+            .where(
+                KnowledgePoint.slug == "kp3",
+                KnowledgePoint.concept_id.in_(_concept_ids("distance-and-displacement")),
+            )
+            .values(retired_at=datetime.now(UTC))
+        )
+        await session.commit()
+    outline = await get(db_app, s, f"/api/v1/learn/courses/{PHYSICS}/outline")
+    assert statuses(outline)[DIST] == "learned"  # promoted on read
+
+
+async def test_kp_whose_questions_are_all_retired_counts_as_passed(db_app: DbApp) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    await _open_lesson(db_app, s, DIST)
+    await get(db_app, s, q_url(DIST, "kp1"))  # session active
+    async with db_app.sessions() as session:
+        kp1 = select(KnowledgePoint.id).where(
+            KnowledgePoint.slug == "kp1",
+            KnowledgePoint.concept_id.in_(_concept_ids("distance-and-displacement")),
+        )
+        await session.execute(
+            update(Item).where(Item.kp_id.in_(kp1)).values(retired_at=datetime.now(UTC))
+        )
+        await session.commit()
+    code, body = await _status(db_app, s, q_url(DIST, "kp1"))
+    assert code == 409 and body["code"] == "kp_passed"
+    q = await get(db_app, s, q_url(DIST, "kp2"))  # the next part opens
+    assert q["position"] == 1
 
 
 async def test_staff_preview_answers_and_writes_nothing(db_app: DbApp) -> None:

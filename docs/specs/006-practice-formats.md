@@ -1,6 +1,6 @@
 # Spec 006: Practice formats
 
-Status: draft
+Status: implemented (Nov 2026)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 4; Phase 1 of docs/ROADMAP.md)
 Builds on: [spec 005](005-kp-flow-knowledge-graph.md) (KP flow, graders for numeric / expression / MCQ, `practice_session`).
 
@@ -93,7 +93,8 @@ Every practice format now works end to end:
     restarted, and that test and any not yet run are reported as `timeout`.
   - Output is capped at 10,000 characters per test.
   - Imports of `js`, `pyodide`, `pyodide_js` and `micropip` raise "That module isn't available here"; the
-    standard library is otherwise available.
+    standard library is otherwise available. *(Implemented with the user code's own `__import__` rather than
+    a meta-path hook: these modules are already loaded, so a meta-path finder would never see them.)*
   - A return value that can't be serialized to JSON (tuples become lists) → that test fails with "returned
     a value that can't be compared".
 - **Code size**: at most 20,000 characters (more → 422 `invalid_response`).
@@ -220,9 +221,9 @@ Builds on the 005 lesson components; existing shell, shadcn/ui, Tailwind, mobile
       - Code items' `time_limit_ms` must be ≤ 5000 for the browser.
     - `app/content/code_runner.py`: import the shared `compare`.
   - **Frontend (new):**
-    - `src/features/code/pyodideWorker.ts`: a Web Worker that loads a pinned Pyodide from jsDelivr. Its messages
-      are `run {code, entry, tests[{args, stdin}], time_limit_ms}` → `progress` per test and
-      `result {outputs[]}`; it blocks banned imports via a meta-path hook.
+    - `src/features/code/pyodideWorker.ts`: a Web Worker that loads a pinned Pyodide from jsDelivr
+      (`protocol.ts`). Its messages are `run {code, entry, tests}` → `started` / `progress` per test and
+      `result`; banned imports go through the user code's own `__import__`.
     - `src/features/code/usePython.ts`: worker lifecycle, a per-test watchdog that terminates on timeout, and
       restart.
     - `src/features/code/CodeEditor.tsx`: CodeMirror 6.
@@ -263,13 +264,17 @@ Builds on the 005 lesson components; existing shell, shadcn/ui, Tailwind, mobile
       - `steps[]`: `{prompt_md, type, unit, options, variables}`, rendered public parts only.
       - `step`: the current step index.
       - `step_results[]`: `{correct, display_answer, note}` for the steps already answered.
-    - Code: `{entry, starter, prefill: str|null, time_limit_ms, visible_tests[{args, expected | stdin,
-      expected_stdout}], hidden_inputs[{args | stdin}]}`.
+    - Code: `{entry, starter, prefill: str|null, time_limit_ms, tests[{visible, returns: value|stdout, args,
+      stdin, expected?, expected_stdout?}]}`: one list in authored order (so `outputs[i]` is test `i`);
+      `expected` / `expected_stdout` only on visible tests. `args` and `expected` are JSON text (Python's
+      `json.dumps`), so `2.0` stays a float and `True` a bool through JavaScript. *(Implementation note: the
+      draft had separate `visible_tests` / `hidden_inputs` lists.)*
   - **`AnswerIn`** (extended):
     - `unit: str | null` (≤ 40).
     - `step: int | null` (multi-step).
     - `code: str | null` (≤ 20,000).
-    - `outputs: list[...] | null` (one per test, each ≤ 10,000 chars).
+    - `outputs: list[...] | null` (one per test, each ≤ 10,000 chars): `{json: "<json text>"}` |
+      `{stdout}` | `{error}` | `{timeout: true}`. The server parses `json` with Python and stores `{value}`.
     - The existing `response` stays for numeric / expression / MCQ, and for each multi-step step.
   - **`AnswerResult`** (extended):
     - `step_result` / `item_done` for multi-step.

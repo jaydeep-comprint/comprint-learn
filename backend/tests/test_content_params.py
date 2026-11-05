@@ -181,3 +181,28 @@ def test_unit_precedence() -> None:
 def test_bad_units_rejected(text: str) -> None:
     with pytest.raises(UnitError):
         parse_unit(text)
+
+
+def test_derived_values_follow_dependencies_not_key_order() -> None:
+    """JSONB sorts keys (shorter first), so a stored item can list `c` before the `y0` it uses."""
+    from app.content.params import sample_answer
+
+    answer = {
+        "params": {"a": {"min": 2, "max": 5, "step": 1}, "x0": {"min": 0, "max": 6, "step": 1}},
+        "derived": {"c": "a * x0 + y0", "y0": "2 * x0 + 1"},
+    }
+    for seed in range(20):
+        v = sample_answer(answer, seed)
+        assert v["y0"] == 2 * v["x0"] + 1
+        assert v["c"] == v["a"] * v["x0"] + v["y0"]
+
+
+def test_derived_cycle_is_still_an_error() -> None:
+    from app.content.params import sample_answer
+
+    answer = {
+        "params": {"a": {"min": 1, "max": 2, "step": 1}},
+        "derived": {"p": "q + a", "q": "p + 1"},
+    }
+    with pytest.raises(ExpressionError):
+        sample_answer(answer, 1)

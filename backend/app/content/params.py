@@ -238,12 +238,34 @@ def sample(item: "Item | _SampleSource", seed: int) -> dict[str, Value]:
             break
     else:
         raise SampleError(f"no values satisfied the constraints in {MAX_DRAWS} draws")
-    for name, expr in item.derived.items():
+    for name, expr in _derived_order(item.derived):
         try:
             values[name] = evaluate(expr, values)
         except ExpressionError as exc:
             raise ExpressionError(f"derived {name} {exc}") from exc
     return values
+
+
+def _derived_order(derived: Mapping[str, str]) -> list[tuple[str, str]]:
+    """`derived` in dependency order, else as given. Stored items come back from JSONB, which
+    doesn't keep key order, so a value computed from another (`y0`, then `c` from `y0`) can
+    arrive first. A cycle (or an unparsable expression) is left in place for `evaluate` to
+    report."""
+    pending = dict(derived)
+    out: list[tuple[str, str]] = []
+    while pending:
+        ready = [n for n, e in pending.items() if not (_names_in(e) & pending.keys() - {n})]
+        for name in ready or list(pending):
+            out.append((name, pending.pop(name)))
+    return out
+
+
+def _names_in(expr: str) -> set[str]:
+    try:
+        tree = ast.parse(str(expr).strip().replace("^", "**"), mode="eval")
+    except SyntaxError:
+        return set()
+    return {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
 
 
 def sample_answer(answer: Mapping[str, Any], seed: int | None) -> dict[str, Value]:

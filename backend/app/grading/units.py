@@ -100,6 +100,17 @@ def convert_factor(student: str, authored: str) -> sympy.Rational | None:
     return converted
 
 
+def si_factor(authored: str) -> sympy.Rational | None:
+    """`f` with 1 authored unit = f SI base units (km → 1000), or None if it can't be worked out.
+    Used by the tutor's answer guard (spec 009)."""
+    try:
+        converted = sympy.nsimplify(u.convert_to(_authored(authored), _SI_BASE))
+    except (UnitError, ValueError, ArithmeticError, RecursionError):
+        return None
+    coeff = converted.as_coeff_Mul()[0]
+    return coeff if isinstance(coeff, sympy.Rational) else None
+
+
 def quantity_name(authored: str) -> str:
     """ "speed", "length", … for the authored unit; "that quantity" if it has no common name."""
     try:

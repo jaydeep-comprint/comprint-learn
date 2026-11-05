@@ -1,7 +1,10 @@
 """Test doubles shared by offline and DB tests."""
 
+import asyncio
 import uuid
+from typing import Any
 
+from app.ai.client import TutorCall
 from app.services.supabase_admin import SupabaseAdminError
 
 
@@ -60,3 +63,43 @@ class FakeSupabaseAdmin:
         self._maybe_fail("delete_user")
         self.deleted.append(user_id)
         self.users.pop(user_id, None)
+
+
+class FakeTutorClient:
+    """Scripted tutor model (spec 009). `replies` is a queue: each entry is a `TutorCall`, a
+    `(category, reply)` pair, or an exception to raise. Every request is recorded (the full
+    `/chat/completions` body) so tests can assert on what the model would see."""
+
+    def __init__(self, *replies: object) -> None:
+        self.replies: list[object] = list(replies)
+        self.requests: list[dict[str, Any]] = []
+        self.gate: asyncio.Event | None = None  # set to hold calls until released
+        self.started = asyncio.Event()
+
+    def queue(self, *replies: object) -> None:
+        self.replies += list(replies)
+
+    async def create(self, request: dict[str, Any]) -> TutorCall:
+        self.requests.append(request)
+        self.started.set()
+        if self.gate is not None:
+            await self.gate.wait()
+        reply = self.replies.pop(0) if self.replies else ("ok", "Look at the worked example.")
+        if isinstance(reply, BaseException):
+            raise reply
+        if isinstance(reply, TutorCall):
+            return reply
+        assert isinstance(reply, tuple)
+        category, text = str(reply[0]), str(reply[1])
+        return TutorCall(
+            category=category,
+            reply=text,
+            stop_reason="end_turn",
+            model="fake-haiku",
+            input_tokens=100,
+            output_tokens=20,
+        )
+
+    def prompt_text(self, index: int = -1) -> str:
+        """Everything the model saw in request `index`, as one string."""
+        return "\n".join(str(m["content"]) for m in self.requests[index]["messages"])

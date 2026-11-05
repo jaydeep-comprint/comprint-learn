@@ -70,7 +70,7 @@ from app.schemas.kp import (
     StepResult,
 )
 from app.schemas.learn import ConceptRef, MisconceptionOut, RemediationRef
-from app.services import frontier, learn, quiz, srs, xp
+from app.services import frontier, learn, quiz, srs, tutor, xp
 
 log = logging.getLogger(__name__)
 
@@ -795,6 +795,7 @@ async def answer_in_session(
         return await _stored_result(scope, session, here[0], rule)
     graded = await _grade_answer(scope, item, session.current_seed, body)
     misconception_id, _ = await _misconception(scope, item, graded.result.misconception)
+    hints = await tutor.hints_for_attempt(scope, session, item.id, session.current_seed)
     now = datetime.now(UTC)
     served_at = session.current_served_at or now
     elapsed = int((now - served_at).total_seconds() * 1000)
@@ -812,7 +813,7 @@ async def answer_in_session(
             correct=graded.result.correct,
             misconception_id=misconception_id,
             time_taken_ms=max(0, min(body.time_taken_ms, elapsed, MAX_ANSWER_MS)),
-            hints_used=0,
+            hints_used=hints,
             session_id=session.id,
             position=session.current_position,
             step=graded.step,

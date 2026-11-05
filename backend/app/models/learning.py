@@ -619,3 +619,120 @@ class QuizItem(TenantMixin, Base):
         UUID(as_uuid=True), _content_fk("concept.id"), nullable=False
     )
     seed: Mapped[int | None] = mapped_column(Integer)
+
+
+# --- AI tutor (spec 009) --------------------------------------------------------------------------
+
+
+class TutorRole(enum.StrEnum):
+    student = "student"
+    tutor = "tutor"
+
+
+class TutorKind(enum.StrEnum):
+    hint = "hint"
+    chat = "chat"
+
+
+class TutorMode(enum.StrEnum):
+    before = "before"  # the question isn't answered yet
+    after = "after"  # answered: chat may explain the mistake
+
+
+class TutorCategory(enum.StrEnum):
+    ok = "ok"
+    needs_hint = "needs_hint"
+    off_topic = "off_topic"
+    safety = "safety"
+
+
+class TutorStatus(enum.StrEnum):
+    pending = "pending"  # student row reserved, model call in flight
+    ok = "ok"
+    guarded = "guarded"  # tutor reply: passed the answer guard on the retry
+    fallback = "fallback"  # tutor reply: canned after a second leak / bad output
+    safety = "safety"
+    refused = "refused"
+    error = "error"  # the model call failed: not charged, not counted
+    late = "late"  # the question was answered during the call: not charged, not counted
+
+
+class TutorSession(TenantMixin, Base):
+    """One tutor thread per question shown: (practice session, position, item, seed). Holds the
+    thread's charged hints and chat count (spec 009)."""
+
+    __tablename__ = "tutor_session"
+    __table_args__ = (
+        _student_fk("tutor_session"),
+        _tenant_fk("practice_session_id", "tutor_session", "practice_session"),
+        UniqueConstraint("id", "org_id", name="uq_tutor_session_id_org_id"),
+        Index(
+            "uq_tutor_session_question",
+            "practice_session_id",
+            "position",
+            "item_id",
+            "seed",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+        ),
+        CheckConstraint("hints_used BETWEEN 0 AND 3", name="hints_used"),
+        CheckConstraint("chat_count >= 0", name="chat_count"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    practice_session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("item.id"), nullable=False
+    )
+    item_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    seed: Mapped[int | None] = mapped_column(Integer)
+    hints_used: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
+    chat_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class TutorMessage(TenantMixin, Base):
+    """One row per student request (`role = student`; a hint request has null `text`) and one
+    per tutor reply. Text is purged after 180 days; counts, tokens, status and flags stay."""
+
+    __tablename__ = "tutor_message"
+    __table_args__ = (
+        _student_fk("tutor_message"),
+        _tenant_fk("tutor_session_id", "tutor_message", "tutor_session"),
+        CheckConstraint("rung IS NULL OR rung BETWEEN 1 AND 3", name="rung"),
+        CheckConstraint("(kind = 'hint') = (rung IS NOT NULL)", name="rung_iff_hint"),
+        Index("ix_tutor_message_student_id_day", "student_id", "day"),
+        Index("ix_tutor_message_tutor_session_id", "tutor_session_id"),
+        Index("ix_tutor_message_flagged", "flagged", postgresql_where=text("flagged")),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tutor_session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    role: Mapped[TutorRole] = mapped_column(_pg_enum(TutorRole, "tutor_role"), nullable=False)
+    kind: Mapped[TutorKind] = mapped_column(_pg_enum(TutorKind, "tutor_kind"), nullable=False)
+    mode: Mapped[TutorMode] = mapped_column(_pg_enum(TutorMode, "tutor_mode"), nullable=False)
+    rung: Mapped[int | None] = mapped_column(SmallInteger)
+    category: Mapped[TutorCategory | None] = mapped_column(
+        _pg_enum(TutorCategory, "tutor_category")
+    )
+    status: Mapped[TutorStatus] = mapped_column(
+        _pg_enum(TutorStatus, "tutor_status"), nullable=False
+    )
+    flagged: Mapped[bool] = mapped_column(nullable=False, server_default=text("false"))
+    text: Mapped[str | None] = mapped_column(Text)
+    link_concept_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), _content_fk("concept.id")
+    )
+    model: Mapped[str | None] = mapped_column(Text)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    cache_read_tokens: Mapped[int | None] = mapped_column(Integer)
+    cache_write_tokens: Mapped[int | None] = mapped_column(Integer)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = _now()
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

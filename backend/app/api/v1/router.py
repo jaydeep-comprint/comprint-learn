@@ -11,6 +11,7 @@ from app.api.v1 import (
     reviews,
     students,
     teachers,
+    tutor,
     xp,
 )
 
@@ -26,3 +27,4 @@ api_router.include_router(kp.router)
 api_router.include_router(xp.router)
 api_router.include_router(reviews.router)
 api_router.include_router(quiz.router)
+api_router.include_router(tutor.router)

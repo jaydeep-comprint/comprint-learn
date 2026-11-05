@@ -19,6 +19,7 @@ from app.models import (
     AppUser,
     ConceptStatus,
     Enrollment,
+    RemediationState,
     Role,
     SchoolClass,
     TeacherSummary,
@@ -66,9 +67,19 @@ def _fact(fs: tf.FactSet, kind: str) -> tf.Fact:
 
 
 async def _names(db: DbApp) -> list[str]:
+    """Students' display names and usernames (staff names like "Teacher" are common words)."""
     async with db.sessions() as session:
-        rows = (await session.execute(select(AppUser.display_name, AppUser.username))).all()
+        rows = (
+            await session.execute(
+                select(AppUser.display_name, AppUser.username).where(AppUser.role == Role.student)
+            )
+        ).all()
     return [v for row in rows for v in row if v and len(v) > 2]
+
+
+def _sent(db: DbApp, index: int = -1) -> str:
+    """What the request carried besides the static system prompt: the facts and any retry note."""
+    return "\n".join(str(m["content"]) for m in db.teacher_ai.requests[index]["messages"][1:])
 
 
 async def _rows(db: DbApp, s: Seed) -> list[TeacherSummary]:
@@ -104,6 +115,20 @@ async def test_facts_match_the_dashboard(db_app: DbApp) -> None:
     assert f"sent 1 students to prerequisite '{s.dist_title}'" in window.text
     assert "0 have resolved it" in window.text
     assert tf.enough_data(fs)
+
+
+async def test_cause_now_counts_every_open_prerequisite(db_app: DbApp) -> None:
+    s = await _seed(db_app)
+    async with db_app.sessions() as session:
+        kp1 = (await ds.kps_of(session, s.speed))[0]
+        # A 2nd key prerequisite of the same failed KP, being relearned.
+        session.add(ds.remediation(s.org, s.s3, kp1.id, s.lin, RemediationState.relearn))
+        await session.commit()
+    fs = await _class_facts(db_app, s)
+    texts = [f.text for f in fs.facts if f.kind == "cause_now"]
+    assert any(f"'{s.dist_title}' is the open cause for 1 students" in t for t in texts)
+    assert any(t.endswith("1 relearning.") for t in texts)  # the second prerequisite counts
+    assert len(texts) == 2
 
 
 async def test_generate_store_and_render(db_app: DbApp) -> None:
@@ -159,7 +184,7 @@ async def test_generate_store_and_render(db_app: DbApp) -> None:
     assert all(r["available"] for r in note["revisit"])
 
     # Privacy: what the model saw holds no names, usernames, ids or emails.
-    prompt = db_app.teacher_ai.prompt_text()
+    prompt = _sent(db_app)
     for name in await _names(db_app):
         assert name not in prompt, name
     assert not UUID_RE.search(prompt)
@@ -344,7 +369,7 @@ async def test_student_summary_and_scope(db_app: DbApp) -> None:
     r = await _post(db_app, s, _summary(s, s.s3))
     assert r.status_code == 201, r.text
     assert r.json()["kind"] == "student"
-    prompt = db_app.teacher_ai.prompt_text()
+    prompt = _sent(db_app)
     assert "STUDENT SUMMARY for {S1}" in prompt
     assert "{S2}" not in prompt  # only the student, as S1
     for name in await _names(db_app):

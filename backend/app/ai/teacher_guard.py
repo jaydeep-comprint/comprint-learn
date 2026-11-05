@@ -40,8 +40,8 @@ class GuardResult:
 
 
 def numbers(text: str) -> set[float]:
-    """Every number in the text, normalised: `43%` → {43, 0.43}; digits inside `{Sn}` and
-    thousands separators are ignored."""
+    """Every number in the text, normalised: `43%` → {43, 0.43}, `0.43` → {0.43, 43}; digits
+    inside `{Sn}` and thousands separators are ignored."""
     text = TOKEN.sub(" ", text)
     text = re.sub(r"(?<=\d),(?=\d{3}\b)", "", text)
     out: set[float] = set()
@@ -50,7 +50,7 @@ def numbers(text: str) -> set[float]:
         out.add(round(n, 6))
         if m.group(2):
             out.add(round(n / 100, 6))
-        elif n <= 1:
+        elif "." in m.group(1) and n <= 1:  # a rate like 0.43; never the integers 0 and 1
             out.add(round(n * 100, 6))
     return out
 

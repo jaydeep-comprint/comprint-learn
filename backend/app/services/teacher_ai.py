@@ -74,7 +74,6 @@ async def class_input(scope: OrgScope, ctx: ClassCtx, window: Window) -> tf.Clas
     weak_ids = [ctx.graph.by_ref[s.concept] for s in weakest]
     kp_ids = {t[2] for t in snap.tries if t[1] in weak_ids} | {r.kp_id for r in rems}
     kps = await dashboard.kp_info(scope, kp_ids)
-    order = {s.id: i for i, s in enumerate(ctx.students)}
 
     per_kp: dict[uuid.UUID, Counter[str]] = defaultdict(Counter)
     for _sid, _cid, kp, is_failed, n in snap.tries:
@@ -114,22 +113,32 @@ async def class_input(scope: OrgScope, ctx: ClassCtx, window: Window) -> tf.Clas
             concept_title=m.concept_title,
             chosen=m.chosen,
             offered=m.offered,
-            students=tuple(sorted(choosers[m.id], key=lambda s: order.get(s, 0))),
+            students=tuple(sorted(choosers[m.id])),
         )
         for m in snap.top_misconceptions
     ]
 
+    # Every open remediation of a stuck concept counts, one per (student, prerequisite): a KP's
+    # 2nd fail opens one per key prerequisite. Within a pair, review_due wins over relearn.
     now_groups: dict[tuple[uuid.UUID, uuid.UUID], dict[str, list[uuid.UUID]]] = {}
     for s in ctx.students:
         for cid in ctx.concepts:
             view = dashboard._view(ctx, s.id, cid)
             if view is None or dashboard.heat_state(view) != "stuck":
                 continue
-            reason = dashboard.stuck_reason(view)
-            if reason is None or reason.prereq is None or reason.prereq not in ctx.graph.nodes:
-                continue
-            group = now_groups.setdefault((reason.prereq, cid), {"review_due": [], "relearn": []})
-            group[reason.kind].append(s.id)
+            per_prereq: dict[uuid.UUID, str] = {}
+            for kp_view in view.kps:
+                for rem in kp_view.remediations:
+                    p = rem.prereq_concept_id
+                    if p not in ctx.graph.nodes:
+                        continue
+                    if per_prereq.get(p) != "review_due":
+                        per_prereq[p] = rem.state.value
+            for p, kind in per_prereq.items():
+                if kind not in ("review_due", "relearn"):
+                    continue
+                group = now_groups.setdefault((p, cid), {"review_due": [], "relearn": []})
+                group[kind].append(s.id)
     causes_now = [
         tf.CauseNow(
             prereq_ref=ctx.ref(p),
@@ -159,7 +168,7 @@ async def class_input(scope: OrgScope, ctx: ClassCtx, window: Window) -> tf.Clas
                 concept_title=ctx.title(info.concept_id),
                 prereq_ref=ctx.ref(prereq),
                 prereq_title=ctx.title(prereq),
-                students=tuple(sorted(students, key=lambda s: order.get(s, 0))),
+                students=tuple(sorted(students)),
                 resolved=sum(students.values()),
             )
         )

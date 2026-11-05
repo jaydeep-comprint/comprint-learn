@@ -151,6 +151,7 @@ describe("SummaryCard", () => {
         ),
     });
     expect(await screen.findByText("Data changed")).toBeInTheDocument();
+    expect(screen.getByText("The data has changed since this summary.")).toBeInTheDocument();
     expect(screen.getByText(/Some sentences were removed/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Regenerate/ })).toBeDisabled();
     expect(screen.getByText(/used today's 10 summaries/)).toBeInTheDocument();

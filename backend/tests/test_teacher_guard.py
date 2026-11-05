@@ -49,6 +49,7 @@ def reason(text: str, *facts: str) -> str | None:
 def test_numbers_normalised() -> None:
     assert numbers("43%") == {43.0, 0.43}
     assert numbers("0.43") == {0.43, 43.0}
+    assert numbers("1 of 3") == {1.0, 3.0}
     assert numbers("6/14 and 6 of 14") == {6.0, 14.0}
     assert numbers("{S10} chose it") == set()
     assert numbers("1,200 answers") == {1200.0}
@@ -71,6 +72,8 @@ def test_number_checks() -> None:
     assert reason("9 of 14 tries failed.", "F2") == "number 9 not in its facts"
     assert reason("25 students are in scope and 6 failed.", "F1") == "number 6 not in its facts"
     assert kept("25 students are in scope and 6 failed.", "F1", "F2")
+    # "1 of 3" doesn't license "100%": only decimal rates get the x100 form.
+    assert reason("100% of the 3 stuck students relearn.", "F3") == "number 100 not in its facts"
 
 
 def test_student_tokens() -> None:

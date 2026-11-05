@@ -222,6 +222,9 @@ function Body({
     <div className="space-y-4">
       {errorBox}
       {writingBox}
+      {state.stale && (
+        <p className="text-sm text-muted-foreground">The data has changed since this summary.</p>
+      )}
       {summary.status === "partial" && (
         <p className="text-xs text-muted-foreground">
           Some sentences were removed because they couldn&apos;t be checked against the data.

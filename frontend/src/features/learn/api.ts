@@ -41,11 +41,12 @@ export function useStudentCourses() {
   });
 }
 
-export function useOutline(course: string) {
+export function useOutline(course: string, enabled = true) {
   return useQuery({
     queryKey: learnKeys.outline(course),
     queryFn: () => apiFetch<Outline>(`/api/v1/learn/courses/${course}/outline`),
     retry: retryUnlessClientError,
+    enabled,
   });
 }
 

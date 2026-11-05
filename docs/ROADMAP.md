@@ -23,6 +23,8 @@ Each slice should work end to end before starting the next.
 008 needs nothing from 007 (XP comes from KP questions and Practice, already stored since 005/006). Spec numbers stay
 as they are. **007 done (Nov 2026)**: review answers award XP through 008's formula (reason `review`) and a quiz awards one event per subject (reason `quiz`). **009 done (Nov 2026)**:
 tutor hints fill `attempt.hints_used`, and 008's hint factor now applies per question, not to the session total.
+**010 done (Nov 2026)**: the class page is a tabbed teacher dashboard (Overview, Students + heatmap, Assignments,
+Settings) with a per-student page; assignments drive the student's "Assigned by your teacher" card (Focus Mode).
 
 ## Phase 2: AI + teacher
 | # | Spec | Done when |

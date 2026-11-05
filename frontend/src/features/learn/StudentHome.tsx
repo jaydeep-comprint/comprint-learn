@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { EmptyState } from "@/components/EmptyState";
+import { AssignedCard } from "@/features/assignments/AssignedCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStudentCourses } from "@/features/learn/api";
@@ -133,6 +134,7 @@ export function StudentHome({ firstName }: { firstName: string }) {
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold sm:text-3xl">Hi {firstName}</h1>
       <QuizBanner />
+      <AssignedCard />
       <TodaysReviews />
       {courses.isPending ? (
         <div className="space-y-4" aria-busy="true">

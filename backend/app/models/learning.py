@@ -736,3 +736,78 @@ class TutorMessage(TenantMixin, Base):
     day: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = _now()
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Assignment(TenantMixin, Base):
+    """A teacher target for a class (spec 010): 1 to 10 concepts of the class course and a due date,
+    for the whole class (`all_students`) or the students in `assignment_student`. Statuses are
+    computed on read; deleting is soft (`deleted_at`)."""
+
+    __tablename__ = "assignment"
+    __table_args__ = (
+        _tenant_fk("class_id", "assignment", "school_class"),
+        ForeignKeyConstraint(
+            ["created_by", "org_id"],
+            ["app_user.id", "app_user.org_id"],
+            ondelete="RESTRICT",
+            name="fk_assignment_created_by_app_user",
+        ),
+        UniqueConstraint("id", "org_id", name="uq_assignment_id_org_id"),
+        CheckConstraint("note IS NULL OR char_length(note) <= 200", name="note_length"),
+        Index(
+            "ix_assignment_class_live",
+            "org_id",
+            "class_id",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    class_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    all_students: Mapped[bool] = mapped_column(
+        nullable=False, default=True, server_default=text("true")
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AssignmentConcept(TenantMixin, Base):
+    """A target concept of an assignment, in the teacher's order."""
+
+    __tablename__ = "assignment_concept"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["assignment_id", "org_id"],
+            ["assignment.id", "assignment.org_id"],
+            ondelete="CASCADE",
+            name="fk_assignment_concept_assignment_id_assignment",
+        ),
+    )
+
+    assignment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    concept_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("concept.id"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+
+
+class AssignmentStudent(TenantMixin, Base):
+    """A chosen student of an assignment (rows exist only when `all_students` is false)."""
+
+    __tablename__ = "assignment_student"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["assignment_id", "org_id"],
+            ["assignment.id", "assignment.org_id"],
+            ondelete="CASCADE",
+            name="fk_assignment_student_assignment_id_assignment",
+        ),
+        _student_fk("assignment_student"),
+    )
+
+    assignment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)

@@ -3,10 +3,11 @@ import "@xyflow/react/dist/style.css";
 import { Controls, type Edge, MarkerType, ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { Outline } from "@/lib/types";
+import { BAND_FILL, BAND_LABELS } from "@/features/dashboard/heat";
+import type { Band, Outline } from "@/lib/types";
 
-import { ConceptNode, type ConceptFlowNode } from "./ConceptNode";
-import { ConceptPanel } from "./ConceptPanel";
+import { ConceptNode, type ConceptFlowNode, type MapConcept, type MapMode } from "./ConceptNode";
+import { ConceptPanel, type PanelDetails } from "./ConceptPanel";
 import { edgeId, highlight, OPACITY } from "./highlight";
 import { layoutGraph } from "./layoutGraph";
 
@@ -17,13 +18,22 @@ export default function CourseMap({
   course,
   outline,
   onShowList,
+  mode = "progress",
+  details,
 }: {
   course: string;
-  outline: Outline;
+  /** Teacher views pass concepts with `state` / `memory` (spec 010). */
+  outline: Outline & { chapters: { concepts: MapConcept[] }[] };
   onShowList: () => void;
+  mode?: MapMode;
+  /** Read-only panel content for a teacher's view of a student (no lesson buttons). */
+  details?: PanelDetails;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
-  const concepts = useMemo(() => outline.chapters.flatMap((ch) => ch.concepts), [outline]);
+  const concepts = useMemo(
+    () => outline.chapters.flatMap((ch) => ch.concepts as MapConcept[]),
+    [outline],
+  );
   const ids = useMemo(() => new Set(concepts.map((c) => c.id)), [concepts]);
   const edges = useMemo(
     () =>
@@ -56,7 +66,7 @@ export default function CourseMap({
       id: p.id,
       type: "concept",
       position: { x: p.x, y: p.y },
-      data: { concept, selected: selected === p.id, onSelect: setSelected },
+      data: { concept, selected: selected === p.id, onSelect: setSelected, mode },
       style: { opacity: lit ? OPACITY[lit.nodes.get(p.id) ?? "dim"] : 1 },
       draggable: false,
       selectable: false,
@@ -111,19 +121,32 @@ export default function CourseMap({
           outline={outline}
           concept={selected ? (byId.get(selected) ?? null) : null}
           onClose={clear}
+          details={details}
         />
       </div>
-      {!staff && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-hidden>
-          <span>No knowledge</span>
-          <span
-            className="h-2 w-32 rounded-full border"
-            style={{
-              background: "linear-gradient(to right, var(--mastery-empty), var(--mastery-full))",
-            }}
-          />
-          <span>Learned</span>
+      {mode === "memory" ? (
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          {(["strong", "fading", "weak", "none"] as Band[]).map((b) => (
+            <span key={b} className="flex items-center gap-1">
+              <span className="size-3 rounded-sm border" style={{ background: BAND_FILL[b] }} />
+              Learned, {BAND_LABELS[b]}
+            </span>
+          ))}
+          <span>Grey: not learned yet</span>
         </div>
+      ) : (
+        !staff && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-hidden>
+            <span>No knowledge</span>
+            <span
+              className="h-2 w-32 rounded-full border"
+              style={{
+                background: "linear-gradient(to right, var(--mastery-empty), var(--mastery-full))",
+              }}
+            />
+            <span>Learned</span>
+          </div>
+        )
       )}
     </div>
   );

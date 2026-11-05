@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -38,14 +39,19 @@ function Action({ course, concept }: { course: string; concept: OutlineConcept }
   );
 }
 
+/** Read-only details for a teacher's view of a student's map (spec 010): no lesson buttons. */
+export type PanelDetails = (concept: OutlineConcept) => ReactNode;
+
 function Body({
   course,
   outline,
   concept,
+  details,
 }: {
   course: string;
   outline: Outline;
   concept: OutlineConcept;
+  details?: PanelDetails;
 }) {
   const part = Math.min(concept.parts_passed + 1, concept.parts_total);
   const onPractice =
@@ -64,13 +70,19 @@ function Body({
           )}
         </p>
       )}
-      {concept.waiting && (
-        <p className="text-sm">Retry tomorrow, or after you learn something else.</p>
+      {details ? (
+        details(concept)
+      ) : (
+        <>
+          {concept.waiting && (
+            <p className="text-sm">Retry tomorrow, or after you learn something else.</p>
+          )}
+          {concept.status === "locked" && (
+            <LockedPanel course={course} prereqs={unfinishedPrereqs(outline, concept)} />
+          )}
+          <Action course={course} concept={concept} />
+        </>
       )}
-      {concept.status === "locked" && (
-        <LockedPanel course={course} prereqs={unfinishedPrereqs(outline, concept)} />
-      )}
-      <Action course={course} concept={concept} />
     </div>
   );
 }
@@ -81,11 +93,13 @@ export function ConceptPanel({
   outline,
   concept,
   onClose,
+  details,
 }: {
   course: string;
   outline: Outline;
   concept: OutlineConcept | null;
   onClose: () => void;
+  details?: PanelDetails;
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
   if (desktop) {
@@ -101,7 +115,7 @@ export function ConceptPanel({
             <X aria-hidden />
           </Button>
         </div>
-        <Body course={course} outline={outline} concept={concept} />
+        <Body course={course} outline={outline} concept={concept} details={details} />
       </aside>
     );
   }
@@ -110,7 +124,7 @@ export function ConceptPanel({
       <SheetContent side="bottom" className="p-4 pb-6">
         <SheetTitle className="pr-8">{concept?.title}</SheetTitle>
         <SheetDescription className="sr-only">Concept details</SheetDescription>
-        {concept && <Body course={course} outline={outline} concept={concept} />}
+        {concept && <Body course={course} outline={outline} concept={concept} details={details} />}
       </SheetContent>
     </Sheet>
   );

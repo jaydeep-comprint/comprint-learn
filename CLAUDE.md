@@ -37,6 +37,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 - Students have no email: their Supabase auth email is synthetic, `{username}@{school-code}.students.invalid`, never shown or sent.
 - New tables: inherit `TenantMixin`, add composite FKs for links, and enable RLS in the migration (`test_rls_db.py`).
 - Content tables (`course`…`item`) are global: no `TenantMixin`/`OrgScope`, but still RLS. Item answers live in `item.answer`; API shapes come only from `item.public`.
+- Teacher reads of learning state use `frontier.class_states` (batched, read-only); never call `frontier.load` for staff (it promotes on read). Class views share `services/class_view.load`.
 - FastAPI 0.143 nests included routers: walk routes with `fastapi.routing.iter_route_contexts(app.routes)`, not `app.routes`.
 
 ## Compaction

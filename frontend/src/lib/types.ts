@@ -38,6 +38,8 @@ export type ClassStudent = Omit<Student, "class_ids"> & {
   reviews_due: number;
   /** The last finished quiz. */
   last_quiz: { score_pct: number; finished_on: string } | null;
+  /** Spec 010: at-risk rule codes (empty when not at risk or not in scope). */
+  at_risk: AtRiskCode[];
 };
 
 export type SchoolClass = {
@@ -445,3 +447,272 @@ export type TutorThread = {
 };
 
 export type TutorReply = { message: TutorMessage; thread: TutorThread };
+
+/** Teacher dashboard (spec 010, backend/app/schemas/dashboard.py). */
+export type DashboardWindow = "7d" | "30d" | "all";
+export type HeatState = "locked" | "ready" | "in_progress" | "stuck" | "learned";
+export type Band = "strong" | "fading" | "weak" | "none";
+export type AtRiskCode =
+  | "kp_fail_rate"
+  | "negative_xp"
+  | "low_xp_rate"
+  | "falling_memory"
+  | "overdue_assignment"
+  | "inactive";
+
+export type ConceptStat = {
+  concept: string;
+  title: string;
+  chapter: string;
+  tries: number;
+  students_tried: number;
+  fail_rate: number | null;
+  stuck_now: number;
+  learned_pct: number;
+};
+
+export type AtRiskReason = { code: AtRiskCode; detail: string };
+export type AtRiskRow = { student_id: string; display_name: string; reasons: AtRiskReason[] };
+
+export type MisconceptionStat = {
+  id: string;
+  title: string;
+  concept: string | null;
+  concept_title: string | null;
+  chosen: number;
+  offered: number;
+  rate: number | null;
+  students: number;
+  items: { prompt: string; chosen_text: string | null; student_names: string[] }[];
+};
+
+export type HintStudent = {
+  student_id: string;
+  display_name: string;
+  hints: number;
+  chats: number;
+  answered: number;
+  hints_per_10: number | null;
+};
+
+export type HintUse = {
+  hints: number;
+  chats: number;
+  answered: number;
+  hints_per_10: number | null;
+  top: HintStudent[];
+};
+
+export type FlaggedThread = {
+  thread_id: string;
+  student_id: string;
+  display_name: string;
+  concept: string;
+  concept_title: string;
+  created_at: string;
+};
+
+export type ClassOverview = {
+  window: DashboardWindow;
+  students_in_scope: number;
+  has_course: boolean;
+  weakest: ConceptStat[];
+  at_risk: AtRiskRow[];
+  misconceptions: MisconceptionStat[];
+  hints: HintUse;
+  flagged: FlaggedThread[];
+  practice_share: { learn_seconds: number; practice_seconds: number };
+  assignments_due: AssignmentSummary[];
+  overdue_assignments: number;
+};
+
+export type StudentRef = { student_id: string; display_name: string };
+
+export type ConceptDetail = {
+  concept: string;
+  title: string;
+  kps: { title: string; tries: number; fail_rate: number | null; hints: number }[];
+  items: {
+    prompt: string;
+    kind: string;
+    type: string;
+    answers: number;
+    correct_pct: number | null;
+    avg_seconds: number | null;
+  }[];
+  misconceptions: MisconceptionStat[];
+  students: {
+    stuck: (StudentRef & { reason: string })[];
+    in_progress: StudentRef[];
+    learned: StudentRef[];
+    ready: number;
+    locked: number;
+  };
+};
+
+export type HeatCell = { state: HeatState; band: Band | null };
+
+export type Heatmap = {
+  chapters: {
+    title: string;
+    grade: number | null;
+    concepts: { concept: string; title: string; learned_pct: number }[];
+  }[];
+  students: { student_id: string; display_name: string; cells: HeatCell[] }[];
+};
+
+export type StudentDetail = {
+  student_id: string;
+  display_name: string;
+  status: UserStatus;
+  at_risk: AtRiskReason[];
+  week_xp: number;
+  streak_days: number;
+  reviews_due: number;
+  last_quiz: { score_pct: number; finished_on: string } | null;
+  stats: {
+    learn_seconds: number;
+    practice_seconds: number;
+    kp_fail_rate: number | null;
+    hints_per_10: number | null;
+    learned: number;
+    total: number;
+  };
+  assignments: StudentAssignmentRow[];
+};
+
+export type Memory = { band: Band; retrievability: number | null; next_due: string | null };
+
+export type TeacherOutlineConcept = OutlineConcept & {
+  state: HeatState;
+  memory: Memory | null;
+  kps: { title: string; status: KpStatus; fail_count: number; reopen_at: string | null }[];
+};
+
+export type TeacherOutline = {
+  /** null when the class subject has no active course. */
+  course: Outline["course"] | null;
+  chapters: {
+    slug: string;
+    title: string;
+    grade: number | null;
+    concepts: TeacherOutlineConcept[];
+  }[];
+};
+
+export type ActivityRow = {
+  kind: "kp" | "remediation" | "practice" | "review" | "quiz";
+  concept: string | null;
+  title: string;
+  outcome: "passed" | "failed";
+  xp: number | null;
+  hints: number;
+  answered: number;
+  seconds: number;
+  ended_at: string;
+};
+
+export type ThreadRow = {
+  id: string;
+  concept: string;
+  concept_title: string;
+  kp_title: string | null;
+  created_at: string;
+  hints_used: number;
+  chat_count: number;
+  flagged: boolean;
+};
+
+export type ThreadDetail = {
+  id: string;
+  concept: string;
+  concept_title: string;
+  messages: {
+    role: "student" | "tutor";
+    kind: "hint" | "chat";
+    text: string | null;
+    status: string;
+    purged: boolean;
+    created_at: string;
+  }[];
+};
+
+/** Assignments and Focus Mode (spec 010, backend/app/schemas/assignments.py). */
+export type AssignmentStatus =
+  "done_early" | "done_on_time" | "done_late" | "overdue" | "in_progress" | "not_started";
+
+export type AssignmentSummary = {
+  id: string;
+  title: string;
+  concepts: { concept: string; title: string }[];
+  content_available: boolean;
+  due_date: string;
+  note: string | null;
+  all_students: boolean;
+  student_ids: string[];
+  counts: {
+    done: number;
+    done_late: number;
+    already_learned: number;
+    overdue: number;
+    in_progress: number;
+    not_started: number;
+    total: number;
+  };
+  active: boolean;
+  created_at: string;
+};
+
+export type NextConcept = { concept: string; title: string };
+
+export type AssignmentDetail = AssignmentSummary & {
+  students: {
+    student_id: string;
+    display_name: string;
+    status: AssignmentStatus;
+    done_at: string | null;
+    learned: number;
+    total: number;
+    next: NextConcept | null;
+  }[];
+};
+
+export type StudentAssignmentRow = {
+  id: string;
+  title: string;
+  due_date: string;
+  status: AssignmentStatus;
+  done_at: string | null;
+  learned: number;
+  total: number;
+  next: NextConcept | null;
+};
+
+export type AssignmentInput = {
+  concepts: string[];
+  due_date: string;
+  note: string | null;
+  student_ids: string[] | null;
+};
+
+export type MyAssignment = {
+  id: string;
+  title: string;
+  class_name: string;
+  course: string;
+  due_date: string;
+  note: string | null;
+  status: AssignmentStatus;
+  done_at: string | null;
+  learned: number;
+  total: number;
+  path: {
+    concept: string;
+    course: string;
+    title: string;
+    status: "in_progress" | "stuck" | "ready" | "locked";
+    waiting: boolean;
+    target: boolean;
+  }[];
+  next: { concept: string; course: string; title: string; brush_up_id: string | null } | null;
+};

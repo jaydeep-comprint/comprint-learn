@@ -6,12 +6,14 @@ code solution appear only in `AnswerResult`, which is sent after an answer. Answ
 hidden tests' expected values and (before they're earned) solutions never reach the client.
 """
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, StrictInt, StrictStr
 
 from app.schemas.content import OptionPublic
 from app.schemas.learn import ConceptRef, MisconceptionOut, RemediationRef
+from app.schemas.reviews import ReviewOutcomeOut
 from app.schemas.xp import XpAwardOut
 
 SessionStatus = Literal["active", "passed", "failed"]
@@ -72,6 +74,7 @@ class QuestionPublic(BaseModel):
     code: CodePublic | None = None
     results: list[bool]  # this session's item results so far
     preview_seed: int | None  # staff only: send it back with `item_id`
+    deadline: datetime | None = None  # spec 007: a quiz question's shared deadline
 
 
 class AnswerIn(BaseModel):
@@ -122,6 +125,8 @@ class AnswerResult(BaseModel):
     solution: str | None = None  # code: in KP sessions, previews, or after a practice pass
     # Spec 008: set on the answer that ended the session (and on a resend of it)
     xp: XpAwardOut | None = None
+    # Spec 007: set on the answer that ended a scheduled review (and on a resend of it)
+    review: ReviewOutcomeOut | None = None
 
 
 class KpWaiting(BaseModel):

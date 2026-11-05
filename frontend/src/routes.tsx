@@ -22,6 +22,18 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/change-password", element: <ChangePasswordPage /> },
       {
+        // Spec 007: the quiz renders without the app navigation (no notes).
+        element: <RequireRole access="student" />,
+        children: [
+          {
+            path: "/quiz/:id",
+            lazy: async () => ({
+              Component: (await import("@/features/quiz/QuizPage")).QuizPage,
+            }),
+          },
+        ],
+      },
+      {
         element: <AppShell />,
         children: [
           { path: "/", element: <HomePage /> },
@@ -58,6 +70,12 @@ export const routes: RouteObject[] = [
           {
             element: <RequireRole access="student" />,
             children: [
+              {
+                path: "/review/:course/:concept",
+                lazy: async () => ({
+                  Component: (await import("@/features/reviews/ReviewPage")).ReviewPage,
+                }),
+              },
               {
                 path: "/leaderboard/:classId",
                 lazy: async () => ({

@@ -436,6 +436,34 @@ describe("LessonPage", () => {
     ).toHaveAttribute("href", "/learn/brush-up/r1");
   });
 
+  it("with a quiz pending, a part that would start shows the quiz panel (spec 007)", async () => {
+    mockApi(
+      lesson({
+        concept_status: "in_progress",
+        progress: {
+          seen_steps: ["intro", "check", "kp:kp1", "kpq:kp1"],
+          last_step: "kpq:kp1",
+          finished_at: null,
+        },
+        check_result: ANSWERED_CHECK,
+      }),
+      {
+        [`GET ${Q_URL}`]: () =>
+          jsonResponse(409, {
+            code: "quiz_pending",
+            message: "Take your quiz to keep learning.",
+            quiz_id: "qz1",
+          }),
+      },
+    );
+    renderAt(`/learn/${COURSE}/${DIST}`);
+    expect(await screen.findByText("Take your quiz to keep learning")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to the quiz" })).toHaveAttribute(
+      "href",
+      "/quiz/qz1",
+    );
+  });
+
   it("a waiting part opens on the waiting panel; worked examples stay readable", async () => {
     mockApi(
       lesson({

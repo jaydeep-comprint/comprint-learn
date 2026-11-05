@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { learnKeys, submitPracticeAnswer, usePracticeQuestion } from "@/features/learn/api";
 import { PracticeRunner } from "@/features/learn/PracticeRunner";
+import { pendingQuizId } from "@/features/quiz/api";
+import { QuizPendingPanel } from "@/features/quiz/QuizPendingPanel";
 import type { AnswerResult, ConceptRef, Lesson } from "@/lib/types";
 
 const HEADER = "Practice · Put it together";
@@ -53,9 +55,11 @@ function Attempt({
         await query.refetch();
         setAttempt((a) => a + 1);
       }}
-      renderConflict={(code) =>
+      renderConflict={(code, error) =>
         code === "practice_passed" ? (
           <PassedPanel />
+        ) : code === "quiz_pending" ? (
+          <QuizPendingPanel quizId={pendingQuizId(error)} />
         ) : (
           <p className="rounded-lg border p-4">
             Pass every part of this lesson first, then practise.

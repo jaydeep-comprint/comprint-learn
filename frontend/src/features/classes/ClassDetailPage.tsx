@@ -53,6 +53,7 @@ import { useResetPassword } from "@/features/students/api";
 import { useTeachers } from "@/features/teachers/api";
 import { ApiError } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
+import { shortDate } from "@/lib/dates";
 import { SUBJECT_LABELS, type ClassStudent, type SchoolClass } from "@/lib/types";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
@@ -162,6 +163,8 @@ function StudentRows({
           <TableHead>Status</TableHead>
           <TableHead className="text-right">XP this week</TableHead>
           <TableHead className="text-right">Streak</TableHead>
+          <TableHead className="text-right">Reviews due</TableHead>
+          <TableHead>Last quiz</TableHead>
           <TableHead className="w-10">
             <span className="sr-only">Actions</span>
           </TableHead>
@@ -177,6 +180,12 @@ function StudentRows({
             </TableCell>
             <TableCell className="text-right tabular-nums">{s.week_xp}</TableCell>
             <TableCell className="text-right tabular-nums">{s.streak_days}</TableCell>
+            <TableCell className="text-right tabular-nums">{s.reviews_due}</TableCell>
+            <TableCell className="whitespace-nowrap tabular-nums">
+              {s.last_quiz
+                ? `${s.last_quiz.score_pct}% · ${shortDate(s.last_quiz.finished_on)}`
+                : "—"}
+            </TableCell>
             <TableCell>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

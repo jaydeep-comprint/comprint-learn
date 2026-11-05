@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
 
 from app.models import Role, Subject, UserStatus
+from app.schemas.quiz import LastQuizOut
 
 MAX_NEW_STUDENTS = 60
 MAX_ENROLL_IDS = 200
@@ -154,6 +155,8 @@ class ClassStudentOut(_Out):
     status: UserStatus
     week_xp: int = 0  # this week's XP in the class's subject (spec 008)
     streak_days: int = 0
+    reviews_due: int = 0  # due, offerable review cards today, uncapped (spec 007)
+    last_quiz: LastQuizOut | None = None  # the last finished quiz (spec 007)
 
 
 class EnrollIn(BaseModel):

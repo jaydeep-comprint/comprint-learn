@@ -1,6 +1,6 @@
 """Learning state: attempts, lesson progress and study time (spec 004); concept states, KP progress,
 practice sessions and remediations (spec 005); the XP ledger, day snapshots and own goals
-(spec 008).
+(spec 008); review cards, the review log and quizzes (spec 007).
 
 All tenant-owned (`TenantMixin`): the student link is a composite FK to `app_user(id, org_id)`, so a
 row can't point at a student in another school. Content links (`item`, `concept`, `misconception`)
@@ -18,6 +18,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Double,
     ForeignKey,
     ForeignKeyConstraint,
     Identity,
@@ -38,12 +39,14 @@ from app.models.tenancy import Subject, TenantMixin, _pg_enum
 
 
 class AttemptContext(enum.StrEnum):
-    """Where an answer was given. Later specs add review, quiz, diagnostic."""
+    """Where an answer was given. Later specs add diagnostic."""
 
     learn = "learn"
     kp = "kp"
     remediation = "remediation"
     practice = "practice"  # spec 006: the lesson's Practice step
+    review = "review"  # spec 007: a scheduled (FSRS) review of one concept
+    quiz = "quiz"  # spec 007: the mixed timed quiz
 
 
 class StudyActivity(enum.StrEnum):
@@ -75,6 +78,8 @@ class SessionKind(enum.StrEnum):
     kp = "kp"
     remediation = "remediation"
     practice = "practice"  # spec 006: one practice item for a concept
+    review = "review"  # spec 007: one review of a concept (`concept_id`)
+    quiz = "quiz"  # spec 007: one quiz (`quiz_id`)
 
 
 class SessionStatus(enum.StrEnum):
@@ -135,7 +140,8 @@ class Attempt(TenantMixin, Base):
             "session_id", "position", "step", name="uq_attempt_session_id_position_step"
         ),
         CheckConstraint(
-            "(context IN ('kp', 'remediation', 'practice')) = (session_id IS NOT NULL)",
+            "(context IN ('kp', 'remediation', 'practice', 'review', 'quiz')) = "
+            "(session_id IS NOT NULL)",
             name="session_iff_practice",
         ),
         Index("ix_attempt_org_student_created", "org_id", "student_id", "created_at"),
@@ -301,8 +307,8 @@ class Remediation(TenantMixin, Base):
 
 
 class PracticeSession(TenantMixin, Base):
-    """One try at a KP's questions, one remediation review, or one practice item for a concept
-    (spec 006; 007 may reuse it for reviews).
+    """One try at a KP's questions, one remediation review, one practice item for a concept
+    (spec 006), one scheduled review of a concept or one quiz (spec 007).
 
     The question being shown (`current_*`) is stored before it is returned, so reloads and other
     tabs get the same item, seed and position."""
@@ -311,11 +317,13 @@ class PracticeSession(TenantMixin, Base):
     __table_args__ = (
         _student_fk("practice_session"),
         _tenant_fk("remediation_id", "practice_session", "remediation"),
+        _tenant_fk("quiz_id", "practice_session", "quiz"),
         UniqueConstraint("id", "org_id", name="uq_practice_session_id_org_id"),
         CheckConstraint(
             "(kind = 'kp') = (kp_id IS NOT NULL) "
             "AND (kind = 'remediation') = (remediation_id IS NOT NULL) "
-            "AND (kind = 'practice') = (concept_id IS NOT NULL)",
+            "AND (kind IN ('practice', 'review')) = (concept_id IS NOT NULL) "
+            "AND (kind = 'quiz') = (quiz_id IS NOT NULL)",
             name="kind_links",
         ),
         Index(
@@ -331,6 +339,19 @@ class PracticeSession(TenantMixin, Base):
             "concept_id",
             unique=True,
             postgresql_where=text("status = 'active' AND kind = 'practice'"),
+        ),
+        Index(
+            "uq_practice_session_active_review",
+            "student_id",
+            "concept_id",
+            unique=True,
+            postgresql_where=text("status = 'active' AND kind = 'review'"),
+        ),
+        Index(
+            "uq_practice_session_quiz",
+            "quiz_id",
+            unique=True,
+            postgresql_where=text("kind = 'quiz'"),
         ),
         Index(
             "uq_practice_session_active_remediation",
@@ -351,6 +372,7 @@ class PracticeSession(TenantMixin, Base):
     concept_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), _content_fk("concept.id")
     )
+    quiz_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     status: Mapped[SessionStatus] = mapped_column(
         _pg_enum(SessionStatus, "session_status"), nullable=False
     )
@@ -365,11 +387,13 @@ class PracticeSession(TenantMixin, Base):
 
 
 class XpReason(enum.StrEnum):
-    """What earned an `xp_event`. Spec 007 adds review and quiz."""
+    """What earned an `xp_event`; the values match `SessionKind` 1:1."""
 
     kp = "kp"
     remediation = "remediation"
     practice = "practice"
+    review = "review"
+    quiz = "quiz"
 
 
 class XpGrade(enum.StrEnum):
@@ -382,7 +406,8 @@ class XpGrade(enum.StrEnum):
 
 class XpEvent(TenantMixin, Base):
     """Append-only XP ledger (spec 008): one row per practice session ended by an answer (amount
-    may be 0 or negative), with the rule's inputs so an award can be audited and explained.
+    may be 0 or negative; a quiz writes one row per subject, spec 007), with the rule's inputs
+    so an award can be audited and explained.
     Ids, numbers and the subject only: no personal data."""
 
     __tablename__ = "xp_event"
@@ -392,8 +417,9 @@ class XpEvent(TenantMixin, Base):
         CheckConstraint("amount BETWEEN -100 AND 500", name="amount"),
         Index("ix_xp_event_org_student_day", "org_id", "student_id", "day"),
         Index(
-            "uq_xp_event_session",
+            "uq_xp_event_session_subject",
             "session_id",
+            "subject",
             unique=True,
             postgresql_where=text("session_id IS NOT NULL"),
         ),
@@ -449,3 +475,147 @@ class StudentGoal(TenantMixin, Base):
     subject: Mapped[Subject] = mapped_column(_pg_enum(Subject, "class_subject"), primary_key=True)
     goal: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     updated_at: Mapped[datetime] = _now()
+
+
+class ReviewDueReason(enum.StrEnum):
+    schedule = "schedule"
+    quiz_miss = "quiz_miss"
+
+
+class ReviewSource(enum.StrEnum):
+    """What changed a review card (`review_log.source`)."""
+
+    learned = "learned"
+    relearned = "relearned"
+    review = "review"
+    brushup = "brushup"
+    implicit = "implicit"
+    quiz_miss = "quiz_miss"
+    backfill = "backfill"
+
+
+class QuizStatus(enum.StrEnum):
+    pending = "pending"
+    active = "active"
+    finished = "finished"
+    cancelled = "cancelled"
+
+
+class ReviewCard(TenantMixin, Base):
+    """FSRS state per student x concept (spec 007). The FSRS card is rebuilt from these columns
+    and is always in the Review state (`app/services/srs.py`)."""
+
+    __tablename__ = "review_card"
+    __table_args__ = (
+        _student_fk("review_card"),
+        CheckConstraint("credit >= 0", name="credit"),
+        Index("ix_review_card_org_student_due", "org_id", "student_id", "due"),
+    )
+
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    concept_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("concept.id"), primary_key=True
+    )
+    stability: Mapped[float] = mapped_column(Double, nullable=False)
+    difficulty: Mapped[float] = mapped_column(Double, nullable=False)
+    due: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_review: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reps: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    lapses: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    consecutive_fails: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default=text("0")
+    )
+    credit: Mapped[float] = mapped_column(Double, nullable=False, server_default=text("0"))
+    due_reason: Mapped[ReviewDueReason] = mapped_column(
+        _pg_enum(ReviewDueReason, "review_due_reason"),
+        nullable=False,
+        server_default=text("'schedule'"),
+    )
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class ReviewLog(TenantMixin, Base):
+    """Append-only: one row per change to a review card, with its cause (spec 007). Ids, numbers
+    and dates only."""
+
+    __tablename__ = "review_log"
+    __table_args__ = (
+        _student_fk("review_log"),
+        _tenant_fk("session_id", "review_log", "practice_session"),
+        _tenant_fk("quiz_id", "review_log", "quiz"),
+        Index(
+            "ix_review_log_org_student_concept_created",
+            "org_id",
+            "student_id",
+            "concept_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    concept_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("concept.id"), nullable=False
+    )
+    source: Mapped[ReviewSource] = mapped_column(
+        _pg_enum(ReviewSource, "review_source"), nullable=False
+    )
+    rating: Mapped[int | None] = mapped_column(SmallInteger)
+    session_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    quiz_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    due_reason: Mapped[ReviewDueReason | None] = mapped_column(
+        _pg_enum(ReviewDueReason, "review_due_reason")
+    )
+    due_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    due_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    stability_before: Mapped[float | None] = mapped_column(Double)
+    stability_after: Mapped[float | None] = mapped_column(Double)
+    credit_added: Mapped[Decimal | None] = mapped_column(Numeric)
+    created_at: Mapped[datetime] = _now()
+
+
+class Quiz(TenantMixin, Base):
+    """A mixed timed quiz, created at every ~150 lifetime XP (spec 007)."""
+
+    __tablename__ = "quiz"
+    __table_args__ = (
+        _student_fk("quiz"),
+        UniqueConstraint("id", "org_id", name="uq_quiz_id_org_id"),
+        UniqueConstraint("student_id", "xp_mark", name="uq_quiz_student_id_xp_mark"),
+        Index(
+            "uq_quiz_open",
+            "student_id",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'active')"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    xp_mark: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[QuizStatus] = mapped_column(_pg_enum(QuizStatus, "quiz_status"), nullable=False)
+    next_mark: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = _now()
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    correct: Mapped[int | None] = mapped_column(SmallInteger)
+    total: Mapped[int | None] = mapped_column(SmallInteger)
+
+
+class QuizItem(TenantMixin, Base):
+    """The questions of a quiz, chosen when it starts (positions 1 to N)."""
+
+    __tablename__ = "quiz_item"
+    __table_args__ = (_tenant_fk("quiz_id", "quiz_item", "quiz"),)
+
+    quiz_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    position: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("item.id"), nullable=False
+    )
+    concept_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("concept.id"), nullable=False
+    )
+    seed: Mapped[int | None] = mapped_column(Integer)

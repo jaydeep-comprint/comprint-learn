@@ -38,7 +38,7 @@ from app.schemas.tenancy import (
     TeacherRef,
     TempPasswordOut,
 )
-from app.services import xp
+from app.services import quiz, srs, xp
 from app.services.supabase_admin import SupabaseAdmin, SupabaseAdminError
 
 logger = logging.getLogger(__name__)
@@ -570,11 +570,16 @@ async def list_class_students(scope: OrgScope, class_id: uuid.UUID) -> list[Clas
         .order_by(func.lower(AppUser.display_name), AppUser.username)
     )
     students = (await scope.session.scalars(stmt)).all()
-    stats = await xp.roster_stats(scope, school_class, [s.id for s in students])
+    ids = [s.id for s in students]
+    stats = await xp.roster_stats(scope, school_class, ids)
+    due = await srs.due_count(scope, ids)
+    quizzes = await quiz.last_quiz_stats(scope, ids)
     out = []
     for s in students:
         row = ClassStudentOut.model_validate(s)
         row.week_xp, row.streak_days = stats[s.id]
+        row.reviews_due = due.get(s.id, 0)
+        row.last_quiz = quizzes.get(s.id)
         out.append(row)
     return out
 

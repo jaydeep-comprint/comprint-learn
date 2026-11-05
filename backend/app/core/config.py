@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     tutor_base_url: str = "https://api.deepseek.com"
     tutor_model: str = "deepseek-flash"
     tutor_judge_model: str = "deepseek-v4-pro"  # eval only
+    # Teacher AI summaries (spec 011): same provider and key as the tutor, its own kill switch.
+    teacher_ai_enabled: bool = True
+    teacher_ai_model: str = "deepseek-v4-pro"
+    teacher_ai_judge_model: str = "deepseek-v4-pro"  # eval only
 
     @field_validator("database_url")
     @classmethod
@@ -123,6 +127,11 @@ class Settings(BaseSettings):
     @property
     def tutor_available(self) -> bool:
         return self.tutor_enabled and self.deepseek_api_key is not None
+
+    @property
+    def teacher_ai_available(self) -> bool:
+        """Independent of `tutor_enabled`: only the shared key is common."""
+        return self.teacher_ai_enabled and self.deepseek_api_key is not None
 
     def db_port(self) -> int | None:
         try:

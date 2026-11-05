@@ -1,10 +1,12 @@
 """Test doubles shared by offline and DB tests."""
 
 import asyncio
+import json
 import uuid
-from typing import Any
+from typing import Any, ClassVar
 
 from app.ai.client import TutorCall
+from app.ai.teacher_client import TeacherCall, parse
 from app.services.supabase_admin import SupabaseAdminError
 
 
@@ -102,4 +104,48 @@ class FakeTutorClient:
 
     def prompt_text(self, index: int = -1) -> str:
         """Everything the model saw in request `index`, as one string."""
+        return "\n".join(str(m["content"]) for m in self.requests[index]["messages"])
+
+
+class FakeTeacherClient:
+    """Scripted teacher-summary model (spec 011). Each queued reply is a `TeacherCall`, a dict (the
+    model's JSON object), a raw string, or an exception to raise. Requests are recorded."""
+
+    DEFAULT: ClassVar[dict[str, Any]] = {
+        "summary": [{"text": "The class has activity to review.", "facts": ["F1"]}],
+        "notes": [],
+    }
+
+    def __init__(self, *replies: object) -> None:
+        self.replies: list[object] = list(replies)
+        self.requests: list[dict[str, Any]] = []
+        self.gate: asyncio.Event | None = None
+        self.started = asyncio.Event()
+
+    def queue(self, *replies: object) -> None:
+        self.replies += list(replies)
+
+    async def create(self, request: dict[str, Any]) -> TeacherCall:
+        self.requests.append(request)
+        self.started.set()
+        if self.gate is not None:
+            await self.gate.wait()
+        reply = self.replies.pop(0) if self.replies else self.DEFAULT
+        if isinstance(reply, BaseException):
+            raise reply
+        if isinstance(reply, TeacherCall):
+            return reply
+        text = reply if isinstance(reply, str) else json.dumps(reply)
+        return TeacherCall(
+            output=parse(text),
+            text=text,
+            stop_reason="stop",
+            model="fake-v4-pro",
+            input_tokens=1200,
+            output_tokens=300,
+            cache_read_tokens=800,
+            latency_ms=5,
+        )
+
+    def prompt_text(self, index: int = -1) -> str:
         return "\n".join(str(m["content"]) for m in self.requests[index]["messages"])

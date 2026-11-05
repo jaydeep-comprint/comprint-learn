@@ -103,5 +103,15 @@ export function PracticeStep({
       </div>
     );
   }
-  return <Attempt lesson={lesson} again={!lesson.preview && again} onPassed={onPassed} />;
+  const practiceOnly = !lesson.preview && again;
+  return (
+    <div className="space-y-3">
+      {practiceOnly && (
+        <p className="w-fit rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+          Practice only, no XP
+        </p>
+      )}
+      <Attempt lesson={lesson} again={practiceOnly} onPassed={onPassed} />
+    </div>
+  );
 }

@@ -30,7 +30,11 @@ export type Student = {
   class_ids: string[];
 };
 
-export type ClassStudent = Omit<Student, "class_ids">;
+export type ClassStudent = Omit<Student, "class_ids"> & {
+  /** This week's XP in the class's subject (spec 008). */
+  week_xp: number;
+  streak_days: number;
+};
 
 export type SchoolClass = {
   id: string;
@@ -40,6 +44,9 @@ export type SchoolClass = {
   archived: boolean;
   student_count: number;
   teachers: { id: string; display_name: string }[];
+  /** Spec 008: the class's daily XP goal and the opt-in weekly leaderboard. */
+  daily_goal: number;
+  leaderboard_enabled: boolean;
 };
 
 export type Slip = { display_name: string; username: string; temp_password: string };
@@ -272,6 +279,8 @@ export type AnswerResult = {
   item_correct?: boolean | null;
   tests?: CodeTestResult[] | null;
   solution?: string | null;
+  /** Spec 008: set on the answer that ended the session (and on a resend of it). */
+  xp?: XpAward | null;
 };
 
 export type RemediationInfo = {
@@ -290,4 +299,39 @@ export type CourseSummary = {
   subject: Subject;
   chapter_count: number;
   concept_count: number;
+};
+
+/** XP & gamification (backend/app/schemas/xp.py). Displayed totals are floored at 0. */
+export type XpGrade = "perfect" | "passed" | "partial" | "poor" | "rushed";
+
+export type XpAward = {
+  amount: number;
+  grade: XpGrade;
+  base_minutes: string;
+  hints: number;
+  /** This award made today met (the first time). */
+  goal_met_today: boolean;
+};
+
+export type XpSummary = {
+  today: { subject: Subject; xp: number; goal: number | null; met: boolean }[];
+  streak: { days: number; today_met: boolean };
+  week_xp: number;
+  total_xp: number;
+  goals: { subject: Subject; class_goal: number; own_goal: number | null; effective: number }[];
+  leaderboards: { class_id: string; class_name: string; subject: Subject }[];
+};
+
+export type Leaderboard = {
+  class_name: string;
+  subject: Subject;
+  enabled: boolean;
+  week_start: string;
+  rows: {
+    rank: number;
+    display_name: string;
+    week_xp: number;
+    is_me: boolean;
+    student_id?: string;
+  }[];
 };

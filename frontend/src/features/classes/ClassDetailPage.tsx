@@ -38,6 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AddStudentsDialog } from "@/features/classes/AddStudentsDialog";
+import { MotivationCard } from "@/features/xp/MotivationCard";
 import { useAllCourses } from "@/features/learn/api";
 import {
   useClass,
@@ -159,6 +160,8 @@ function StudentRows({
           <TableHead>Name</TableHead>
           <TableHead>Username</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead className="text-right">XP this week</TableHead>
+          <TableHead className="text-right">Streak</TableHead>
           <TableHead className="w-10">
             <span className="sr-only">Actions</span>
           </TableHead>
@@ -172,6 +175,8 @@ function StudentRows({
             <TableCell>
               <StatusBadge status={s.status} />
             </TableCell>
+            <TableCell className="text-right tabular-nums">{s.week_xp}</TableCell>
+            <TableCell className="text-right tabular-nums">{s.streak_days}</TableCell>
             <TableCell>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -292,6 +297,7 @@ export function ClassDetailPage() {
         </p>
       )}
       <TeachersRow cls={c} />
+      <MotivationCard cls={c} />
 
       {students.isPending ? (
         <div className="space-y-2" aria-busy>

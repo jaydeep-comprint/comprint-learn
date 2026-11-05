@@ -56,6 +56,17 @@ export const routes: RouteObject[] = [
             ],
           },
           {
+            element: <RequireRole access="student" />,
+            children: [
+              {
+                path: "/leaderboard/:classId",
+                lazy: async () => ({
+                  Component: (await import("@/features/xp/LeaderboardPage")).LeaderboardPage,
+                }),
+              },
+            ],
+          },
+          {
             element: <RequireRole access="admin" />,
             children: [{ path: "/teachers", element: <TeachersPage /> }],
           },

@@ -8,6 +8,7 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useMe } from "@/features/auth/useMe";
+import { XpChip } from "@/features/xp/XpChip";
 
 /** Top bar + left sidebar on desktop; hamburger sheet on phones. Rendered inside RequireAuth. */
 export function AppShell() {
@@ -30,7 +31,8 @@ export function AppShell() {
         </Button>
         <GraduationCap className="hidden size-5 md:block" aria-hidden />
         <span className="truncate font-semibold">{me.org.name}</span>
-        <div className="ml-auto">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {me.role === "student" && <XpChip />}
           <UserMenu me={me} />
         </div>
       </header>

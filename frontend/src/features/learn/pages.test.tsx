@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase", () => ({
@@ -28,6 +29,7 @@ vi.mock("@/features/code/CodeEditor", () => ({
 }));
 
 import { CoursePage } from "@/features/learn/CoursePage";
+import { resetShownAwards } from "@/features/xp/awardToast";
 import { LessonPage } from "@/features/learn/LessonPage";
 import type { AnswerResult, Lesson, LessonKp, Outline, Question } from "@/lib/types";
 import { jsonResponse, routeFetch } from "@/test/render";
@@ -219,6 +221,7 @@ function mockApi(l: Lesson, extra: Record<string, (init: RequestInit) => Respons
 describe("LessonPage", () => {
   beforeEach(() => {
     progressCalls.length = 0;
+    resetShownAwards();
   });
 
   it("resumes at last_step", async () => {
@@ -345,11 +348,19 @@ describe("LessonPage", () => {
                   session_status: "passed",
                   concept_learned: true,
                   unlocked: [{ id: `${COURSE}/speed-and-velocity`, title: "Speed and velocity" }],
+                  xp: {
+                    amount: 2,
+                    grade: "perfect",
+                    base_minutes: "2.0",
+                    hints: 0,
+                    goal_met_today: false,
+                  },
                 }),
           );
         },
       },
     );
+    const success = vi.spyOn(toast, "success");
     renderAt(`/learn/${COURSE}/${DIST}`);
     await user.click(await screen.findByRole("button", { name: "Next" }));
     expect(await screen.findByText(/question 1/)).toBeInTheDocument();
@@ -361,6 +372,8 @@ describe("LessonPage", () => {
     await user.type(screen.getByLabelText("Your answer"), "8.0");
     await user.click(screen.getByRole("button", { name: "Submit" }));
     expect(await screen.findByText("Part passed ✓")).toBeInTheDocument();
+    expect(success).toHaveBeenCalledTimes(1);
+    expect(success).toHaveBeenCalledWith("+2 XP · Perfect ×1.2", { description: undefined });
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("Concept learned ✓")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Speed and velocity" })).toHaveAttribute(
@@ -701,6 +714,7 @@ describe("LessonPage · Practice step (spec 006)", () => {
     expect(await screen.findByText("Passed ✓")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Practise again" }));
     expect(await screen.findByText("Step 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("Practice only, no XP")).toBeInTheDocument();
     expect(urls.some((u) => u.endsWith("/practice/question?again=true"))).toBe(true);
   });
 });

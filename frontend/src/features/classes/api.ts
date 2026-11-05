@@ -39,6 +39,7 @@ function useInvalidateClasses() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: classKeys.all }),
       queryClient.invalidateQueries({ queryKey: ["students"] }),
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] }),
     ]);
 }
 
@@ -54,8 +55,13 @@ export function useCreateClass() {
 export function useUpdateClass(id: string) {
   const invalidate = useInvalidateClasses();
   return useMutation({
-    mutationFn: (body: Partial<ClassInput> & { archived?: boolean }) =>
-      apiFetch<SchoolClass>(`/api/v1/classes/${id}`, { method: "PATCH", body }),
+    mutationFn: (
+      body: Partial<ClassInput> & {
+        archived?: boolean;
+        daily_goal?: number;
+        leaderboard_enabled?: boolean;
+      },
+    ) => apiFetch<SchoolClass>(`/api/v1/classes/${id}`, { method: "PATCH", body }),
     onSuccess: invalidate,
   });
 }

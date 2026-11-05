@@ -31,7 +31,7 @@ Settings) with a per-student page; assignments drive the student's "Assigned by 
 |---|---|---|
 | 009 | **AI tutor**: text chat scoped to the current KP/item; points to the worked example, prerequisite or experiment; capped hints that reduce XP; rate limits; logging | Never reveals answers or steps (eval set of ~30 prompts, including jailbreak attempts) |
 | 010 | **Teacher dashboard + assignments**: class overview, concept heatmap, misconception spread, per-student graph (with memory view), at-risk rules, hint usage; assign targets with due dates (priority, never a cap); leaderboard switch | Teacher finds the 3 weakest concepts in < 1 min and assigns one; assigned students see it first |
-| 011 | **Teacher AI assist**: per-class/student summaries built from misconception tags and key-prerequisite causes; suggested re-teaching notes | Summaries are cited to real attempt data |
+| 011 | **Teacher AI assist** ([spec](specs/011-teacher-ai-assist.md)): per-class/student summaries built from misconception tags and key-prerequisite causes; suggested re-teaching notes | Summaries are cited to real attempt data |
 | 012 | **Placement**: teacher marks chapters covered; short adaptive diagnostic within that range; conditional learning | Diagnostic of ≤ 25 questions places a student; wrong placements drop back quickly |
 
 ## Phase 3: Pilot readiness

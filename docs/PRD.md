@@ -52,7 +52,8 @@ Build order and spec numbers: docs/ROADMAP.md.
 10. Teacher dashboard: class overview, per-student knowledge graph, weakest concepts, misconception spread, at-risk students,
     and **assigned targets** (one or more concepts, a chapter selects all of its concepts, + due date, for the class or chosen students). Assignments set priority but **never cap**: students can still learn
     anything whose prerequisites are learned ([spec 010](specs/010-teacher-dashboard-assignments.md)).
-11. Teacher AI assist: class/student summaries and suggested notes for re-teaching.
+11. Teacher AI assist: class/student summaries and suggested notes for re-teaching, every sentence cited to dashboard
+    facts; students sent as pseudonyms only ([spec 011](specs/011-teacher-ai-assist.md)).
 
 ## Non-goals (NOT in v1)
 - A content authoring UI (our team authors content in the repo).
@@ -67,7 +68,9 @@ Build order and spec numbers: docs/ROADMAP.md.
 - **Minors' data**: most students are under 18. If the pilot is in India, the DPDP Act 2023 requires verifiable parental
   consent and bans tracking or targeted ads for children. Collect as little personal data as possible, and get legal
   review before the pilot. The AI tutor runs on DeepSeek (servers in China): the review must cover sending students'
-  tutor chat text there (the tutor sends no names or ids and scrubs emails and phone numbers).
+  tutor chat text there (the tutor sends no names or ids and scrubs emails and phone numbers). Teacher summaries
+  (spec 011) also run on DeepSeek and send class learning statistics there under pseudonyms (no names, ids, answers
+  or chat text); the review must cover that too.
 - Every school's data is isolated from every other school (multi-tenant).
 - AI cost must stay low per student per month: use a small model by default, rate-limit, and cache.
 - **Budget: ~$50 total for the POC/MVP** (hosting + AI API). Use free tiers everywhere, set a hard spend limit in the

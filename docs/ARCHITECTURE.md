@@ -16,7 +16,7 @@
 | Auth | **Supabase Auth** (same project as the DB). FastAPI verifies its JWTs against the project JWKS (`app/core/auth.py`); our `app_user.id` = the auth user id. Teachers are invited by email; students get teacher-created accounts with a synthetic, never-emailed auth email | Don't build password, reset and invite flows ourselves; one free-tier project for DB + auth |
 | Maths answer checking | SymPy (server side, `app/grading/`): student expressions go through the safe AST walker, never `parse_expr`; `simplify` runs in a time-limited process pool (1 s, numeric fallback) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs 6.3), one module-level `Scheduler` in `app/services/srs.py` (retention 0.9, no learning steps, no fuzzing) | Modern scheduler with fewer reviews than SM-2 |
-| AI | Anthropic API: Claude Haiku 5.5 (`claude-haiku-5-5`) for tutor chat, Claude Sonnet 5.5 (`claude-sonnet-5-5`) for teacher summaries | Low cost per student; better reasoning where needed |
+| AI | Tutor (spec 009): **DeepSeek** (`deepseek-flash`) over its OpenAI-compatible API with `httpx`, JSON mode, automatic prefix caching, a server-side answer guard (`app/ai/guard.py`) on every reply (decided Nov 2026; first specified as Claude Haiku). Teacher summaries (spec 011): Claude Sonnet 5.5 (`claude-sonnet-5-5`). All model calls only in `backend/app/ai/` | Low cost per student; better reasoning where needed |
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
 | JS tooling | pnpm, eslint, prettier, vitest, Playwright (e2e) | Standard |
 | Hosting | Free tiers: Supabase (DB + Auth), Cloudflare Pages or Vercel (SPA), Render free or Fly.io/Railway (~$5/mo) for the API, GitHub Actions, Sentry free | POC budget ~$50 total (see Cost budget) |
@@ -27,10 +27,10 @@
 | Database + auth | Supabase free (2 projects: dev + test). Pauses after ~1 week idle; restore in the dashboard | $0 |
 | Frontend | Cloudflare Pages / Vercel free | $0 |
 | API | Render free (sleeps; ~30–60 s cold start) for demos, or Fly.io/Railway when it must stay awake | $0–5 / month |
-| AI tutor | Claude Haiku 5.5 ($0.10 in / $0.50 out per 1M tokens). ~3k in + 300 out per message ≈ $0.00045. 50 students × 20 msgs/day × 30 days ≈ **$14/month**; less with prompt caching | ~$5–15 / month |
+| AI tutor | DeepSeek `deepseek-flash` (check current per-token prices). ~3k in + 300 out per message, most of the input a cached prefix; the eval and `tutor_message` log tokens per request | low; measure in the pilot |
 | Teacher summaries | Claude Sonnet 5.5 ($2 / $10 per 1M). ~10k in + 1k out ≈ $0.03 each; 10 teachers × weekly ≈ $1.20/month | ~$1–2 / month |
 | Domain (optional) | | ~$10 / year |
-Guards: a monthly spend limit in the Anthropic console (e.g. $20), a per-student daily tutor cap (e.g. 20 messages), prompt caching on the
+Guards: a spend limit / prepaid balance in the provider console (e.g. $20), a per-student daily tutor cap (e.g. 20 messages), prompt caching on the
 tutor's system prompt + item content, and logging token usage per request (`tutor_message`).
 
 ## Repo layout
@@ -126,7 +126,19 @@ docs/         PRD, architecture, roadmap, specs, plans
     active. `quiz_item`: its questions (position, item, concept, seed), chosen at start.
   - `assignment`: a teacher target (concept or chapter, class, due date).
   - `diagnostic_session`: per-topic evidence for placement.
-- **AI**: `tutor_session` and `tutor_message`, kept for safety review and cost tracking.
+- **AI** (spec 009, tenant-owned):
+  - `tutor_session`: one thread per question shown, unique `(practice_session_id, position, item_id, seed)` (nulls
+    not distinct), with `item_version`, the charged `hints_used` (0–3) and `chat_count`. A new session or a swapped
+    item starts a new thread with fresh caps.
+  - `tutor_message`: one row per student request (`role = student`; a hint request has null `text`) and one per
+    tutor reply, with `kind` (hint | chat), `mode` (before | after), `rung`, `category`, `status` (pending | ok |
+    guarded | fallback | safety | refused | error | late), `flagged`, tokens (incl. cache read/write), latency,
+    the IST `day`, and `purged_at` (text nulled after 180 days by `app tutor purge`). Caps count student rows
+    with status pending/ok. `attempt.hints_used` = charged hints on the thread minus those already on earlier rows
+    at that position (`services/tutor.hints_for_attempt`).
+  - Flow: Tx 1 (advisory lock per student, caps, pending student row) → model call with no transaction open
+    (`app/ai/tutor_turn.run_turn`: prompt → model → answer guard → one retry → canned fallback) → Tx 2 (store and
+    charge; `late` if the question was answered meanwhile).
 
 ## Key decisions
 | # | Decision | Reason | Alternatives rejected |
@@ -135,7 +147,7 @@ docs/         PRD, architecture, roadmap, specs, plans
 | 2 | Every tenant-owned table has `org_id`; a single FastAPI dependency scopes every query | One choke point for isolation; tested | Separate DB per school (overkill) |
 | 3 | **Mastery = knowledge points.** A concept is 3–4 KPs; each KP is a worked example plus 2–5 questions (more after a wrong answer). Failing a KP ends the lesson, and the student retries **later** with new questions. Two fails at the same KP schedule reviews of its key prerequisites. A concept is *learned* when every KP passes. A concept is *ready* (on the knowledge frontier) when all of its prerequisites are learned | Proven by Math Academy (95% first-try pass rate); simple to explain; Bloom stays useful as tags | A mastery score per Bloom level as the gate (rejected Oct 2026; see research doc) |
 | 4 | Learn layer = intro + worked examples + one misconception check (Remember/Understand). Practice = KP questions, multi-step problems, code (Apply → Create). Bloom levels are **tags on items**, used for teacher analytics and depth views | Matches the two-layer idea without turning Bloom into a gate | |
-| 5 | **XP = item.expected_minutes × performance multiplier**, once per session ended by an answer (perfect 1.2, pass 1.0, partial 0.3 for a failed KP/review with ≥ half right, poor 0). **Rushing**: a failed session with ≥ min(2, answered) wrong answers faster than max(5 s, 15% of expected) costs 0.25 × base (at least 1). Hints reduce it (× 1 − 0.25 per hint), repeats ("Practise again") earn 0, and there's no "I don't know" button. A **daily goal per subject**: the teacher's class goal (default 15) or the student's own, higher one; one streak across subjects. Progress bars count **concepts learned**, not XP | 1 XP ≈ 1 min of focused work (Math Academy); implementations earn most because they take longest; penalties stop XP farming | Bloom-weighted XP (rejected Oct 2026) |
+| 5 | **XP = item.expected_minutes × performance multiplier**, once per session ended by an answer (perfect 1.2, pass 1.0, partial 0.3 for a failed KP/review with ≥ half right, poor 0). **Rushing**: a failed session with ≥ min(2, answered) wrong answers faster than max(5 s, 15% of expected) costs 0.25 × base (at least 1). Hints reduce it per question (that question's minutes × 1 − 0.25 per hint, spec 009), repeats ("Practise again") earn 0, and there's no "I don't know" button. A **daily goal per subject**: the teacher's class goal (default 15) or the student's own, higher one; one streak across subjects. Progress bars count **concepts learned**, not XP | 1 XP ≈ 1 min of focused work (Math Academy); implementations earn most because they take longest; penalties stop XP farming | Bloom-weighted XP (rejected Oct 2026) |
 | 6 | Python runs client-side in Pyodide. The browser runs every test (visible tests, and hidden tests' *inputs*) and sends the outputs; the server compares them with expected values only it keeps (`app/grading/code.py`, the same comparison the content validator uses), so hidden expected values never reach the client. Return values travel as JSON text made by Python, so `1`, `1.0` and `True` stay distinct through JavaScript. The server never runs code and can't detect hand-crafted outputs (stored with the code for later review) | No sandbox infrastructure needed | Judge0 / server sandbox (**v2**, when XP needs to be cheat-proof) |
 | 7 | Maths and physics answers are checked **server side** with SymPy | Answers are never sent to the client | Client-side checking (leaks answers) |
 | 8 | **The AI tutor never lowers the bar.** It sees only the current item/KP content and the student's attempts. It points to the worked example, the key prerequisite, or an experiment to try; it never gives the answer or the next step. Hints are capped per item and reduce XP, and teachers see hint usage. Text only. Rate-limited per student per day. Measured in the pilot | Math Academy's critique of chat tutors plus Vizuara's "try this experiment" style; cost and DPDP | General chatbot; voice or screen-watching tutor |

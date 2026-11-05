@@ -60,9 +60,10 @@ rows): the item's `expected_minutes`, whether the item was correct (multistep: `
    `rushed` takes precedence over `partial`/`poor`. Correct fast answers are never penalised.
    For practice, a first-try pass with every step/test right is `perfect`. A pass after an earlier failed session
    on the same item is `passed`.
-4. **Hint factor** (positive awards only): × max(0, 1 − 0.25 × hints). `hints_used` is always 0 until spec 009 fills
-   it. The rule ships now and is unit-tested with fake counts.
-5. **Rounding**: amount = round-half-up(base × multiplier × hint factor). A positive product is at least **1**. A
+4. **Hint factor, per question** (positive awards only; changed by spec 009): each answered question's
+   `expected_minutes` is scaled by max(0, 1 − 0.25 × that question's hints), so base_effective =
+   Σ expected_minutes × factor. Unaided questions keep full XP. Spec 009 fills `attempt.hints_used`.
+5. **Rounding**: amount = round-half-up(base_effective × multiplier). A positive product is at least **1**. A
    `rushed` penalty is at most **−1**: round-half-up(0.25 × base), negated, minimum magnitude 1. Hints never shrink
    a penalty.
 6. The event stores the inputs: `base_minutes`, `grade`, `hints`, `rushed_count`, `answered`. That way the rule can

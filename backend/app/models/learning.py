@@ -286,6 +286,7 @@ class Remediation(TenantMixin, Base):
             unique=True,
             postgresql_where=text("state <> 'resolved'"),
         ),
+        Index("ix_remediation_org_id_created_at", "org_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -811,3 +812,78 @@ class AssignmentStudent(TenantMixin, Base):
 
     assignment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+
+
+class TeacherSummaryKind(enum.StrEnum):
+    class_ = "class"
+    student = "student"
+
+
+class TeacherSummaryStatus(enum.StrEnum):
+    pending = "pending"
+    ok = "ok"
+    partial = "partial"
+    failed = "failed"
+    error = "error"
+
+
+class TeacherSummary(TenantMixin, Base):
+    """An AI summary of a class (window) or of one student (spec 011). `facts` holds the facts and
+    resources exactly as sent (students as `{Sn}` pseudonyms), `pseudonyms` maps them to ids and is
+    never sent; `content` is the guarded output, still with tokens. Append-only apart from the
+    second transaction's update of a pending row."""
+
+    __tablename__ = "teacher_summary"
+    __table_args__ = (
+        _tenant_fk("class_id", "teacher_summary", "school_class"),
+        _student_fk("teacher_summary"),
+        ForeignKeyConstraint(
+            ["created_by", "org_id"],
+            ["app_user.id", "app_user.org_id"],
+            ondelete="RESTRICT",
+            name="fk_teacher_summary_created_by_app_user",
+        ),
+        UniqueConstraint("id", "org_id", name="uq_teacher_summary_id_org_id"),
+        CheckConstraint("\"window\" IN ('7d', '30d', 'all')", name="window"),
+        CheckConstraint(
+            "(kind = 'student') = (student_id IS NOT NULL)", name="student_iff_student_kind"
+        ),
+        Index(
+            "ix_teacher_summary_target",
+            "org_id",
+            "class_id",
+            "kind",
+            "student_id",
+            "window",
+            text("created_at DESC"),
+        ),
+        Index("ix_teacher_summary_created_by_day", "created_by", "day"),
+        Index("ix_teacher_summary_org_id_day", "org_id", "day"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    class_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    student_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    kind: Mapped[TeacherSummaryKind] = mapped_column(
+        _pg_enum(TeacherSummaryKind, "teacher_summary_kind"), nullable=False
+    )
+    window: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[TeacherSummaryStatus] = mapped_column(
+        _pg_enum(TeacherSummaryStatus, "teacher_summary_status"), nullable=False
+    )
+    facts: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    pseudonyms: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    facts_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    dropped: Mapped[list[Any] | None] = mapped_column(JSONB)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    model: Mapped[str | None] = mapped_column(Text)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    cache_read_tokens: Mapped[int | None] = mapped_column(Integer)
+    cache_write_tokens: Mapped[int | None] = mapped_column(Integer)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    calls: Mapped[int | None] = mapped_column(SmallInteger)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()

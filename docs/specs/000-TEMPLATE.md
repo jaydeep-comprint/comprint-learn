@@ -29,3 +29,4 @@ PRD link: docs/PRD.md#mvp-scope-v1
 ## Verification (end-to-end)
 <The concrete check that proves this works: tests to add, commands to run, manual steps / screenshot to compare.>
 - [ ]
+- [ ] Browser check (if the UI changed): `make dev`, click through <flow>, screenshots of <key states>.

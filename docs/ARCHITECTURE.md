@@ -144,6 +144,19 @@ docs/         PRD, architecture, roadmap, specs, plans
   - Flow: Tx 1 (advisory lock per student, caps, pending student row) → model call with no transaction open
     (`app/ai/tutor_turn.run_turn`: prompt → model → answer guard → one retry → canned fallback) → Tx 2 (store and
     charge; `late` if the question was answered meanwhile).
+  - `teacher_summary` (spec 011): one row per Generate, for a class × window (`7d` | `30d` | `all`) or a class ×
+    student (`7d`): status (pending | ok | partial | failed | error), `facts` (the numbered facts and resources
+    exactly as sent, students as `{Sn}` pseudonyms), `pseudonyms` (`{S1: student_id}`, never sent), `facts_hash`
+    (staleness and the 10-minute cooldown), `content` (the guarded output, still with tokens), `dropped` (guard
+    reasons), `created_by`, model, tokens, latency, `calls`, IST `day`. Shared by the school's teachers; names are
+    filled in on read from the current roster ("a student no longer in this class" otherwise). Caps: 10 per teacher
+    and 50 per school per IST day (pending, ok, partial and failed count; error doesn't).
+  - Summary flow (`app/services/teacher_ai.py`): facts from 010's `dashboard.class_snapshot` /
+    `student_snapshot` (the same numbers as the cards) plus one query for remediations created in the window
+    (`app/ai/teacher_facts.py`) → Tx 1 (advisory lock per school, caps, cooldown, busy, pending row) → model call
+    with no transaction open (`app/ai/teacher_turn.run_summary`: prompt → model → citation guard
+    `app/ai/teacher_guard.py` → one retry; 150 s wall clock) → Tx 2 (store). Every claim cites fact ids; the guard
+    drops uncited claims, numbers or students not in the cited facts, and identity leaks.
 
 ## Key decisions
 | # | Decision | Reason | Alternatives rejected |

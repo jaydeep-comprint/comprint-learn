@@ -25,6 +25,9 @@ as they are. **007 done (Nov 2026)**: review answers award XP through 008's form
 tutor hints fill `attempt.hints_used`, and 008's hint factor now applies per question, not to the session total.
 **010 done (Nov 2026)**: the class page is a tabbed teacher dashboard (Overview, Students + heatmap, Assignments,
 Settings) with a per-student page; assignments drive the student's "Assigned by your teacher" card (Focus Mode).
+**011 done (Nov 2026)**: an AI summary card on the class Overview and the student page (DeepSeek
+`deepseek-v4-pro`), built only from 010's dashboard facts with students as pseudonyms; every sentence cites its
+facts (a server guard drops anything it can't check) and re-teaching notes open 010's assignment dialog prefilled.
 
 ## Phase 2: AI + teacher
 | # | Spec | Done when |

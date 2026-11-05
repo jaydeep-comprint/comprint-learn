@@ -1,6 +1,6 @@
 # Spec 011: Teacher AI assist
 
-Status: draft
+Status: done (Nov 2026)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 11) · ROADMAP 011 ("Summaries are cited to real attempt data")
 Builds on: [spec 010](010-teacher-dashboard-assignments.md) (every number the model sees is a 010 computed fact),
 [spec 009](009-ai-tutor.md) (model-call patterns: kill switch, two transactions around the call, token logging,
@@ -9,7 +9,7 @@ guard + one retry, offline eval), [spec 005](005-kp-flow-knowledge-graph.md) (re
 ## Summary
 On the class Overview and on a student's page, a teacher can click **Generate summary**. DeepSeek (`deepseek-v4-pro`, the tutor's provider and key) gets a
 numbered list of **facts** built from 010's dashboard numbers: weakest concepts and KPs, misconception spread,
-key-prerequisite causes, at-risk reasons, hint use and assignments. Students appear only as pseudonyms. Claude writes
+key-prerequisite causes, at-risk reasons, hint use and assignments. Students appear only as pseudonyms. The model writes
 a short summary and up to 3 **re-teaching notes** (what to re-teach and why, which worked example or prerequisite
 lesson to revisit, and who to group). Every sentence must cite fact IDs. A server-side guard drops anything uncited,
 anything citing unknown facts, and any number that isn't in its cited facts. Each citation is a chip that opens the

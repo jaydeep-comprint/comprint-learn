@@ -76,6 +76,13 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = []
     db_pool_size: int = 5
     db_max_overflow: int = 5
+    # AI tutor (spec 009), on DeepSeek's OpenAI-compatible API (decided Nov 2026). Secret: never
+    # log the key. Unset key or TUTOR_ENABLED=false = tutor off.
+    deepseek_api_key: SecretStr | None = None
+    tutor_enabled: bool = True
+    tutor_base_url: str = "https://api.deepseek.com"
+    tutor_model: str = "deepseek-flash"
+    tutor_judge_model: str = "deepseek-v4-pro"  # eval only
 
     @field_validator("database_url")
     @classmethod
@@ -84,7 +91,9 @@ class Settings(BaseSettings):
             normalize_db_url(v)
         return v
 
-    @field_validator("supabase_service_role_key", "supabase_jwt_secret", mode="before")
+    @field_validator(
+        "supabase_service_role_key", "supabase_jwt_secret", "deepseek_api_key", mode="before"
+    )
     @classmethod
     def _empty_secret_is_unset(cls, v: object) -> object:
         return None if v == "" else v
@@ -110,6 +119,10 @@ class Settings(BaseSettings):
         if self.supabase_service_role_key is None:
             raise RuntimeError(MISSING_SERVICE_ROLE_KEY)
         return self.supabase_service_role_key.get_secret_value()
+
+    @property
+    def tutor_available(self) -> bool:
+        return self.tutor_enabled and self.deepseek_api_key is not None
 
     def db_port(self) -> int | None:
         try:

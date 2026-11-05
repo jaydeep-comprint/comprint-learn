@@ -98,18 +98,55 @@ def test_practice_pass_after_a_failed_session_is_passed() -> None:
     assert (calc.amount, calc.grade) == (10, XpGrade.passed)
 
 
-@pytest.mark.parametrize(("hints", "amount"), [(0, 4), (1, 3), (2, 2), (4, 0)])
-def test_hints_reduce_positive_awards(hints: int, amount: int) -> None:
-    assert session_xp(KP, "passed", ps("WWCC"), hints).amount == amount  # 4 x 0.75 / 0.5 / 0
+def h(pattern: str, hints: list[int], minutes: str = "1") -> list[PositionXp]:
+    return [
+        PositionXp(Decimal(minutes), c == "C", SLOW, hints=n)
+        for c, n in zip(pattern, hints, strict=True)
+    ]
+
+
+@pytest.mark.parametrize(("hints", "amount"), [(0, 4), (1, 4), (2, 4), (3, 3), (4, 3)])
+def test_hints_scale_only_their_question(hints: int, amount: int) -> None:
+    # 4 x 1-min questions, hints all on the first: 3 + (1 - 0.25 n), floored at 0 for that question.
+    calc = session_xp(KP, "passed", h("WWCC", [hints, 0, 0, 0]))
+    assert calc.amount == amount
+    assert calc.hints == hints
+    assert calc.base_minutes == 4  # unscaled
+
+
+def test_spec_example_two_hints_on_one_two_minute_question() -> None:
+    # A 4-question KP pass (1, 2, 1, 1 min), 2 hints on the 2-min question: 1 + 2 x 0.5 + 1 + 1 = 4.
+    positions = [*h("C", [0]), *h("C", [2], "2"), *h("WC", [0, 0])]
+    calc = session_xp(KP, "passed", positions)
+    assert (calc.amount, calc.grade, calc.hints, calc.base_minutes) == (
+        4,
+        XpGrade.passed,
+        2,
+        Decimal(5),
+    )
+
+
+def test_hints_on_every_question_match_the_old_rule() -> None:
+    assert session_xp(KP, "passed", h("WWCC", [1, 1, 1, 1])).amount == 3  # 4 x 0.75
 
 
 def test_positive_product_rounds_to_at_least_one() -> None:
-    calc = session_xp(KP, "passed", ps("CC", "0.5"), hints=2)  # 1 x 1.2 x 0.5 = 0.6
+    calc = session_xp(KP, "passed", h("CC", [2, 2], "0.5"))  # 1 x 0.5 x 1.2 = 0.6
     assert calc.amount == 1
 
 
+def test_fully_hinted_pass_earns_zero() -> None:
+    assert session_xp(KP, "passed", h("CC", [4, 4])).amount == 0
+
+
 def test_hints_never_shrink_a_penalty() -> None:
-    assert session_xp(KP, "failed", ps("WWW", ms=1_000), hints=4).amount == -1
+    rushed = [PositionXp(Decimal(1), False, 1_000, hints=4) for _ in range(3)]
+    assert session_xp(KP, "failed", rushed).amount == -1  # 0.25 x unscaled 3
+
+
+def test_session_hint_total_can_be_given() -> None:
+    # An unfinished multi-step item's hints count in the total but scale nothing.
+    assert session_xp(KP, "passed", ps("CC"), hints=3).hints == 3
 
 
 def test_is_rushed_floor_and_share() -> None:

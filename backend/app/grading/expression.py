@@ -193,6 +193,11 @@ _limiter = _Limiter()
 atexit.register(_limiter.close)
 
 
+def numeric_equal(a: Any, b: Any, variables: list[str]) -> bool:
+    """In-process random-point equality (no `simplify`, no process pool): the tutor's guard."""
+    return _numeric_equal(a, b, variables)
+
+
 def _numeric_equal(a: Any, b: Any, variables: list[str]) -> bool:
     """`a == b` at random points (fallback when simplify runs out of time). Needs at least
     `MIN_POINTS` points where both sides evaluate; otherwise it can't tell, so not equal."""

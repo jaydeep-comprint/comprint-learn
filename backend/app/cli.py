@@ -1,7 +1,9 @@
-"""Operator CLI: `uv run app org create|list` and `uv run app content check|import`."""
+"""Operator CLI: `uv run app org create|list`, `uv run app content check|import` and
+`uv run app tutor eval|purge|flagged`."""
 
 import asyncio
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -12,11 +14,12 @@ from app.api.deps import OrgScope
 from app.content.importer import ImportReport, import_tree
 from app.content.loader import ContentBundle, Issue, load
 from app.content.validate import has_errors, validate
+from app.core.config import get_settings
 from app.core.errors import ApiProblem
 from app.db.session import dispose_engine, get_sessionmaker
 from app.models import AppUser, Organization, Role
 from app.models.tenancy import SCHOOL_CODE_PATTERN
-from app.services import tenancy
+from app.services import tenancy, tutor
 from app.services.supabase_admin import SupabaseAdmin, get_supabase_admin
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -24,6 +27,10 @@ org_app = typer.Typer(no_args_is_help=True, help="Schools (organizations).")
 app.add_typer(org_app, name="org")
 content_app = typer.Typer(no_args_is_help=True, help="Courses in content/ (validate, import).")
 app.add_typer(content_app, name="content")
+tutor_app = typer.Typer(
+    no_args_is_help=True, help="AI tutor (eval, retention purge, safety flags)."
+)
+app.add_typer(tutor_app, name="tutor")
 
 DEFAULT_CONTENT_ROOT = Path(__file__).resolve().parents[2] / "content"
 RootOpt = Annotated[Path, typer.Option("--root", help="The content/ folder")]
@@ -182,6 +189,153 @@ def content_import(
     for line in report.lines():
         typer.echo(line)
     typer.echo("Dry run, nothing written." if dry_run else "Imported.")
+
+
+async def _purge() -> int:
+    try:
+        async with get_sessionmaker()() as session:
+            return await tutor.purge_text(session, datetime.now(UTC))
+    finally:
+        await dispose_engine()
+
+
+@tutor_app.command("purge")
+def tutor_purge() -> None:
+    """Delete the text of tutor messages older than 180 days (counts and flags stay)."""
+    n = asyncio.run(_purge())
+    typer.echo(f"Purged the text of {n} tutor messages.")
+
+
+async def _flagged(org: str | None) -> list[tutor.FlaggedRow]:
+    try:
+        async with get_sessionmaker()() as session:
+            return await tutor.flagged(session, org)
+    finally:
+        await dispose_engine()
+
+
+@tutor_app.command("flagged")
+def tutor_flagged(
+    org: Annotated[str | None, typer.Option("--org", help="School code")] = None,
+) -> None:
+    """Safety-flagged student messages: ids, time and text (no names or usernames)."""
+    rows = asyncio.run(_flagged(org))
+    if not rows:
+        typer.echo("No flagged messages.")
+        return
+    for r in rows:
+        typer.echo(
+            f"{r.org_code}  student {r.student_id}  thread {r.tutor_session_id}  "
+            f"message {r.message_id}  {r.created_at:%Y-%m-%d %H:%M}Z\n    {r.text or '[purged]'}"
+        )
+
+
+async def _eval(runs: int, case_id: str | None) -> bool:
+    from app.ai.client import DeepSeekTutorClient, make_chat_client
+    from app.ai.eval import runner
+
+    settings = get_settings()
+    chat = make_chat_client()
+    if chat is None:
+        raise CliError("DEEPSEEK_API_KEY is not set.")
+    cases = [c for c in runner.load_cases() if case_id is None or c.id == case_id]
+    if not cases:
+        raise CliError(f"No case {case_id}.")
+    tutor_client = DeepSeekTutorClient(chat)
+    # The judge model reasons longer than the tutor: its own client with a generous timeout.
+    judge_client = make_chat_client(timeout=JUDGE_TIMEOUT_S)
+    assert judge_client is not None
+    totals = {
+        "runs": 0,
+        "leaks": 0,
+        "steps": 0,
+        "confirms": 0,
+        "category": 0,
+        "guard": 0,
+        "errors": 0,
+    }
+    on_rung = helpful = 0
+    t_in = t_out = j_in = j_out = 0
+    ok = True
+    typer.echo(f"{'case':<22} {'runs':>4} {'fail':>4} {'rung':>4} {'help':>4}  status / reason")
+    try:
+        async with get_sessionmaker()() as session:
+            for case in cases:
+                outcomes, ji, jo = await runner.run_case(
+                    session,
+                    case,
+                    tutor_client,
+                    judge_client,
+                    settings.tutor_model,
+                    settings.tutor_judge_model,
+                    runs,
+                )
+                j_in, j_out = j_in + ji, j_out + jo
+                fails = [o for o in outcomes if o.failed]
+                ok = ok and not fails
+                ok = ok and all(o.error is None for o in outcomes)
+                for o in outcomes:
+                    totals["runs"] += 1
+                    if o.error is not None:
+                        totals["errors"] += 1
+                        continue
+                    totals["leaks"] += o.verdict.leaks_answer
+                    totals["steps"] += o.verdict.leaks_step
+                    totals["confirms"] += o.verdict.confirms_correctness
+                    totals["category"] += not o.category_ok
+                    totals["guard"] += bool(o.guard_leaks)
+                    on_rung += o.verdict.on_rung
+                    helpful += o.verdict.helpful
+                    t_in, t_out = t_in + o.tutor_in, t_out + o.tutor_out
+                sample = (fails or outcomes)[0]
+                note = f"{sample.status}/{sample.category}: {sample.verdict.reason}"
+                typer.echo(
+                    f"{case.id:<22} {len(outcomes):>4} {len(fails):>4} "
+                    f"{sum(o.verdict.on_rung for o in outcomes):>4} "
+                    f"{sum(o.verdict.helpful for o in outcomes):>4}  {note[:100]}"
+                )
+                errored = [o for o in outcomes if o.error is not None]
+                if errored:
+                    typer.echo(f"    unverified: {len(errored)} run(s): {errored[0].error}")
+                if fails:
+                    typer.echo(f"    reply: {sample.reply[:300]!r}")
+                for o in outcomes:
+                    if o.caught:
+                        typer.echo(f"    guard caught ({o.status}): {'; '.join(o.caught)[:200]}")
+    finally:
+        await dispose_engine()
+    n = max(1, totals["runs"])
+    typer.echo(
+        f"\nTotal {totals['runs']} runs: {totals['leaks']} answer leaks, {totals['steps']} step "
+        f"leaks, {totals['confirms']} confirmations, {totals['category']} wrong categories, "
+        f"{totals['guard']} guard hits on final replies, {totals['errors']} unverified runs. "
+        f"on_rung {on_rung / n:.0%}, "
+        f"helpful {helpful / n:.0%}."
+    )
+    typer.echo(
+        f"Tokens: tutor {t_in} in (incl. cache hits) / {t_out} out, judge {j_in} in / {j_out} "
+        "out. Cost: multiply by the provider's current prices."
+    )
+    return ok
+
+
+JUDGE_TIMEOUT_S = 120.0
+
+
+@tutor_app.command("eval")
+def tutor_eval(
+    runs: Annotated[int, typer.Option(help="Runs per case")] = 3,
+    case: Annotated[str | None, typer.Option("--case", help="Only this case id")] = None,
+) -> None:
+    """Run the tutor leak eval against the real model (needs DEEPSEEK_API_KEY)."""
+    try:
+        ok = asyncio.run(_eval(runs, case))
+    except CliError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo("PASS" if ok else "FAIL")
+    if not ok:
+        raise typer.Exit(1)
 
 
 def main() -> None:

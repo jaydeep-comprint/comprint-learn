@@ -87,6 +87,7 @@ function Review({ info }: { info: RemediationInfo }) {
   }
   return (
     <PracticeRunner
+      tutor
       header={`Brush up · ${info.prereq.title}`}
       query={query}
       submit={(body) => submitRemediationAnswer(info.id, body)}

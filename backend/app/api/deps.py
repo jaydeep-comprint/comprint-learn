@@ -166,6 +166,13 @@ async def get_staff_scope(
     return OrgScope(session, user)
 
 
+async def get_student_scope(
+    session: SessionDep, user: Annotated[CurrentUser, Depends(require_student)]
+) -> OrgScope:
+    """Student-only routes (the AI tutor, spec 009): staff get 403."""
+    return OrgScope(session, user)
+
+
 async def get_admin_scope(
     session: SessionDep, user: Annotated[CurrentUser, Depends(require_admin)]
 ) -> OrgScope:
@@ -173,5 +180,6 @@ async def get_admin_scope(
 
 
 Scope = Annotated[OrgScope, Depends(get_org_scope)]
+StudentScope = Annotated[OrgScope, Depends(get_student_scope)]
 StaffScope = Annotated[OrgScope, Depends(get_staff_scope)]
 AdminScope = Annotated[OrgScope, Depends(get_admin_scope)]

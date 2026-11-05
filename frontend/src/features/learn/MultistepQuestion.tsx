@@ -22,12 +22,15 @@ export function MultistepQuestion({
   submitting,
   assetBase,
   onSubmit,
+  onDraftChange,
 }: {
   question: Question;
   result: AnswerResult | null;
   submitting: boolean;
   assetBase?: string;
   onSubmit: (fields: AnswerFields) => void;
+  /** The current step's draft, for the AI tutor (spec 009). */
+  onDraftChange?: (draft: string | null) => void;
 }) {
   const id = useId();
   const steps = question.steps ?? [];
@@ -101,6 +104,7 @@ export function MultistepQuestion({
             submitting={submitting}
             labelledBy={`${id}-prompt`}
             onSubmit={(fields) => onSubmit({ ...fields, step: current })}
+            onDraftChange={onDraftChange}
           />
         </div>
       )}

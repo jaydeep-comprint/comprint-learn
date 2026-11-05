@@ -1,5 +1,5 @@
 import { CheckCircle2, Clock, Loader2, Play, RotateCcw, XCircle } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { AnswerFields } from "@/features/learn/api";
@@ -170,6 +170,7 @@ export function CodeQuestion({
   serverTests,
   submitting,
   onSubmit,
+  onDraftChange,
 }: {
   code: CodePublic;
   /** Answered: the editor is read-only and Run/Submit are gone. */
@@ -177,11 +178,16 @@ export function CodeQuestion({
   serverTests: CodeTestResult[] | null;
   submitting: boolean;
   onSubmit: (fields: AnswerFields) => void;
+  /** The editor contents, for the AI tutor (spec 009). */
+  onDraftChange?: (draft: string | null) => void;
 }) {
   const id = useId();
   const hintId = `${id}-hint`;
   const python = usePython();
   const [source, setSource] = useState(code.prefill ?? code.starter);
+  useEffect(() => {
+    onDraftChange?.(source);
+  }, [source, onDraftChange]);
   const [runResult, setRunResult] = useState<Row[] | null>(null);
   const [phase, setPhase] = useState<"idle" | "running" | "submitting">("idle");
   const ready = python.status.state === "ready";

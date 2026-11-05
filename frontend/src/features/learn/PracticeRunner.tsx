@@ -1,12 +1,15 @@
 import { type UseQueryResult, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type AnswerBody, type AnswerFields, conflictCode } from "@/features/learn/api";
 import { QuestionStep } from "@/features/learn/QuestionStep";
+import { tutorKeys } from "@/features/tutor/api";
+import { TutorButton } from "@/features/tutor/TutorButton";
+import { TutorPanel } from "@/features/tutor/TutorPanel";
 import { xpKeys } from "@/features/xp/api";
 import { showAwardToast } from "@/features/xp/awardToast";
 import type { AnswerResult, Question } from "@/lib/types";
@@ -23,6 +26,7 @@ export function PracticeRunner({
   renderConflict,
   passedLabel,
   continueLabel,
+  tutor = false,
 }: {
   header: string;
   query: UseQueryResult<Question, unknown>;
@@ -34,8 +38,16 @@ export function PracticeRunner({
   renderConflict?: (code: string, error: unknown) => ReactNode;
   passedLabel?: string;
   continueLabel?: (result: AnswerResult) => string;
+  /** The AI tutor (spec 009): KP questions, Practice and brush-ups; never reviews or quizzes. */
+  tutor?: boolean;
 }) {
   const [result, setResult] = useState<AnswerResult | null>(null);
+  // The panel is open for one question; moving to another closes it (its thread is left behind).
+  const [tutorFor, setTutorFor] = useState<string | null>(null);
+  const draft = useRef<string | null>(null);
+  const onDraftChange = useCallback((value: string | null) => {
+    draft.current = value;
+  }, []);
   const [submitting, setSubmitting] = useState(false);
   const [advancing, setAdvancing] = useState(false);
   const shownAt = useRef(0);
@@ -69,6 +81,10 @@ export function PracticeRunner({
     );
   }
 
+  const tutorOn = tutor && !preview && question.session_id !== null;
+  const questionKey = `${question.session_id}-${question.position}-${question.item_id}`;
+  const tutorOpen = tutorFor === questionKey;
+
   const onSubmit = async (fields: AnswerFields) => {
     setSubmitting(true);
     try {
@@ -90,6 +106,12 @@ export function PracticeRunner({
       }
       setResult(next);
       shownAt.current = performance.now(); // time each step from the previous one
+      if (tutorOn && question.session_id) {
+        // The answer moves the thread to after mode (or the next step's hints).
+        void queryClient.invalidateQueries({
+          queryKey: tutorKeys.thread(question.session_id, question.position),
+        });
+      }
       // Spec 008: the answer that ended the session carries its XP (once per session).
       if (!preview && next.xp) {
         showAwardToast(next.xp, question.session_id);
@@ -103,6 +125,7 @@ export function PracticeRunner({
   };
 
   const onNext = async () => {
+    setTutorFor(null);
     setAdvancing(true);
     setResult(null);
     try {
@@ -112,20 +135,42 @@ export function PracticeRunner({
     }
   };
 
+  const sessionId = question.session_id;
   return (
-    <QuestionStep
-      key={`${question.item_id}-${question.position}-${query.dataUpdatedAt}`}
-      header={header}
-      question={question}
-      result={result}
-      submitting={submitting}
-      preview={preview}
-      assetBase={assetBase}
-      onSubmit={onSubmit}
-      onNext={onNext}
-      onContinue={() => result && onDone(result)}
-      passedLabel={passedLabel}
-      continueLabel={continueLabel}
-    />
+    <>
+      <QuestionStep
+        key={`${question.item_id}-${question.position}-${query.dataUpdatedAt}`}
+        header={header}
+        question={question}
+        result={result}
+        submitting={submitting}
+        preview={preview}
+        assetBase={assetBase}
+        onSubmit={onSubmit}
+        onNext={onNext}
+        onContinue={() => result && onDone(result)}
+        passedLabel={passedLabel}
+        continueLabel={continueLabel}
+        onDraftChange={tutorOn ? onDraftChange : undefined}
+        help={
+          tutorOn && sessionId ? (
+            <TutorButton
+              sessionId={sessionId}
+              position={question.position}
+              onOpen={() => setTutorFor(questionKey)}
+            />
+          ) : null
+        }
+      />
+      {tutorOn && sessionId && (
+        <TutorPanel
+          open={tutorOpen}
+          onClose={() => setTutorFor(null)}
+          sessionId={sessionId}
+          position={question.position}
+          draft={draft}
+        />
+      )}
+    </>
   );
 }

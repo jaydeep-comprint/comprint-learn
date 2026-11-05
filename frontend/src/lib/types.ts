@@ -417,3 +417,31 @@ export type QuizResult = {
   items: QuizResultItem[];
   review_concepts: ConceptRef[];
 };
+
+// --- AI tutor (spec 009) ---
+
+export type TutorMessage = {
+  id: string;
+  role: "student" | "tutor";
+  kind: "hint" | "chat";
+  rung: number | null;
+  /** Null for a hint request (the student pressed Hint) or after the retention purge. */
+  text: string | null;
+  link: ConceptRef | null;
+  created_at: string;
+};
+
+export type TutorThread = {
+  enabled: boolean;
+  mode: "before" | "after";
+  closed: boolean;
+  hints_used: number;
+  hints_left: number;
+  next_rung: number | null;
+  chat_left: number;
+  daily_left: number;
+  resets_at: string;
+  messages: TutorMessage[];
+};
+
+export type TutorReply = { message: TutorMessage; thread: TutorThread };

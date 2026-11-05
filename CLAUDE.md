@@ -26,7 +26,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 ## Rules
 - Every tenant-owned query must go through the org-scoping dependency. Never query by id alone.
 - Answer keys and hidden tests never go to the client. Maths answers are checked server side (SymPy).
-- All Anthropic API calls go through backend/app/ai/. Tutor model: Haiku; teacher summaries: Sonnet.
+- All AI model calls go through backend/app/ai/. Tutor: DeepSeek (`deepseek-flash`, decided Nov 2026); teacher summaries: Sonnet (spec 011).
 - Students are minors: store as little personal data as possible, and never log personal details in AI prompts or analytics.
 - Never edit `.env*` files or lockfiles by hand (a hook blocks this).
 - Prefer existing patterns and libraries in the codebase over adding new dependencies.

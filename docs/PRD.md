@@ -48,7 +48,7 @@ Build order and spec numbers: docs/ROADMAP.md.
 7. XP (minutes × performance), daily goal, streaks. **Class leaderboards are opt-in, switched on by the teacher**, and ranked by XP, never time spent ([spec 008](specs/008-xp-gamification.md); built before 007).
 8. Placement: the teacher marks the chapters already covered, then a **short adaptive diagnostic within that range**.
 9. AI tutor, scoped to the current lesson or question: it points to the worked example, the prerequisite, or an experiment to try.
-   It never gives answers or steps; hints are capped and reduce XP.
+   It never gives answers or steps; hints are capped and reduce XP ([spec 009](specs/009-ai-tutor.md)).
 10. Teacher dashboard: class overview, per-student knowledge graph, weakest concepts, misconception spread, at-risk students,
     and **assigned targets** (concept/chapter + due date). Assignments set priority but **never cap**: students can still learn
     anything whose prerequisites are learned.
@@ -66,11 +66,12 @@ Build order and spec numbers: docs/ROADMAP.md.
 ## Constraints
 - **Minors' data**: most students are under 18. If the pilot is in India, the DPDP Act 2023 requires verifiable parental
   consent and bans tracking or targeted ads for children. Collect as little personal data as possible, and get legal
-  review before the pilot.
+  review before the pilot. The AI tutor runs on DeepSeek (servers in China): the review must cover sending students'
+  tutor chat text there (the tutor sends no names or ids and scrubs emails and phone numbers).
 - Every school's data is isolated from every other school (multi-tenant).
 - AI cost must stay low per student per month: use a small model by default, rate-limit, and cache.
 - **Budget: ~$50 total for the POC/MVP** (hosting + AI API). Use free tiers everywhere, set a hard spend limit in the
-  Anthropic console, and cap tutor messages per student per day. See the cost table in docs/ARCHITECTURE.md.
+  AI provider consoles, and cap tutor messages per student per day. See the cost table in docs/ARCHITECTURE.md.
 
 ## Decided (Oct 2026)
 - Board/grades: **CBSE Classes 9–10**. Language: **English only**.

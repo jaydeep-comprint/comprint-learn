@@ -60,7 +60,7 @@ from app.services import kp_flow, quiz
 RUSH_FLOOR_MS = 5_000
 RUSH_SHARE = Decimal("0.15")  # of the item's expected time
 RUSH_PENALTY = Decimal("0.25")  # x base, negated
-HINT_COST = Decimal("0.25")  # per hint, positive awards only
+HINT_COST = Decimal("0.25")  # per hint, on that question's minutes only (spec 009)
 MULTIPLIER = {
     XpGrade.perfect: Decimal("1.2"),
     XpGrade.passed: Decimal("1.0"),
@@ -80,6 +80,7 @@ class PositionXp:
     correct: bool
     time_ms: int
     every_step: bool = True  # multistep: every step right (an item can pass with a wrong step)
+    hints: int = 0  # tutor hints charged on this question (spec 009)
 
 
 @dataclass(frozen=True)
@@ -108,16 +109,24 @@ def session_xp(
     kind: SessionKind,
     outcome: Literal["passed", "failed"],
     positions: Sequence[PositionXp],
-    hints: int = 0,
     *,
     first_try: bool = True,
+    hints: int | None = None,
 ) -> XpCalc:
-    """XP for an ended session: sum of expected minutes x grade multiplier x hint factor.
+    """XP for an ended session: Σ (expected minutes x that question's hint factor) x grade
+    multiplier. The hint factor is max(0, 1 - 0.25 x hints) per question (spec 009).
 
     `first_try` (practice): no earlier failed session on the same item; a later pass is `passed`.
-    Rushing (≥ min(2, answered) rushed wrong answers in a failed session) costs 0.25 x base, at
-    least 1; a positive product is at least 1."""
+    Rushing (≥ min(2, answered) rushed wrong answers in a failed session) costs 0.25 x the
+    unscaled base, at least 1 (hints never shrink a penalty); a positive product is at least 1.
+    `hints`: the session total to record (default: the sum over `positions`)."""
     base = sum((p.expected_minutes for p in positions), Decimal(0))
+    scaled = sum(
+        (p.expected_minutes * max(Decimal(0), 1 - HINT_COST * p.hints) for p in positions),
+        Decimal(0),
+    )
+    if hints is None:
+        hints = sum(p.hints for p in positions)
     answered = len(positions)
     rushed = sum(1 for p in positions if is_rushed(p))
     right = sum(1 for p in positions if p.correct)
@@ -134,7 +143,7 @@ def session_xp(
     if grade == XpGrade.rushed:
         amount = -max(1, _round(RUSH_PENALTY * base))
     else:
-        product = base * MULTIPLIER[grade] * max(Decimal(0), 1 - HINT_COST * hints)
+        product = scaled * MULTIPLIER[grade]
         amount = max(1, _round(product)) if product > 0 else 0
     amount = max(MIN_AMOUNT, min(MAX_AMOUNT, amount))
     return XpCalc(amount, grade, base, rushed, answered, hints)
@@ -346,7 +355,8 @@ async def _subject_of(scope: OrgScope, concept_id: uuid.UUID) -> Subject:
 
 
 async def _positions(scope: OrgScope, session: PracticeSession) -> tuple[list[PositionXp], int]:
-    """One entry per answered item (a multi-step item once all its steps are in) + total hints."""
+    """One entry per answered item (a multi-step item once all its steps are in), with its own
+    hints, + the session's total hints."""
     attempts = (
         await scope.session.scalars(
             scope.select(Attempt)
@@ -381,6 +391,7 @@ async def _positions(scope: OrgScope, session: PracticeSession) -> tuple[list[Po
                 correct,
                 sum(a.time_taken_ms for a in rows),
                 every_step=all(a.correct for a in rows),
+                hints=sum(a.hints_used for a in rows),
             )
         )
     return out, sum(a.hints_used for a in attempts)
@@ -486,7 +497,11 @@ async def award_for_session(
     caller's transaction. `concept_id`: the session's concept (a brush-up: the prerequisite)."""
     positions, hints = await _positions(scope, session)
     calc = session_xp(
-        session.kind, outcome, positions, hints, first_try=await _first_try(scope, session)
+        session.kind,
+        outcome,
+        positions,
+        first_try=await _first_try(scope, session),
+        hints=hints,
     )
     subject = await _subject_of(scope, concept_id)
     now = datetime.now(UTC)

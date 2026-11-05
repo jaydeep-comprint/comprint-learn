@@ -32,6 +32,7 @@ function Attempt({
   const [attempt, setAttempt] = useState(0);
   return (
     <PracticeRunner
+      tutor
       key={attempt}
       header={HEADER}
       query={query}

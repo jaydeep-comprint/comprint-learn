@@ -12,6 +12,7 @@ from app.api.v1 import (
     quiz,
     reviews,
     students,
+    teacher_ai,
     teachers,
     tutor,
     xp,
@@ -32,3 +33,4 @@ api_router.include_router(quiz.router)
 api_router.include_router(tutor.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(assignments.router)
+api_router.include_router(teacher_ai.router)

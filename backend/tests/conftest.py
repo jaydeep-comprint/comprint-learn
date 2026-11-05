@@ -18,6 +18,7 @@ os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "test-service-role-key"
 # The tutor is on in tests, but no test ever reaches the real API (`FakeTutorClient`).
 os.environ["DEEPSEEK_API_KEY"] = "test-deepseek-key"
 os.environ["TUTOR_ENABLED"] = "true"
+os.environ["TEACHER_AI_ENABLED"] = "true"
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -25,12 +26,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.ai.client import get_tutor_client
+from app.ai.teacher_client import get_teacher_client
 from app.core.auth import Unauthenticated, VerifiedToken, get_token_verifier
 from app.core.config import get_settings
 from app.db.session import dispose_engine, get_sessionmaker
 from app.main import create_app
 from app.services.supabase_admin import get_supabase_admin
-from tests.fakes import FakeSupabaseAdmin, FakeTutorClient
+from tests.fakes import FakeSupabaseAdmin, FakeTeacherClient, FakeTutorClient
 
 DB_SKIP_MESSAGE = "TEST_DATABASE_URL not set; skipping DB tests (run 'make test-db' with it set)"
 DB_REQUIRED_MESSAGE = (
@@ -119,6 +121,7 @@ class DbApp:
     admin: FakeSupabaseAdmin
     sessions: async_sessionmaker[AsyncSession]
     tutor: FakeTutorClient
+    teacher_ai: FakeTeacherClient
 
     @staticmethod
     def auth(user_id: uuid.UUID) -> dict[str, str]:
@@ -140,5 +143,16 @@ async def db_app(migrated_test_db: str, monkeypatch: pytest.MonkeyPatch) -> Asyn
     app.dependency_overrides[get_token_verifier] = FakeVerifier
     fake_tutor = FakeTutorClient()
     app.dependency_overrides[get_tutor_client] = lambda: fake_tutor
+    fake_teacher = FakeTeacherClient()
+    # Like the real dependency: None when TEACHER_AI_ENABLED=false (the kill switch).
+    app.dependency_overrides[get_teacher_client] = lambda: (
+        fake_teacher if get_settings().teacher_ai_available else None
+    )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield DbApp(client=client, admin=fake_admin, sessions=sessions, tutor=fake_tutor)
+        yield DbApp(
+            client=client,
+            admin=fake_admin,
+            sessions=sessions,
+            tutor=fake_tutor,
+            teacher_ai=fake_teacher,
+        )

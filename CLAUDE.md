@@ -18,6 +18,8 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 ## Workflow
 - New features start from a spec in docs/specs/ (use `/spec`). Implement in a fresh session, plan first.
 - After code changes: run typecheck + related tests and show the output. Don't claim done without evidence.
+- After frontend changes: tests aren't enough. Run `make dev`, open the changed flow in the browser (Claude in Chrome / the `run` skill),
+  click through it, including the empty/error states, and show screenshots. If you need a dev login, ask the user; never store one in the repo.
 - Before shipping: use the `reviewer` subagent to check the diff against the spec, then `/ship`.
 - Branches: `feat/<spec-number>-<slug>`, `fix/<slug>`. Small, descriptive commits.
 

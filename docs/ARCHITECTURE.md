@@ -15,7 +15,7 @@
 | Database | PostgreSQL (hosted Supabase, Session pooler, port 5432) | Relational data (orgs/classes) + JSONB for content. Test DB = a separate Supabase project (`TEST_DATABASE_URL`), used only by `make test-db` and CI |
 | Auth | **Supabase Auth** (same project as the DB). FastAPI verifies its JWTs against the project JWKS (`app/core/auth.py`); our `app_user.id` = the auth user id. Teachers are invited by email; students get teacher-created accounts with a synthetic, never-emailed auth email | Don't build password, reset and invite flows ourselves; one free-tier project for DB + auth |
 | Maths answer checking | SymPy (server side, `app/grading/`): student expressions go through the safe AST walker, never `parse_expr`; `simplify` runs in a time-limited process pool (1 s, numeric fallback) | Checks equivalent expressions and numbers with tolerance and units |
-| Spaced repetition | `fsrs` (py-fsrs) | Modern scheduler with fewer reviews than SM-2 |
+| Spaced repetition | `fsrs` (py-fsrs 6.3), one module-level `Scheduler` in `app/services/srs.py` (retention 0.9, no learning steps, no fuzzing) | Modern scheduler with fewer reviews than SM-2 |
 | AI | Anthropic API: Claude Haiku 5.5 (`claude-haiku-5-5`) for tutor chat, Claude Sonnet 5.5 (`claude-sonnet-5-5`) for teacher summaries | Low cost per student; better reasoning where needed |
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
 | JS tooling | pnpm, eslint, prettier, vitest, Playwright (e2e) | Standard |
@@ -102,7 +102,16 @@ docs/         PRD, architecture, roadmap, specs, plans
     (`kp_key_prereq`): `review_due` (a 3–5 question review) if the prerequisite is learned, else `relearn`; a failed
     review sends the prerequisite back to in progress (KPs reset, history kept). Resolved when the review passes or
     the prerequisite is learned again.
-  - `review_card`: FSRS state per student × **concept**.
+  - `review_card` (spec 007): FSRS state per student × **concept** (stability, difficulty, `due`, `last_review`,
+    reps/lapses), always in FSRS's Review state; `consecutive_fails`, implicit `credit` (0–1) and `due_reason`
+    (schedule | quiz_miss). Created when a concept with gradable KP items is learned (`frontier.mark_learned` →
+    `srs.on_learned`); a relearn reviews it Good again. Migration 0008 backfilled cards from `learned_at`.
+  - `review_log` (spec 007): append-only, one row per card change with its `source` (learned, relearned, review,
+    brushup, implicit, quiz_miss, backfill), the rating and before/after values. The daily cap counts today's
+    (IST) `review` rows with `due_reason = schedule`.
+  - Reviews are `practice_session` kind `review` (`concept_id`; one active per student × concept); a quiz is one
+    session of kind `quiz` (`quiz_id`). `xp_event` is unique on `(session_id, subject)`: a quiz writes one event
+    per subject.
   - `xp_event` (spec 008): an append-only ledger, one row per session ended by an answer (unique `session_id`;
     amount may be 0 or negative) with the reason, concept, subject, IST `day`, grade and the rule's inputs
     (`base_minutes`, `answered`, `rushed_count`, `hints`). Sessions closed as a side effect, previews and "Practise
@@ -112,7 +121,10 @@ docs/         PRD, architecture, roadmap, specs, plans
     when it has a goal row and every goal row is met; the streak is computed on read.
   - `student_goal` (spec 008): a student's own daily goal per subject (≥ the class goal). `school_class` has
     `daily_goal` (5–60, default 15) and `leaderboard_enabled` (off by default).
-  - `quiz`: mixed timed quizzes and their items; `assignment`: a teacher target (concept or chapter, class, due date).
+  - `quiz` (spec 007): per student, created `pending` at an XP mark (`xp_mark`; `next_mark` set on finish or
+    cancel), then active (`started_at`, `deadline`) and finished (`correct` / `total`); at most one pending or
+    active. `quiz_item`: its questions (position, item, concept, seed), chosen at start.
+  - `assignment`: a teacher target (concept or chapter, class, due date).
   - `diagnostic_session`: per-topic evidence for placement.
 - **AI**: `tutor_session` and `tutor_message`, kept for safety review and cost tracking.
 
@@ -127,9 +139,9 @@ docs/         PRD, architecture, roadmap, specs, plans
 | 6 | Python runs client-side in Pyodide. The browser runs every test (visible tests, and hidden tests' *inputs*) and sends the outputs; the server compares them with expected values only it keeps (`app/grading/code.py`, the same comparison the content validator uses), so hidden expected values never reach the client. Return values travel as JSON text made by Python, so `1`, `1.0` and `True` stay distinct through JavaScript. The server never runs code and can't detect hand-crafted outputs (stored with the code for later review) | No sandbox infrastructure needed | Judge0 / server sandbox (**v2**, when XP needs to be cheat-proof) |
 | 7 | Maths and physics answers are checked **server side** with SymPy | Answers are never sent to the client | Client-side checking (leaks answers) |
 | 8 | **The AI tutor never lowers the bar.** It sees only the current item/KP content and the student's attempts. It points to the worked example, the key prerequisite, or an experiment to try; it never gives the answer or the next step. Hints are capped per item and reduce XP, and teachers see hint usage. Text only. Rate-limited per student per day. Measured in the pilot | Math Academy's critique of chat tutors plus Vizuara's "try this experiment" style; cost and DPDP | General chatbot; voice or screen-watching tutor |
-| 9 | **Spaced repetition per concept** (FSRS, starting when a concept is learned). A review is 3–5 mixed questions across that concept's KPs, judged on the trend of answers. Passing a review or lesson gives **one-level implicit credit** to prerequisites (`encompassing_weight` × credit, discounted when early), switched off for struggling students. Reviews are interleaved across concepts; daily cap ~5 | Far fewer reviews than per-item cards; uses the graph | Per-item flashcards; full multi-level FIRe (v2) |
+| 9 | **Spaced repetition per concept** (FSRS, starting when a concept is learned). A review is 3–5 mixed questions across that concept's KPs, judged on the trend of answers. Passing a review or lesson gives **one-level implicit credit** to prerequisites (`encompassing_weight` × credit, discounted when early), switched off for struggling students. Reviews are interleaved across concepts; daily cap ~5. **Built in spec 007**: a passed KP gives each direct prerequisite w / n (n = the concept's KPs), a passed review or brush-up gives w, practice gives nothing; credit × earliness (0 just after a review, 1 when due) accumulates and fires one `Good` at 1.0. Struggling = the last explicit review failed or a relearn in the last 30 days. A first failed review is `Again` (still learned); a 2nd consecutive failed explicit review relearns (a failed brush-up still relearns at once). The cap is 5 scheduled reviews a day across subjects; quiz misses and brush-ups are outside it | Far fewer reviews than per-item cards; uses the graph | Per-item flashcards; full multi-level FIRe (v2) |
 | 10 | **Answer specs by type**: `numeric{value, unit, mode: exact\|sigfig\|tolerance, sigfigs?, rel_tol?, sci_notation?}`, `expression{sympy_mode: exact\|equivalent\|simplified}`, `mcq{options[{text, correct, misconception_id?}]}` (used sparingly), `multistep{steps[]}` (each step has its own spec), `code{tests[]}`. Items can declare `params` for randomised numbers; the server derives answers from the seed | PhysicsGraph's schema; randomised numbers stop answer-sharing in class | Multiple choice as the main format (encourages backward reasoning) |
-| 11 | **Mixed timed quiz every ~150 XP**: no notes, covers everything learned so far, tuned for ~80% average score. Every miss becomes a review | Retention metric for teachers; retrieval practice | Teacher-scheduled quizzes only |
+| 11 | **Mixed timed quiz every ~150 XP**: no notes, covers everything learned so far, tuned for ~80% average score. Every miss becomes a review. **Built in spec 007**: lifetime net XP across subjects; the next mark is lifetime XP at the quiz's end + 150 (never back-to-back); needs 3 learned concepts with gradable items. 10 quick-check KP questions (lowest retrievability first, interleaved by subject), 1.5 min each on one server-enforced timer (+30 s grace for answers in flight), no feedback until the end. A pending quiz blocks new KP and practice sessions (409 `quiz_pending`), not reviews. XP is one event per subject; the ~80% target is measured, not tuned, in the MVP | Retention metric for teachers; retrieval practice | Teacher-scheduled quizzes only |
 | 12 | **Placement**: the teacher marks the chapters already covered for the class, then each student takes a short **adaptive diagnostic** within that range. A correct answer adds evidence to the topic and its prerequisites; a wrong answer subtracts from the topic and the topics above it. Topics that only just pass are *conditionally learned* and drop back quickly if the student struggles | Combines how schools work with catching individual gaps | Placement by the teacher only; a full-course diagnostic |
 | 13 | **Assignments set priority, never a cap.** A teacher target (concept/chapter + due date) puts it and its missing prerequisites first (Focus Mode). Students can still learn any concept on their frontier | Teacher control without holding back fast students | Teacher-unlocked chapters (rejected) |
 | 14 | **Competition**: students see their own XP, streak and progress. Teachers see everyone. Class leaderboards are **opt-in per class (teacher switch)**, ranked by XP and never by time spent; never across schools | Motivation without demotivating weaker students (minors) | Always-on leaderboards |

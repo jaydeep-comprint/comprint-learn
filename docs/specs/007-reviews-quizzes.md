@@ -1,6 +1,6 @@
 # Spec 007: Reviews + quizzes
 
-Status: draft
+Status: implemented (Nov 2026)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 6)
 Builds on: [spec 005](005-kp-flow-knowledge-graph.md) (`practice_session`, `review_outcome`, round-robin review
 serving, remediation brush-ups, `_relearn`, IST day), [spec 006](006-practice-formats.md) (practice sessions),
@@ -340,6 +340,17 @@ quiz" in the roster.
     `quiz_not_finished` before the end (after the lazy finish check).
   - Answer keys only ever appear in `AnswerResult` (reviews) and `QuizResult` (after the end), never in a question.
   - Roster: `ClassStudentOut` + `reviews_due: int`, `last_quiz: {score_pct, finished_on} | null` (staff).
+
+## Implementation notes (build)
+- `QuizState` also carries `seconds_left` (computed on the server, so the client timer ignores clock skew), and
+  there is a `GET /quizzes/{id}` for the quiz page. `QuizResult.xp` is `{amount, base_minutes, goal_met_today,
+  subjects: [{subject, amount, grade}]}` (the toast total plus the per-subject split). `ReviewQueue` has `has_cards`.
+- The open-quiz partial unique index is `status IN ('pending', 'active')`, so a cancelled quiz doesn't block the next.
+- Reads after the deadline finish the quiz; answers are still accepted until the deadline + 30 s grace.
+- A new quiz's mark is also above every earlier quiz's mark (unique `(student_id, xp_mark)` after penalties).
+- Review time is logged as practice study time with the step `review` (like a brush-up's `remediation`).
+- With the sample weights (0.7 on `speed-and-velocity` → `distance-and-displacement`), learning a dependant alone
+  adds 0.7 credit: the implicit `Good` fires with earlier credit or a later review (verification step 4 seeds it).
 
 ## Builder-check decisions (decided while specifying)
 - **Quiz answers bypass `answer_in_session`.** `quiz.answer` has its own grade-and-store path: it reuses

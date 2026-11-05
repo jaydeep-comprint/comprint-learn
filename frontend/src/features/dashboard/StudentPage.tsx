@@ -167,13 +167,13 @@ export function StudentPage() {
         </div>
         {outline.isPending ? (
           <Skeleton className="h-[70vh] min-h-96 w-full" />
-        ) : outline.isError || !courseSlug ? (
+        ) : outline.isError || !courseSlug || !outline.data.course ? (
           <p className="text-sm text-muted-foreground">No course map for this class.</p>
         ) : (
           <Suspense fallback={<Skeleton className="h-[70vh] min-h-96 w-full" />}>
             <CourseMap
               course={courseSlug}
-              outline={outline.data}
+              outline={{ ...outline.data, course: outline.data.course }}
               mode={mode}
               details={Details}
               onShowList={() => undefined}

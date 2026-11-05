@@ -622,8 +622,12 @@ def _misconceptions(
     return out
 
 
-def _rank_misconceptions(rows: Sequence[MisconceptionStat]) -> list[MisconceptionStat]:
-    qualified = [r for r in rows if r.offered >= MIN_OFFERED and r.chosen > 0]
+def _rank_misconceptions(
+    rows: Sequence[MisconceptionStat], *, chosen_only: bool = False
+) -> list[MisconceptionStat]:
+    """Qualified (offered >= 3), by students desc then rate desc. The Overview's top 5 lists
+    only ones somebody chose; "Show all" also lists offered ones nobody fell for."""
+    qualified = [r for r in rows if r.offered >= MIN_OFFERED and (r.chosen > 0 or not chosen_only)]
     return sorted(qualified, key=lambda r: (-r.students, -(r.rate or 0), r.title))
 
 
@@ -669,8 +673,7 @@ async def at_risk(scope: OrgScope, ctx: ClassCtx) -> dict[uuid.UUID, list[AtRisk
     if not sids:
         return {}
     now = datetime.now(UTC)
-    since = window_start("7d", now)
-    assert since is not None
+    since = srs.ist_midnight(srs.ist_day(now) - timedelta(days=AT_RISK_DAYS - 1))
     inputs = {sid: RiskInputs() for sid in sids}
     for sid, _cid, _kp, is_failed, n in await _kp_tries(scope, sids, ctx.concepts, since):
         inputs[sid].kp_ended += n
@@ -1047,8 +1050,8 @@ async def student_outline(
     """The class course as the student sees it (cross-course prerequisites included), with the
     teacher's 5 states, memory and KP statuses. Read-only."""
     ctx = await class_view.load(scope, class_id, student_id=student_id, states=False)
-    if ctx.course is None:
-        raise not_found()
+    if ctx.course is None:  # no active course for the class subject: an empty state
+        return TeacherOutline(course=None, chapters=[])
     graph = ctx.graph
     pairs = graph.outline(ctx.course.slug)
     ids = [c for c, _ in pairs]
@@ -1186,6 +1189,8 @@ async def student_activity(
         .limit(ACTIVITY_PAGE)
     )
     if before is not None:
+        if before.tzinfo is None:
+            before = before.replace(tzinfo=UTC)
         stmt = stmt.where(PracticeSession.ended_at < before)
     out = []
     for kind, cid, status, xp_amount, hints, answered, ms, ended in (

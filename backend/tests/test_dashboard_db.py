@@ -5,6 +5,7 @@ out-of-scope students are excluded, reads never write, `class_states` agrees wit
 import uuid
 from datetime import timedelta
 from typing import Any
+from urllib.parse import quote
 
 import pytest
 from sqlalchemy import func, select
@@ -12,6 +13,7 @@ from sqlalchemy import func, select
 from app.api.deps import CurrentUser, OrgScope
 from app.models import (
     AttemptContext,
+    ConceptSource,
     ConceptState,
     ConceptStatus,
     Enrollment,
@@ -63,9 +65,9 @@ async def _seed(db: DbApp) -> Seed:
         await concept_id(db, SPEED),
         await concept_id(db, LIN),
     )
-    # s3: Distance learned 20 days ago (a weak card by now); Speed stuck (KP 1 failed twice, a due
-    # brush-up of Distance).
-    await seed_learned(db, s.org, s.s3, [DIST], days_ago=20)
+    # s3: Distance learned 30 days ago (a weak card by now: retrievability ~0.67); Speed stuck
+    # (KP 1 failed twice, a due brush-up of Distance).
+    await seed_learned(db, s.org, s.s3, [DIST], days_ago=30)
     async with db.sessions() as session:
         speed_kps = await ds.kps_of(session, s.speed)
         dist_kps = await ds.kps_of(session, s.dist)
@@ -87,11 +89,28 @@ async def _seed(db: DbApp) -> Seed:
             )
         )
         session.add(ds.remediation(s.org, s.s3, kp1.id, s.dist, RemediationState.review_due))
+        # Distinct end times, newest first: the activity cursor is checked against them.
         failed_ids = [
-            await ds.kp_try(session, s.org, s.s3, kp1, passed=False, hints=1) for _ in range(3)
+            await ds.kp_try(
+                session,
+                s.org,
+                s.s3,
+                kp1,
+                passed=False,
+                hints=1,
+                ended_at=ds.NOW - timedelta(minutes=i + 1),
+            )
+            for i in range(3)
         ]
-        for _ in range(2):
-            await ds.kp_try(session, s.org, s.s3, dist_kps[0], passed=True)
+        for i in range(2):
+            await ds.kp_try(
+                session,
+                s.org,
+                s.s3,
+                dist_kps[0],
+                passed=True,
+                ended_at=ds.NOW - timedelta(minutes=10 + i),
+            )
         # A side-effect close (no attempts) is not a KP try.
         session.add(
             PracticeSession(
@@ -105,6 +124,10 @@ async def _seed(db: DbApp) -> Seed:
         )
         session.add(ds.study(s.org, s.s3, s.speed, 600, StudyActivity.learn))
         session.add(ds.study(s.org, s.s3, s.speed, 1200, StudyActivity.practice))
+        # 30 active minutes: enough XP that `low_xp_rate` doesn't fire (20 / 30 >= 0.5).
+        session.add(
+            ds.xp_event(s.org, s.s3, s.speed, 20, subject=Subject.physics, day=ds.NOW.date())
+        )
         s.thread = await ds.tutor_thread(
             session, s.org, s.s3, failed_ids[0], kp1.item_id, flagged=True
         )
@@ -246,11 +269,54 @@ async def test_heatmap_states_and_reads_never_write(db_app: DbApp) -> None:
 async def test_class_states_parity_with_frontier_load(db_app: DbApp) -> None:
     s = await _seed(db_app)
     async with db_app.sessions() as session:
+        speed_kps = await ds.kps_of(session, s.speed)
+        waiting, relearn = await ds.add_students(session, s.org, s.cls, 2, "parity")
+        # A plain waiting KP: failed once, cooldown until tomorrow, no remediation.
+        session.add(ds.concept_state(s.org, waiting, s.speed, ConceptStatus.in_progress))
+        session.add(
+            ds.kp_progress(
+                s.org,
+                waiting,
+                speed_kps[0].id,
+                KpStatus.failed,
+                fail_count=1,
+                failed_at=ds.NOW,
+                reopen_at=ds.NOW + timedelta(days=1),
+            )
+        )
+        # A relearn after a failed review: back in progress, KPs reset, the earlier practice
+        # pass still counts.
+        session.add(
+            ConceptState(
+                org_id=s.org,
+                student_id=relearn,
+                concept_id=s.dist,
+                status=ConceptStatus.in_progress,
+                source=ConceptSource.lesson,
+                relearn_count=1,
+            )
+        )
+        session.add(
+            PracticeSession(
+                org_id=s.org,
+                student_id=relearn,
+                kind=SessionKind.practice,
+                concept_id=s.dist,
+                status=SessionStatus.passed,
+                ended_at=ds.NOW - timedelta(days=20),
+            )
+        )
+        await session.commit()
+    students = [s.s3, s.s5, s.s6, waiting, relearn]
+    async with db_app.sessions() as session:
         staff = OrgScope(session, CurrentUser(s.teacher, s.org, Role.teacher, False, False))
         graph = await learn._graph(staff)
         ids = list(graph.nodes)
-        batched = await frontier.class_states(staff, [s.s3, s.s5, s.s6], ids, graph.prereqs)
-        for sid in (s.s3, s.s5, s.s6):
+        batched = await frontier.class_states(staff, students, ids, graph.prereqs)
+        assert batched[waiting].views[s.speed].waiting is not None
+        assert batched[relearn].status(s.dist) == "in_progress"
+        assert batched[relearn].views[s.dist].practice == "passed"
+        for sid in students:
             me = OrgScope(session, CurrentUser(sid, s.org, Role.student, False, False))
             single = await frontier.load(me, ids, graph.prereqs)  # promotes in the session
             got, want = batched[sid], single
@@ -308,8 +374,9 @@ async def test_student_page_routes(db_app: DbApp) -> None:
     activity = await _get(db_app, s, f"/students/{s.s3}/activity")
     assert len(activity) == 5  # 3 failed Speed tries + 2 passed Distance tries
     assert activity[0]["ended_at"] >= activity[-1]["ended_at"]
-    older = await _get(db_app, s, f"/students/{s.s3}/activity?before={activity[1]['ended_at']}")
-    assert len(older) <= 4
+    before = activity[1]["ended_at"]
+    older = await _get(db_app, s, f"/students/{s.s3}/activity?before={quote(before)}")
+    assert [a["ended_at"] for a in older] == [a["ended_at"] for a in activity[2:]]
     threads = await _get(db_app, s, f"/students/{s.s3}/tutor")
     assert [(t["id"], t["flagged"]) for t in threads] == [(str(s.thread), True)]
     msgs = (await _get(db_app, s, f"/students/{s.s3}/tutor/{s.thread}"))["messages"]

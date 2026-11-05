@@ -233,7 +233,7 @@ class TeacherOutlineChapter(BaseModel):
 
 
 class TeacherOutline(BaseModel):
-    course: CourseRef
+    course: CourseRef | None  # null when the class subject has no active course
     chapters: list[TeacherOutlineChapter]
 
 

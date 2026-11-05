@@ -590,7 +590,8 @@ export type TeacherOutlineConcept = OutlineConcept & {
 };
 
 export type TeacherOutline = {
-  course: Outline["course"];
+  /** null when the class subject has no active course. */
+  course: Outline["course"] | null;
   chapters: {
     slug: string;
     title: string;

@@ -574,12 +574,16 @@ async def list_class_students(scope: OrgScope, class_id: uuid.UUID) -> list[Clas
     stats = await xp.roster_stats(scope, school_class, ids)
     due = await srs.due_count(scope, ids)
     quizzes = await quiz.last_quiz_stats(scope, ids)
+    from app.services import dashboard  # dashboard -> assignments -> tenancy
+
+    risk = await dashboard.roster_at_risk(scope, class_id)
     out = []
     for s in students:
         row = ClassStudentOut.model_validate(s)
         row.week_xp, row.streak_days = stats[s.id]
         row.reviews_due = due.get(s.id, 0)
         row.last_quiz = quizzes.get(s.id)
+        row.at_risk = risk.get(s.id, [])
         out.append(row)
     return out
 

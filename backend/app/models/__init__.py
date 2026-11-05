@@ -11,6 +11,9 @@ from app.models.content import (
     Misconception,
 )
 from app.models.learning import (
+    Assignment,
+    AssignmentConcept,
+    AssignmentStudent,
     Attempt,
     AttemptContext,
     ConceptSource,
@@ -61,6 +64,9 @@ from app.models.tenancy import (
 
 __all__ = [
     "AppUser",
+    "Assignment",
+    "AssignmentConcept",
+    "AssignmentStudent",
     "Attempt",
     "AttemptContext",
     "Chapter",

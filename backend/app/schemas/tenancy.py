@@ -157,6 +157,7 @@ class ClassStudentOut(_Out):
     streak_days: int = 0
     reviews_due: int = 0  # due, offerable review cards today, uncapped (spec 007)
     last_quiz: LastQuizOut | None = None  # the last finished quiz (spec 007)
+    at_risk: list[str] = []  # at-risk rule codes (spec 010); empty when not in scope
 
 
 class EnrollIn(BaseModel):

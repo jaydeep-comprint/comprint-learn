@@ -1,5 +1,6 @@
 """A teacher (or admin) in school A can never see or change anything in school B."""
 
+import uuid
 from typing import Any
 
 import pytest
@@ -56,6 +57,25 @@ def _cross_school_calls(a: School, b: School) -> list[tuple[str, str, Any, Any]]
         ("POST", f"/api/v1/classes/{bc}/enrollments", {"student_ids": [str(as_)]}, tch),
         ("DELETE", f"/api/v1/classes/{bc}/enrollments/{bs}", None, tch),
         ("DELETE", f"/api/v1/classes/{ac}/enrollments/{bs}", None, tch),
+        # Spec 010: dashboard and assignments.
+        *[
+            ("GET", f"/api/v1/classes/{bc}{tail}", None, tch)
+            for tail in ("/overview", "/concepts", "/misconceptions", "/heatmap", "/assignments")
+        ],
+        *[
+            ("GET", f"/api/v1/classes/{cls}/students/{bs}{tail}", None, tch)
+            for cls in (ac, bc)
+            for tail in ("", "/outline", "/activity", "/tutor", f"/tutor/{uuid.uuid4()}")
+        ],
+        (
+            "POST",
+            f"/api/v1/classes/{bc}/assignments",
+            {"concepts": ["x/y"], "due_date": "2030-01-01"},
+            tch,
+        ),
+        ("PATCH", f"/api/v1/classes/{bc}/assignments/{uuid.uuid4()}", {"note": "x"}, tch),
+        ("DELETE", f"/api/v1/classes/{bc}/assignments/{uuid.uuid4()}", None, tch),
+        ("GET", f"/api/v1/classes/{ac}/assignments/{uuid.uuid4()}", None, tch),
     ]
 
 

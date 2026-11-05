@@ -10,7 +10,7 @@ the number of concepts (no N+1). Used by the outline, home, lesson and KP servic
 import logging
 import uuid
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -80,6 +80,7 @@ class KpView:
     status: KpStatus = KpStatus.not_started
     fail_count: int = 0
     reopen_at: datetime | None = None
+    passed_at: datetime | None = None
     open: bool = True
     remediations: list[RemediationView] = field(default_factory=list)  # unresolved
 
@@ -163,22 +164,27 @@ class Frontier:
     views: dict[uuid.UUID, ConceptView]
     remediations: list[RemediationView]  # all unresolved, oldest first
     kp_concept: dict[uuid.UUID, uuid.UUID]  # kp id -> concept id, for the loaded KPs
+    learned_at: dict[uuid.UUID, datetime | None] = field(default_factory=dict)  # stored rows
+    practice_passed_at: dict[uuid.UUID, datetime] = field(default_factory=dict)  # last pass
 
     def status(self, concept: uuid.UUID) -> Status:
         view = self.views.get(concept)
         return view.status if view is not None else "locked"
 
 
-def open_remediations(scope: OrgScope) -> Select[Remediation]:
-    """The student's unresolved remediations that can still block a KP. One on retired content
-    can never resolve, so it doesn't count."""
+def open_remediations(
+    scope: OrgScope, student_ids: Collection[uuid.UUID] | None = None
+) -> Select[Remediation]:
+    """The student's (or these students') unresolved remediations that can still block a KP. One
+    on retired content can never resolve, so it doesn't count."""
+    students = [scope.user.id] if student_ids is None else list(student_ids)
     return (
         scope.select(Remediation)
         .join(Concept, Concept.id == Remediation.prereq_concept_id)
         .join(Chapter, Chapter.id == Concept.chapter_id)
         .join(Course, Course.id == Concept.course_id)
         .where(
-            Remediation.student_id == scope.user.id,
+            Remediation.student_id.in_(students),
             Remediation.state != RemediationState.resolved,
             Concept.retired_at.is_(None),
             Chapter.retired_at.is_(None),
@@ -247,26 +253,217 @@ async def practice_concepts(scope: OrgScope, concept_ids: Collection[uuid.UUID])
     return set(rows.all())
 
 
-async def _practice_passed(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
-    if not concept_ids:
-        return set()
-    rows = await scope.session.scalars(
+async def _practice_passed(
+    scope: OrgScope, student_ids: Collection[uuid.UUID], concept_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, dict[uuid.UUID, datetime]]:
+    """student -> concept -> the last passed practice session's end."""
+    out: dict[uuid.UUID, dict[uuid.UUID, datetime]] = {}
+    if not concept_ids or not student_ids:
+        return out
+    rows = await scope.session.execute(
         scope.select(PracticeSession)
-        .with_only_columns(PracticeSession.concept_id)
+        .with_only_columns(
+            PracticeSession.student_id,
+            PracticeSession.concept_id,
+            func.max(PracticeSession.ended_at),
+        )
         .where(
-            PracticeSession.student_id == scope.user.id,
+            PracticeSession.student_id.in_(student_ids),
             PracticeSession.kind == SessionKind.practice,
             PracticeSession.status == SessionStatus.passed,
             PracticeSession.concept_id.in_(concept_ids),
         )
-        .distinct()
+        .group_by(PracticeSession.student_id, PracticeSession.concept_id)
     )
-    return {c for c in rows.all() if c is not None}
+    for sid, cid, when in rows.all():
+        if cid is not None:
+            out.setdefault(sid, {})[cid] = when or datetime.min.replace(tzinfo=UTC)
+    return out
 
 
 def complete(view: "ConceptView") -> bool:
     """Every active KP passed and the practice (if any) passed: the concept is learned."""
     return view.next_kp is None and view.practice != "pending"
+
+
+@dataclass
+class Content:
+    """The student-independent part of a frontier: active KPs and which concepts have practice."""
+
+    concept_ids: list[uuid.UUID]
+    kps: list[KpView]  # templates; `build` copies them per student
+    with_practice: set[uuid.UUID]
+
+
+@dataclass
+class StudentRows:
+    """One student's stored learning state, as read by `fetch`."""
+
+    stored: dict[uuid.UUID, ConceptStatus] = field(default_factory=dict)
+    learned_at: dict[uuid.UUID, datetime | None] = field(default_factory=dict)
+    progress: dict[uuid.UUID, KpProgress] = field(default_factory=dict)
+    remediations: list[RemediationView] = field(default_factory=list)  # oldest first
+    kp_passes: dict[uuid.UUID, datetime] = field(default_factory=dict)  # concept -> last KP pass
+    last_review_pass: datetime | None = None
+    practice_passed: dict[uuid.UUID, datetime] = field(default_factory=dict)
+
+
+async def load_content(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> Content:
+    kps = await active_kps(scope, concept_ids)
+    return Content(list(concept_ids), kps, await practice_concepts(scope, concept_ids))
+
+
+async def fetch(
+    scope: OrgScope,
+    content: Content,
+    student_ids: Sequence[uuid.UUID],
+    *,
+    passes_if_needed: bool = False,
+) -> dict[uuid.UUID, StudentRows]:
+    """Every listed student's rows in a fixed number of queries (no per-student loop).
+
+    With `passes_if_needed` the pass times (only used to reopen failed KPs) are read only when
+    some KP has failed: the single-student path keeps its old query count."""
+    rows = {sid: StudentRows() for sid in student_ids}
+    if not student_ids:
+        return rows
+    for sid, cid, status, learned_at in (
+        await scope.session.execute(
+            scope.select(ConceptState)
+            .with_only_columns(
+                ConceptState.student_id,
+                ConceptState.concept_id,
+                ConceptState.status,
+                ConceptState.learned_at,
+            )
+            .where(ConceptState.student_id.in_(student_ids))
+        )
+    ).all():
+        rows[sid].stored[cid] = status
+        rows[sid].learned_at[cid] = learned_at
+    kp_ids = [kp.id for kp in content.kps]
+    if kp_ids:
+        for p in (
+            await scope.session.scalars(
+                scope.select(KpProgress).where(
+                    KpProgress.student_id.in_(student_ids), KpProgress.kp_id.in_(kp_ids)
+                )
+            )
+        ).all():
+            rows[p.student_id].progress[p.kp_id] = p
+    for r in (
+        await scope.session.scalars(
+            open_remediations(scope, student_ids).order_by(Remediation.created_at)
+        )
+    ).all():
+        rows[r.student_id].remediations.append(
+            RemediationView(r.id, r.kp_id, r.prereq_concept_id, r.state)
+        )
+    any_failed = any(
+        p.status == KpStatus.failed for row in rows.values() for p in row.progress.values()
+    )
+    if any_failed or not passes_if_needed:
+        kp_passes, review_passes = await _passes(scope, student_ids)
+        for sid, by_concept in kp_passes.items():
+            rows[sid].kp_passes = by_concept
+        for sid, when in review_passes.items():
+            rows[sid].last_review_pass = when
+    for sid, by_concept in (
+        await _practice_passed(scope, student_ids, content.with_practice)
+    ).items():
+        rows[sid].practice_passed = by_concept
+    return rows
+
+
+def build(
+    content: Content,
+    rows: StudentRows,
+    prereqs: Mapping[uuid.UUID, Sequence[uuid.UUID]],
+    now: datetime,
+) -> Frontier:
+    """One student's frontier from their rows (pure; never writes)."""
+    by_kp: dict[uuid.UUID, list[RemediationView]] = {}
+    for r in rows.remediations:
+        by_kp.setdefault(r.kp_id, []).append(r)
+    kps = [replace(kp, remediations=by_kp.get(kp.id, [])) for kp in content.kps]
+    for kp in kps:
+        row = rows.progress.get(kp.id)
+        if row is None:
+            continue
+        kp.status, kp.fail_count, kp.reopen_at = row.status, row.fail_count, row.reopen_at
+        kp.passed_at = row.passed_at
+        if row.status == KpStatus.failed:
+            since = row.failed_at or now
+            kp.open = kp_flow.is_open(
+                failed=True,
+                reopen_at=row.reopen_at,
+                unresolved_remediations=len(kp.remediations),
+                passed_other_concept_since_fail=any(
+                    c != kp.concept_id and when > since for c, when in rows.kp_passes.items()
+                ),
+                passed_review_since_fail=(
+                    rows.last_review_pass is not None and rows.last_review_pass > since
+                ),
+                now=now,
+            )
+    kps_by_concept: dict[uuid.UUID, list[KpView]] = {}
+    for kp in kps:
+        kps_by_concept.setdefault(kp.concept_id, []).append(kp)
+    stored = dict(rows.stored)
+    views = {
+        cid: ConceptView(
+            cid,
+            concept_status(cid, stored, prereqs),
+            kps_by_concept.get(cid, []),
+            has_practice=cid in content.with_practice,
+            practice_passed=cid in rows.practice_passed,
+        )
+        for cid in content.concept_ids
+    }
+    return Frontier(
+        stored,
+        views,
+        list(rows.remediations),
+        {kp.id: kp.concept_id for kp in kps},
+        learned_at=dict(rows.learned_at),
+        practice_passed_at=dict(rows.practice_passed),
+    )
+
+
+def promotable(front: Frontier) -> list[uuid.UUID]:
+    """In-progress concepts whose active KPs and practice are all complete (learned on read)."""
+    return [
+        cid
+        for cid, v in front.views.items()
+        if front.stored.get(cid) == ConceptStatus.in_progress and v.kps and complete(v)
+    ]
+
+
+def _restatus(front: Frontier, prereqs: Mapping[uuid.UUID, Sequence[uuid.UUID]]) -> None:
+    for cid, v in front.views.items():
+        v.status = concept_status(cid, front.stored, prereqs)
+
+
+def effective(front: Frontier, prereqs: Mapping[uuid.UUID, Sequence[uuid.UUID]]) -> Frontier:
+    """Teacher reads (spec 010): complete-but-not-promoted concepts count as learned, for their
+    own status and for their dependants' ready/locked. Changes `front` in memory only."""
+    for cid in promotable(front):
+        front.stored[cid] = ConceptStatus.learned
+    _restatus(front, prereqs)
+    return front
+
+
+def done_at(front: Frontier, concept: uuid.UUID) -> datetime | None:
+    """When a learned concept was learned: `learned_at`, or for a complete-but-not-promoted one
+    the latest KP pass / practice pass."""
+    stored = front.learned_at.get(concept)
+    if stored is not None:
+        return stored
+    view = front.views.get(concept)
+    times = [kp.passed_at for kp in view.kps if kp.passed_at] if view else []
+    if concept in front.practice_passed_at:
+        times.append(front.practice_passed_at[concept])
+    return max(times, default=None)
 
 
 async def load(
@@ -281,118 +478,71 @@ async def load(
     With `promote`, an in-progress concept whose active KPs are all passed (e.g. a KP was retired)
     is marked learned here; the caller commits."""
     student = scope.user.id
-    stored = {
-        cid: status
-        for cid, status in (
-            await scope.session.execute(
-                scope.select(ConceptState)
-                .with_only_columns(ConceptState.concept_id, ConceptState.status)
-                .where(ConceptState.student_id == student)
-            )
-        ).all()
-    }
-    kps = await active_kps(scope, concept_ids)
-    kp_ids = [kp.id for kp in kps]
-    progress = {
-        row.kp_id: row
-        for row in (
-            await scope.session.scalars(
-                scope.select(KpProgress).where(
-                    KpProgress.student_id == student, KpProgress.kp_id.in_(kp_ids)
-                )
-            )
-        ).all()
-    }
-    remediations = [
-        RemediationView(r.id, r.kp_id, r.prereq_concept_id, r.state)
-        for r in (
-            await scope.session.scalars(open_remediations(scope).order_by(Remediation.created_at))
-        ).all()
-    ]
-    by_kp: dict[uuid.UUID, list[RemediationView]] = {}
-    for r in remediations:
-        by_kp.setdefault(r.kp_id, []).append(r)
-
-    failed = [p for p in progress.values() if p.status == KpStatus.failed]
-    passed_kp_by_concept: dict[uuid.UUID, datetime] = {}
-    last_review_pass: datetime | None = None
-    if failed:
-        passed_kp_by_concept, last_review_pass = await _passes(scope)
-
-    now = datetime.now(UTC)
-    kp_concept = {kp.id: kp.concept_id for kp in kps}
-    for kp in kps:
-        row = progress.get(kp.id)
-        kp.remediations = by_kp.get(kp.id, [])
-        if row is None:
-            continue
-        kp.status, kp.fail_count, kp.reopen_at = row.status, row.fail_count, row.reopen_at
-        if row.status == KpStatus.failed:
-            since = row.failed_at or now
-            kp.open = kp_flow.is_open(
-                failed=True,
-                reopen_at=row.reopen_at,
-                unresolved_remediations=len(kp.remediations),
-                passed_other_concept_since_fail=any(
-                    c != kp.concept_id and when > since for c, when in passed_kp_by_concept.items()
-                ),
-                passed_review_since_fail=last_review_pass is not None and last_review_pass > since,
-                now=now,
-            )
-
-    kps_by_concept: dict[uuid.UUID, list[KpView]] = {}
-    for kp in kps:
-        kps_by_concept.setdefault(kp.concept_id, []).append(kp)
-
-    with_practice = await practice_concepts(scope, concept_ids)
-    practice_passed = await _practice_passed(scope, with_practice)
-
-    def view(cid: uuid.UUID) -> ConceptView:
-        return ConceptView(
-            cid,
-            concept_status(cid, stored, prereqs),
-            kps_by_concept.get(cid, []),
-            has_practice=cid in with_practice,
-            practice_passed=cid in practice_passed,
-        )
-
+    content = await load_content(scope, concept_ids)
+    rows = (await fetch(scope, content, [student], passes_if_needed=True))[student]
+    front = build(content, rows, prereqs, datetime.now(UTC))
     if promote:
-        for cid in concept_ids:
-            v = view(cid)
-            if stored.get(cid) == ConceptStatus.in_progress and v.kps and complete(v):
-                await mark_learned(scope, cid)
-                stored[cid] = ConceptStatus.learned
-
-    views = {cid: view(cid) for cid in concept_ids}
-    return Frontier(stored, views, remediations, kp_concept)
+        for cid in promotable(front):
+            await mark_learned(scope, cid)
+            front.stored[cid] = ConceptStatus.learned
+        _restatus(front, prereqs)
+    return front
 
 
-async def _passes(scope: OrgScope) -> tuple[dict[uuid.UUID, datetime], datetime | None]:
-    """(concept -> last passed KP session end, last passed remediation review end)."""
-    student = scope.user.id
+async def class_states(
+    scope: OrgScope,
+    student_ids: Sequence[uuid.UUID],
+    concept_ids: Collection[uuid.UUID],
+    prereqs: Mapping[uuid.UUID, Sequence[uuid.UUID]],
+) -> dict[uuid.UUID, Frontier]:
+    """Read-only frontiers for many students (teacher dashboard, spec 010), in a fixed number of
+    queries. Complete-but-not-promoted concepts count as learned (`effective`); nothing is
+    written."""
+    content = await load_content(scope, concept_ids)
+    rows = await fetch(scope, content, student_ids)
+    now = datetime.now(UTC)
+    return {sid: effective(build(content, rows[sid], prereqs, now), prereqs) for sid in student_ids}
+
+
+async def _passes(
+    scope: OrgScope, student_ids: Collection[uuid.UUID]
+) -> tuple[dict[uuid.UUID, dict[uuid.UUID, datetime]], dict[uuid.UUID, datetime]]:
+    """(student -> concept -> last passed KP session end, student -> last passed remediation
+    review end)."""
     kp_rows = (
         await scope.session.execute(
             scope.select(PracticeSession)
-            .with_only_columns(KnowledgePoint.concept_id, func.max(PracticeSession.ended_at))
+            .with_only_columns(
+                PracticeSession.student_id,
+                KnowledgePoint.concept_id,
+                func.max(PracticeSession.ended_at),
+            )
             .join(KnowledgePoint, KnowledgePoint.id == PracticeSession.kp_id)
             .where(
-                PracticeSession.student_id == student,
+                PracticeSession.student_id.in_(student_ids),
                 PracticeSession.kind == SessionKind.kp,
                 PracticeSession.status == SessionStatus.passed,
             )
-            .group_by(KnowledgePoint.concept_id)
+            .group_by(PracticeSession.student_id, KnowledgePoint.concept_id)
         )
     ).all()
-    review = await scope.session.scalar(
-        scope.select(PracticeSession)
-        .with_only_columns(func.max(PracticeSession.ended_at))
-        .where(
-            PracticeSession.student_id == student,
-            PracticeSession.kind == SessionKind.remediation,
-            PracticeSession.status == SessionStatus.passed,
+    kp: dict[uuid.UUID, dict[uuid.UUID, datetime]] = {}
+    for sid, cid, when in kp_rows:
+        if when is not None:
+            kp.setdefault(sid, {})[cid] = when
+    review_rows = (
+        await scope.session.execute(
+            scope.select(PracticeSession)
+            .with_only_columns(PracticeSession.student_id, func.max(PracticeSession.ended_at))
+            .where(
+                PracticeSession.student_id.in_(student_ids),
+                PracticeSession.kind == SessionKind.remediation,
+                PracticeSession.status == SessionStatus.passed,
+            )
+            .group_by(PracticeSession.student_id)
         )
-    )
-    return {cid: when for cid, when in kp_rows if when is not None}, review
+    ).all()
+    return kp, {sid: when for sid, when in review_rows if when is not None}
 
 
 async def ensure_started(scope: OrgScope, concept_id: uuid.UUID) -> None:

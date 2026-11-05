@@ -1,8 +1,10 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    assignments,
     classes,
     courses,
+    dashboard,
     health,
     kp,
     learn,
@@ -28,3 +30,5 @@ api_router.include_router(xp.router)
 api_router.include_router(reviews.router)
 api_router.include_router(quiz.router)
 api_router.include_router(tutor.router)
+api_router.include_router(dashboard.router)
+api_router.include_router(assignments.router)

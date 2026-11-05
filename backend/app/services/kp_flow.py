@@ -1398,8 +1398,14 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
         except EmptyPoolError:
             log.warning("remediation %s ran out of questions; resolving it", rem.id)
             outcome = out.session_status = "passed"
+    if outcome == "passed":
+        _resolve_review(rem, session)
+        out.xp = await xp.award_for_session(scope, session, "passed", rem.prereq_concept_id)
+    elif outcome == "failed":
+        out.xp = await xp.award_for_session(scope, session, "failed", rem.prereq_concept_id)
     if outcome in ("passed", "failed"):
         # Spec 007: a brush-up's result is also an explicit FSRS review of the prerequisite.
+        # After the XP award: every path locks xp_day rows before review cards.
         await srs.apply_review(
             scope,
             rem.prereq_concept_id,
@@ -1409,12 +1415,9 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
             session_id=session.id,
         )
     if outcome == "passed":
-        _resolve_review(rem, session)
-        out.xp = await xp.award_for_session(scope, session, "passed", rem.prereq_concept_id)
         await srs.give_implicit_credit(scope, rem.prereq_concept_id, "brushup")
         out.kp_open = await _kp_unblocked(scope, rem)
     elif outcome == "failed":
-        out.xp = await xp.award_for_session(scope, session, "failed", rem.prereq_concept_id)
         await _relearn(scope, rem.prereq_concept_id)
     await scope.session.commit()
     return out

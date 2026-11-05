@@ -34,6 +34,10 @@ export type ClassStudent = Omit<Student, "class_ids"> & {
   /** This week's XP in the class's subject (spec 008). */
   week_xp: number;
   streak_days: number;
+  /** Spec 007: due, offerable review cards today (uncapped, quiz misses included). */
+  reviews_due: number;
+  /** The last finished quiz. */
+  last_quiz: { score_pct: number; finished_on: string } | null;
 };
 
 export type SchoolClass = {
@@ -240,6 +244,8 @@ export type Question = {
   results: boolean[];
   /** Staff preview only: sent back with the answer. */
   preview_seed: number | null;
+  /** Spec 007: a quiz question's shared deadline (ISO). */
+  deadline?: string | null;
 };
 
 /** One test's output as the browser sends it (`backend/app/grading/code.py`). */
@@ -281,6 +287,8 @@ export type AnswerResult = {
   solution?: string | null;
   /** Spec 008: set on the answer that ended the session (and on a resend of it). */
   xp?: XpAward | null;
+  /** Spec 007: set on the answer that ended a scheduled review. */
+  review?: ReviewOutcome | null;
 };
 
 export type RemediationInfo = {
@@ -334,4 +342,78 @@ export type Leaderboard = {
     is_me: boolean;
     student_id?: string;
   }[];
+};
+
+/** Reviews + quizzes (spec 007: backend/app/schemas/reviews.py, quiz.py). */
+export type ReviewOffer = {
+  course: string;
+  concept: ConceptRef;
+  subject: Subject;
+  reason: "schedule" | "quiz_miss";
+  /** ISO date (IST). */
+  due_on: string;
+  /** A review session is open for it. */
+  active: boolean;
+};
+
+export type ReviewQueue = {
+  cap: number;
+  done_today: number;
+  offered: ReviewOffer[];
+  /** Due scheduled reviews beyond today's cap (they roll over). */
+  more_due: number;
+  /** When nothing is offered: the next day a review comes up. */
+  next_due_on: string | null;
+  /** False: the student has no cards yet (the home card is hidden). */
+  has_cards: boolean;
+};
+
+export type ReviewOutcome = {
+  rating: "again" | "hard" | "good";
+  /** Null when a relearn started. */
+  next_due: string | null;
+  relearn: boolean;
+};
+
+export type QuizStatus = "pending" | "active" | "finished" | "cancelled";
+
+export type QuizState = {
+  id: string;
+  status: QuizStatus;
+  total: number;
+  minutes: number;
+  deadline: string | null;
+  /** Active only, computed on the server (client clocks don't matter). */
+  seconds_left: number | null;
+  answered: number;
+};
+
+export type QuizSaved = { saved: true; answered: number; finished: boolean };
+
+export type QuizXp = {
+  amount: number;
+  base_minutes: string;
+  goal_met_today: boolean;
+  subjects: { subject: Subject; amount: number; grade: XpGrade }[];
+};
+
+export type QuizResultItem = {
+  position: number;
+  concept: ConceptRef;
+  type: QuestionType;
+  prompt_md: string;
+  /** Null: unanswered. MCQ: the option text. */
+  response: string | null;
+  correct: boolean;
+  /** Expression: LaTeX. MCQ: the option text. */
+  display_answer: string;
+  explanation_md: string | null;
+};
+
+export type QuizResult = {
+  correct: number;
+  total: number;
+  xp: QuizXp | null;
+  items: QuizResultItem[];
+  review_concepts: ConceptRef[];
 };

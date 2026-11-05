@@ -25,6 +25,8 @@ import { PracticeStep } from "@/features/learn/PracticeStep";
 import { StepIndicator } from "@/features/learn/StepIndicator";
 import { useStepTimer } from "@/features/learn/useStepTimer";
 import { WaitingPanel } from "@/features/learn/WaitingPanel";
+import { pendingQuizId } from "@/features/quiz/api";
+import { QuizPendingPanel } from "@/features/quiz/QuizPendingPanel";
 import { ApiError } from "@/lib/api";
 import type {
   AnswerResult,
@@ -93,6 +95,7 @@ function KpPractice({
       onDone={onDone}
       renderConflict={(code, error) => {
         if (code === "kp_passed") return <Passed />;
+        if (code === "quiz_pending") return <QuizPendingPanel quizId={pendingQuizId(error)} />;
         if (code === "kp_waiting") {
           const body = (error instanceof ApiError ? error.body : undefined) as
             { remediations?: RemediationRef[] } | undefined;

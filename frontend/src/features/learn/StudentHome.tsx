@@ -9,6 +9,8 @@ import { useStudentCourses } from "@/features/learn/api";
 import { brushUpPath, lessonPath } from "@/features/learn/paths";
 import { ProgressBar } from "@/features/learn/ProgressBar";
 import { StatusIcon } from "@/features/learn/StatusIcon";
+import { QuizBanner } from "@/features/quiz/QuizBanner";
+import { TodaysReviews } from "@/features/reviews/TodaysReviews";
 import type { HomeConcept, StudentCourse } from "@/lib/types";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -130,6 +132,8 @@ export function StudentHome({ firstName }: { firstName: string }) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold sm:text-3xl">Hi {firstName}</h1>
+      <QuizBanner />
+      <TodaysReviews />
       {courses.isPending ? (
         <div className="space-y-4" aria-busy="true">
           {[0, 1].map((i) => (

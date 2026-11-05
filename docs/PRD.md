@@ -44,7 +44,7 @@ Build order and spec numbers: docs/ROADMAP.md.
    SymPy expressions, limited multiple choice (misconception-tagged), multi-step problems, and Python code with tests
    ([spec 006](specs/006-practice-formats.md)). Each lesson ends with a required Practice step.
 5. Mastery: the KP flow (fail → retry later → remediate key prerequisites), the knowledge frontier, and a visual knowledge graph ([spec 005](specs/005-kp-flow-knowledge-graph.md)).
-6. Spaced repetition per concept with implicit credit, a daily review cap, and a mixed timed quiz every ~150 XP.
+6. Spaced repetition per concept with implicit credit, a daily review cap, and a mixed timed quiz every ~150 XP ([spec 007](specs/007-reviews-quizzes.md)).
 7. XP (minutes × performance), daily goal, streaks. **Class leaderboards are opt-in, switched on by the teacher**, and ranked by XP, never time spent ([spec 008](specs/008-xp-gamification.md); built before 007).
 8. Placement: the teacher marks the chapters already covered, then a **short adaptive diagnostic within that range**.
 9. AI tutor, scoped to the current lesson or question: it points to the worked example, the prerequisite, or an experiment to try.

@@ -5,8 +5,8 @@ import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
 import { RequireAuth, RequireRole } from "@/features/auth/guards";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { SetPasswordPage } from "@/features/auth/SetPasswordPage";
-import { ClassDetailPage } from "@/features/classes/ClassDetailPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
+import { ClassLayout } from "@/features/dashboard/ClassLayout";
 import { SlipsView } from "@/features/slips/SlipsView";
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
@@ -61,7 +61,44 @@ export const routes: RouteObject[] = [
             element: <RequireRole access="staff" />,
             children: [
               { path: "/classes", element: <ClassesPage /> },
-              { path: "/classes/:id", element: <ClassDetailPage /> },
+              {
+                // Spec 010: the class dashboard; tabs are nested routes (lazy).
+                path: "/classes/:id",
+                element: <ClassLayout />,
+                children: [
+                  {
+                    index: true,
+                    lazy: async () => ({
+                      Component: (await import("@/features/dashboard/OverviewTab")).OverviewTab,
+                    }),
+                  },
+                  {
+                    path: "students",
+                    lazy: async () => ({
+                      Component: (await import("@/features/dashboard/StudentsTab")).StudentsTab,
+                    }),
+                  },
+                  {
+                    path: "students/:studentId",
+                    lazy: async () => ({
+                      Component: (await import("@/features/dashboard/StudentPage")).StudentPage,
+                    }),
+                  },
+                  {
+                    path: "assignments",
+                    lazy: async () => ({
+                      Component: (await import("@/features/assignments/AssignmentsTab"))
+                        .AssignmentsTab,
+                    }),
+                  },
+                  {
+                    path: "settings",
+                    lazy: async () => ({
+                      Component: (await import("@/features/dashboard/SettingsTab")).SettingsTab,
+                    }),
+                  },
+                ],
+              },
               { path: "/classes/:id/slips", element: <SlipsView /> },
               { path: "/slips", element: <SlipsView /> },
               { path: "/students", element: <StudentsPage /> },

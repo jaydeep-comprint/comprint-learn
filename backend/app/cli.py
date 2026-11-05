@@ -31,6 +31,10 @@ tutor_app = typer.Typer(
     no_args_is_help=True, help="AI tutor (eval, retention purge, safety flags)."
 )
 app.add_typer(tutor_app, name="tutor")
+teacher_ai_app = typer.Typer(
+    help="Teacher AI summaries (spec 011): the offline eval.", no_args_is_help=True
+)
+app.add_typer(teacher_ai_app, name="teacher-ai")
 
 DEFAULT_CONTENT_ROOT = Path(__file__).resolve().parents[2] / "content"
 RootOpt = Annotated[Path, typer.Option("--root", help="The content/ folder")]
@@ -340,3 +344,90 @@ def tutor_eval(
 
 def main() -> None:
     app()
+
+
+async def _teacher_eval(runs: int, case_id: str | None) -> bool:
+    from app.ai.client import make_chat_client
+    from app.ai.eval import teacher_runner
+    from app.ai.teacher_client import DeepSeekTeacherClient
+    from app.ai.teacher_limits import TIMEOUT_S
+
+    settings = get_settings()
+    chat = make_chat_client(timeout=TIMEOUT_S)
+    judge_client = make_chat_client(timeout=JUDGE_TIMEOUT_S)
+    if chat is None or judge_client is None:
+        raise CliError("DEEPSEEK_API_KEY is not set.")
+    cases = [c for c in teacher_runner.load_cases() if case_id is None or c.id == case_id]
+    if not cases:
+        raise CliError(f"No case {case_id}.")
+    writer = DeepSeekTeacherClient(chat)
+    ok = True
+    totals = {"runs": 0, "unsupported": 0, "overclaims": 0, "errors": 0, "no_claims": 0}
+    vague = claims = notes = actionable = 0
+    w_in = w_cached = w_out = j_in = j_out = 0
+    typer.echo(f"{'case':<26} {'runs':>4} {'fail':>4} {'ok':>3} {'part':>4}  tokens in/out  notes")
+    for tc in cases:
+        outcomes = await teacher_runner.run_case(
+            tc,
+            writer,
+            judge_client,
+            settings.teacher_ai_model,
+            settings.teacher_ai_judge_model,
+            runs,
+        )
+        c_in = c_out = 0
+        for o in outcomes:
+            totals["runs"] += 1
+            totals["errors"] += o.error is not None
+            if o.result is not None:
+                c_in += o.result.input_tokens + o.result.cache_read_tokens
+                c_out += o.result.output_tokens
+                w_cached += o.result.cache_read_tokens
+                totals["no_claims"] += o.result.output is None or not o.result.output.summary
+            if o.grades is not None:
+                g = o.grades
+                totals["unsupported"] += g.unsupported
+                totals["overclaims"] += g.overclaims
+                vague, claims = vague + g.vague, claims + g.claims
+                notes, actionable = notes + g.notes, actionable + g.actionable
+                j_in, j_out = j_in + g.input_tokens, j_out + g.output_tokens
+        w_in, w_out = w_in + c_in, w_out + c_out
+        fails = [o for o in outcomes if o.failed]
+        ok = ok and not fails
+        statuses = [o.result.status for o in outcomes if o.result is not None]
+        typer.echo(
+            f"{tc.id:<26} {len(outcomes):>4} {len(fails):>4} {statuses.count('ok'):>3} "
+            f"{statuses.count('partial'):>4}  {c_in:>6}/{c_out:<6}"
+        )
+        for o in fails:
+            typer.echo(f"    {o.error or '; '.join(o.problems)}")
+            if o.grades and o.grades.reasons:
+                typer.echo(f"    judge: {o.grades.reasons[0][:200]}")
+    n_claims, n_notes = max(1, claims), max(1, notes)
+    typer.echo(
+        f"\nTotal {totals['runs']} runs: {totals['unsupported']} unsupported claims, "
+        f"{totals['overclaims']} overclaimed causes, {totals['no_claims']} runs without a claim, "
+        f"{totals['errors']} unverified runs. Vague quantities {vague / n_claims:.0%} of claims; "
+        f"actionable notes {actionable / n_notes:.0%}."
+    )
+    typer.echo(
+        f"Tokens: writer {w_in} in ({w_cached} cache hits) / {w_out} out, judge {j_in} in / "
+        f"{j_out} out. Cost: multiply by the provider's current prices."
+    )
+    return ok
+
+
+@teacher_ai_app.command("eval")
+def teacher_ai_eval(
+    runs: Annotated[int, typer.Option(help="Runs per case")] = 3,
+    case: Annotated[str | None, typer.Option("--case", help="Only this case id")] = None,
+) -> None:
+    """Run the teacher-summary eval against the real model (needs DEEPSEEK_API_KEY; no DB)."""
+    try:
+        ok = asyncio.run(_teacher_eval(runs, case))
+    except CliError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo("PASS" if ok else "FAIL")
+    if not ok:
+        raise typer.Exit(1)

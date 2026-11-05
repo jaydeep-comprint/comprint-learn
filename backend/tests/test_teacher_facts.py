@@ -249,3 +249,17 @@ def test_student_facts() -> None:
     assert "2.5 hints per 10 questions (last 7 days)." in texts
     assert all(f.students == ["S1"] for f in fs.facts)
     assert tf.enough_data(fs)
+
+
+def test_every_eval_case_loads_and_has_enough_data() -> None:
+    from app.ai.eval import teacher_runner
+
+    cases = teacher_runner.load_cases()
+    assert len(cases) >= 10
+    assert len({c.id for c in cases}) == len(cases)
+    for case in cases:
+        assert tf.enough_data(case.fs), case.id
+        known = set(case.fs.pseudonyms)
+        for f in case.fs.facts:
+            tokens = {f"S{m}" for m in tf.TOKEN.findall(f.text)}
+            assert tokens <= set(f.students) <= known, (case.id, f.id)

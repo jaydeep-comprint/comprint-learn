@@ -1,6 +1,6 @@
 # Spec 010: Teacher dashboard + assignments
 
-Status: draft
+Status: done (Nov 2026)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 10; the leaderboard switch from item 7)
 Builds on: [spec 002](002-auth-tenancy.md) (classes, enrolment, "teachers see the whole school"),
 [spec 005](005-kp-flow-knowledge-graph.md) (KP sessions, remediations, frontier, CourseMap),

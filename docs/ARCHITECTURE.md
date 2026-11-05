@@ -124,7 +124,12 @@ docs/         PRD, architecture, roadmap, specs, plans
   - `quiz` (spec 007): per student, created `pending` at an XP mark (`xp_mark`; `next_mark` set on finish or
     cancel), then active (`started_at`, `deadline`) and finished (`correct` / `total`); at most one pending or
     active. `quiz_item`: its questions (position, item, concept, seed), chosen at start.
-  - `assignment`: a teacher target (concept or chapter, class, due date).
+  - `assignment` (spec 010): a teacher target for one class: `due_date`, optional `note` (≤ 200), `all_students`,
+    `created_by`, soft `deleted_at`. `assignment_concept` holds its 1–10 target concepts (`position`, content FK) and
+    `assignment_student` the chosen students (rows only when `all_students` is false); both cascade from
+    `assignment`. Per-student statuses (done early / on time / late, overdue, in progress, not started) and the
+    Focus path are computed on read (`app/services/assignments.py`), never stored. Targets outside the current class
+    course (retired, or after a subject change) are ignored.
   - `diagnostic_session`: per-topic evidence for placement.
 - **AI** (spec 009, tenant-owned):
   - `tutor_session`: one thread per question shown, unique `(practice_session_id, position, item_id, seed)` (nulls
@@ -155,9 +160,9 @@ docs/         PRD, architecture, roadmap, specs, plans
 | 10 | **Answer specs by type**: `numeric{value, unit, mode: exact\|sigfig\|tolerance, sigfigs?, rel_tol?, sci_notation?}`, `expression{sympy_mode: exact\|equivalent\|simplified}`, `mcq{options[{text, correct, misconception_id?}]}` (used sparingly), `multistep{steps[]}` (each step has its own spec), `code{tests[]}`. Items can declare `params` for randomised numbers; the server derives answers from the seed | PhysicsGraph's schema; randomised numbers stop answer-sharing in class | Multiple choice as the main format (encourages backward reasoning) |
 | 11 | **Mixed timed quiz every ~150 XP**: no notes, covers everything learned so far, tuned for ~80% average score. Every miss becomes a review. **Built in spec 007**: lifetime net XP across subjects; the next mark is lifetime XP at the quiz's end + 150 (never back-to-back); needs 3 learned concepts with gradable items. 10 quick-check KP questions (lowest retrievability first, interleaved by subject), 1.5 min each on one server-enforced timer (+30 s grace for answers in flight), no feedback until the end. A pending quiz blocks new KP and practice sessions (409 `quiz_pending`), not reviews. XP is one event per subject; the ~80% target is measured, not tuned, in the MVP | Retention metric for teachers; retrieval practice | Teacher-scheduled quizzes only |
 | 12 | **Placement**: the teacher marks the chapters already covered for the class, then each student takes a short **adaptive diagnostic** within that range. A correct answer adds evidence to the topic and its prerequisites; a wrong answer subtracts from the topic and the topics above it. Topics that only just pass are *conditionally learned* and drop back quickly if the student struggles | Combines how schools work with catching individual gaps | Placement by the teacher only; a full-course diagnostic |
-| 13 | **Assignments set priority, never a cap.** A teacher target (concept/chapter + due date) puts it and its missing prerequisites first (Focus Mode). Students can still learn any concept on their frontier | Teacher control without holding back fast students | Teacher-unlocked chapters (rejected) |
+| 13 | **Assignments set priority, never a cap.** A teacher target (concept/chapter + due date) puts it and its missing prerequisites first (Focus Mode). Students can still learn any concept on their frontier. **Built in spec 010**: 1–10 concepts of the class course (a chapter selects all its concepts), due today to +180 days (IST), whole class or chosen students, evaluated live; the student's home card shows the unlearned targets and all unlearned ancestors in outline order, with Next = the first in-progress step (or its due brush-up), else the first ready one | Teacher control without holding back fast students | Teacher-unlocked chapters (rejected) |
 | 14 | **Competition**: students see their own XP, streak and progress. Teachers see everyone. Class leaderboards are **opt-in per class (teacher switch)**, ranked by XP and never by time spent; never across schools | Motivation without demotivating weaker students (minors) | Always-on leaderboards |
-| 15 | **At-risk rules** (teacher dashboard): KP fail rate > 10%, any negative XP in the week, XP per active minute < 0.5, falling memory on core concepts, overdue assignments | Math Academy's warning signs; easy to explain | |
+| 15 | **At-risk rules** (teacher dashboard): KP fail rate > 10%, any negative XP in the week, XP per active minute < 0.5, falling memory on core concepts, overdue assignments. **Built in spec 010** over the last 7 IST days, class subject only, constants `AT_RISK_*` in `app/services/dashboard.py`: KP fail rate > 10% with ≥ 5 KP tries; any negative `xp_event`; net XP per active minute < 0.5 with ≥ 30 active minutes; ≥ 2 weak cards (retrievability < 0.7) on concepts that are a prerequisite of an active concept; an overdue assignment; `inactive` (no attempt or study time in 7 days, enrolled ≥ 7 days; replaces "5 school days": there's no school calendar) | Math Academy's warning signs; easy to explain | |
 | 16 | **Log everything from day one** (attempts with time taken, hints, seeds, KP results) for analytics per KP and per question later | Content improvement needs the data | |
 
 ## Boundaries
@@ -168,6 +173,9 @@ docs/         PRD, architecture, roadmap, specs, plans
   `tests/test_route_scoping.py` fails if a route skips auth or the scope. The one exemption is **global content**
   (`/courses`, `/courses/{slug}/graph`): those routes authenticate but read only platform-owned content, and are listed
   in `GLOBAL_CONTENT` in that test. Content routes never return `item.answer`.
+- **Teacher reads are read-only** (spec 010): the dashboard computes statuses with `frontier.class_states` (batched for
+  many students, a fixed number of queries, never promotes or writes); complete-but-not-promoted concepts count as
+  learned there. Dashboard responses carry ids, display names and `item.public` text only.
 - **RLS deny-all**: row-level security is enabled with no policies on every table in `public`, so Supabase's Data API
   (anon/authenticated keys) reads nothing. The backend connects as `postgres`, which bypasses RLS. Every migration that
   adds a table must enable RLS on it (`tests/test_rls_db.py` checks).

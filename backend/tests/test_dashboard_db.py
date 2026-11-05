@@ -117,13 +117,15 @@ async def _seed(db: DbApp) -> Seed:
                 org_id=s.org,
                 student_id=s.s3,
                 kind=SessionKind.kp,
+                current_position=0,
                 kp_id=speed_kps[1].id,
                 status=SessionStatus.passed,
                 ended_at=ds.NOW,
             )
         )
         session.add(ds.study(s.org, s.s3, s.speed, 600, StudyActivity.learn))
-        session.add(ds.study(s.org, s.s3, s.speed, 1200, StudyActivity.practice))
+        for _ in range(2):  # a row holds at most 600 s
+            session.add(ds.study(s.org, s.s3, s.speed, 600, StudyActivity.practice))
         # 30 active minutes: enough XP that `low_xp_rate` doesn't fire (20 / 30 >= 0.5).
         session.add(
             ds.xp_event(s.org, s.s3, s.speed, 20, subject=Subject.physics, day=ds.NOW.date())
@@ -151,6 +153,7 @@ async def _seed(db: DbApp) -> Seed:
                 org_id=s.org,
                 student_id=s.s5,
                 kind=SessionKind.practice,
+                current_position=0,
                 concept_id=s.dist,
                 status=SessionStatus.passed,
                 ended_at=ds.NOW,
@@ -301,6 +304,7 @@ async def test_class_states_parity_with_frontier_load(db_app: DbApp) -> None:
                 org_id=s.org,
                 student_id=relearn,
                 kind=SessionKind.practice,
+                current_position=0,
                 concept_id=s.dist,
                 status=SessionStatus.passed,
                 ended_at=ds.NOW - timedelta(days=20),

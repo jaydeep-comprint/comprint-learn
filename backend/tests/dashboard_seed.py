@@ -132,6 +132,7 @@ async def kp_try(
         org_id=org,
         student_id=sid,
         kind=SessionKind.kp,
+        current_position=0,
         kp_id=kp.id,
         status=SessionStatus.passed if passed else SessionStatus.failed,
         started_at=ended_at - timedelta(minutes=5),

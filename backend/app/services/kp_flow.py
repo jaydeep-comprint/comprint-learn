@@ -52,6 +52,7 @@ from app.models import (
     Remediation,
     RemediationOutcome,
     RemediationState,
+    ReviewSource,
     SessionKind,
     SessionStatus,
 )
@@ -69,7 +70,7 @@ from app.schemas.kp import (
     StepResult,
 )
 from app.schemas.learn import ConceptRef, MisconceptionOut, RemediationRef
-from app.services import frontier, learn, xp
+from app.services import frontier, learn, quiz, srs, xp
 
 log = logging.getLogger(__name__)
 
@@ -967,6 +968,7 @@ async def _start_kp_session(scope: OrgScope, ctx: _KpCtx, pool: list[Item]) -> P
             raise _conflict("kp_order", "Pass the earlier parts first.", kp=earlier.slug)
     if not kp.open:
         raise await _waiting(scope, ctx, kp)
+    await quiz.ensure_no_pending(scope)  # spec 007: after the other gates, before a new session
 
     session_id = await scope.session.scalar(
         insert(PracticeSession)
@@ -1044,6 +1046,7 @@ async def answer(
             await _end_active_kp_sessions(scope, ctx.kp.id)
     if answered.outcome == "passed":
         out.xp = await xp.award_for_session(scope, session, "passed", ctx.access.node.id)
+        await srs.give_implicit_credit(scope, ctx.access.node.id, "kp")
         out.concept_learned, out.unlocked = await _on_kp_passed(scope, ctx)
     elif answered.outcome == "failed":
         out.xp = await xp.award_for_session(scope, session, "failed", ctx.access.node.id)
@@ -1234,15 +1237,16 @@ async def remediation_info(scope: OrgScope, remediation_id: str) -> RemediationO
     )
 
 
-async def _review_kps(scope: OrgScope, rem: Remediation) -> list["frontier.KpView"]:
-    kps = await frontier.active_kps(scope, [rem.prereq_concept_id])
-    return [k for k in kps if k.quick]  # reviews serve quick checks only (spec 006)
+async def review_kps(scope: OrgScope, concept_id: uuid.UUID) -> list["frontier.KpView"]:
+    """The concept's active KPs with quick checks (brush-ups and reviews serve only those)."""
+    kps = await frontier.active_kps(scope, [concept_id])
+    return [k for k in kps if k.quick]
 
 
-async def _review_pool(
+async def review_pool(
     scope: OrgScope, kps: list["frontier.KpView"], position: int
 ) -> tuple[list[Item], uuid.UUID]:
-    """Round-robin across the prereq's KPs: position p draws from KP (p - 1) mod n."""
+    """Round-robin across the concept's KPs: position p draws from KP (p - 1) mod n."""
     if not kps:
         raise EmptyPoolError(None)
     kp = kps[(position - 1) % len(kps)]
@@ -1306,7 +1310,7 @@ async def remediation_question(scope: OrgScope, remediation_id: str) -> Question
 async def _review_question(
     scope: OrgScope, rem: Remediation, session: PracticeSession | None
 ) -> QuestionPublic:
-    kps = await _review_kps(scope, rem)
+    kps = await review_kps(scope, rem.prereq_concept_id)
     if not kps:
         raise EmptyPoolError(rem.id)
     if session is None or session.status != SessionStatus.active:
@@ -1333,10 +1337,10 @@ async def _review_question(
         else:
             session = await scope.session.get(PracticeSession, session_id)
             assert session is not None
-            pool, key = await _review_pool(scope, kps, 1)
+            pool, key = await review_pool(scope, kps, 1)
             await _serve(scope, session, pool, 1, key)
     else:
-        pool, key = await _review_pool(scope, kps, session.current_position)
+        pool, key = await review_pool(scope, kps, session.current_position)
         if session.current_item_id not in {i.id for i in pool}:
             await _serve(scope, session, pool, session.current_position, key)
     out = await session_question(scope, session)
@@ -1388,15 +1392,26 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
     outcome = answered.outcome
     if outcome == "active":
         try:
-            kps = await _review_kps(scope, rem)
-            pool, key = await _review_pool(scope, kps, session.current_position + 1)
+            kps = await review_kps(scope, rem.prereq_concept_id)
+            pool, key = await review_pool(scope, kps, session.current_position + 1)
             await _serve(scope, session, pool, session.current_position + 1, key)
         except EmptyPoolError:
             log.warning("remediation %s ran out of questions; resolving it", rem.id)
             outcome = out.session_status = "passed"
+    if outcome in ("passed", "failed"):
+        # Spec 007: a brush-up's result is also an explicit FSRS review of the prerequisite.
+        await srs.apply_review(
+            scope,
+            rem.prereq_concept_id,
+            passed=outcome == "passed",
+            all_correct=all(out.results),
+            source=ReviewSource.brushup,
+            session_id=session.id,
+        )
     if outcome == "passed":
         _resolve_review(rem, session)
         out.xp = await xp.award_for_session(scope, session, "passed", rem.prereq_concept_id)
+        await srs.give_implicit_credit(scope, rem.prereq_concept_id, "brushup")
         out.kp_open = await _kp_unblocked(scope, rem)
     elif outcome == "failed":
         out.xp = await xp.award_for_session(scope, session, "failed", rem.prereq_concept_id)
@@ -1408,8 +1423,20 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
 async def _relearn(scope: OrgScope, concept_id: uuid.UUID) -> None:
     """A failed review: the prereq goes back to in progress with every KP reset (history kept);
     its open reviews become relearns (their active sessions end), resolved when it's learned
-    again."""
+    again. Spec 007: also its open scheduled review (the card resumes after the relearn)."""
     await frontier.close_review_sessions(scope, concept_id)
+    await scope.session.execute(
+        update(PracticeSession)
+        .where(
+            PracticeSession.org_id == scope.org_id,
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.kind == SessionKind.review,
+            PracticeSession.concept_id == concept_id,
+            PracticeSession.status == SessionStatus.active,
+        )
+        .values(status=SessionStatus.failed, ended_at=func.now())
+        .execution_options(synchronize_session="fetch")
+    )
     await scope.session.execute(
         update(ConceptState)
         .where(

@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from alembic.autogenerate import compare_metadata
@@ -14,7 +15,14 @@ from app.cli import DEFAULT_CONTENT_ROOT
 from app.content.importer import import_tree
 from app.core.config import get_settings
 from app.db.base import Base
-from app.models import Concept, ConceptState, ConceptStatus
+from app.models import (
+    Concept,
+    ConceptState,
+    ConceptStatus,
+    ReviewCard,
+    ReviewLog,
+    ReviewSource,
+)
 from tests.conftest import BACKEND_DIR, DbApp
 from tests.db_seed import seed_school
 
@@ -143,3 +151,49 @@ async def test_0006_round_trip_drops_practice_rows(db_app: DbApp) -> None:
     async with db_app.sessions() as session:
         conn = await session.connection()
         assert await conn.run_sync(_diff) == []
+
+
+async def test_0008_backfills_review_cards_from_learned_at(db_app: DbApp) -> None:
+    """Every learned concept with gradable items gets a card after 0008, as if `learned_at` were
+    a first Good review (so one learned long ago is already due), logged as `backfill`."""
+    issues, report = await import_tree(DEFAULT_CONTENT_ROOT, db_app.sessions)
+    assert report is not None, [str(i) for i in issues]
+    async with db_app.sessions() as session:
+        school = await seed_school(session, "AAA")
+        concept_id = await session.scalar(select(Concept.id).where(Concept.slug == "acceleration"))
+    student = school.student_ids[3]
+    learned_at = datetime.now(UTC) - timedelta(days=60)
+    env = {**os.environ, "DATABASE_URL": get_settings().test_database_url or ""}
+
+    def alembic(*args: str) -> None:
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND_DIR,
+            env=env,
+            check=True,
+            capture_output=True,
+        )
+
+    await db_app.sessions.kw["bind"].dispose()
+    alembic("downgrade", "0007_xp")
+    try:
+        async with db_app.sessions() as session:
+            await session.execute(
+                text(
+                    "INSERT INTO concept_state (org_id, student_id, concept_id, status, source, "
+                    "learned_at) VALUES (:org, :student, :concept, 'learned', 'lesson', :at)"
+                ),
+                {"org": school.org_id, "student": student, "concept": concept_id, "at": learned_at},
+            )
+            await session.commit()
+        await db_app.sessions.kw["bind"].dispose()
+    finally:
+        alembic("upgrade", "head")
+    async with db_app.sessions() as session:
+        cards = (await session.scalars(select(ReviewCard))).all()
+        logs = (await session.scalars(select(ReviewLog))).all()
+    assert [(c.student_id, c.concept_id) for c in cards] == [(student, concept_id)]
+    card = cards[0]
+    assert card.last_review == learned_at and card.reps == 1
+    assert learned_at < card.due < datetime.now(UTC)  # learned long ago: already due
+    assert [(e.source, e.rating) for e in logs] == [(ReviewSource.backfill, 3)]

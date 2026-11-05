@@ -11,6 +11,8 @@ Content is global (read without `OrgScope`); learning state (`attempt`, `lesson_
 The top of this module is pure (no DB) so the outline algorithm is unit-testable.
 """
 
+from __future__ import annotations  # frontier and learn import each other (spec 007 import order)
+
 import hashlib
 import heapq
 import random
@@ -43,7 +45,9 @@ from app.models import (
     PracticeSession,
     Remediation,
     RemediationState,
+    ReviewCard,
     SchoolClass,
+    SessionKind,
     SessionStatus,
     StudyActivity,
     StudyTime,
@@ -75,6 +79,7 @@ from app.services import frontier
 
 MAX_STEP_SECONDS = 600
 REMEDIATION_STEP = "remediation"  # study time on a brush-up review, logged against the prereq
+REVIEW_STEP = "review"  # spec 007: study time on a scheduled review of the concept
 MAX_CHECK_MS = 1_800_000
 ASSET_URL_PREFIX = "/content-assets/"
 SUBJECT_ORDER = {s: i for i, s in enumerate(Subject)}
@@ -317,12 +322,12 @@ def _require_student(scope: OrgScope) -> None:
 HOME_READY = 5
 
 
-def _concept_ref(graph: "_Graph", cid: uuid.UUID) -> ConceptRef:
+def _concept_ref(graph: _Graph, cid: uuid.UUID) -> ConceptRef:
     return ConceptRef(id=graph.nodes[cid].ref, title=graph.nodes[cid].title)
 
 
 async def remediation_refs(
-    scope: OrgScope, graph: "_Graph", remediations: Sequence[frontier.RemediationView]
+    scope: OrgScope, graph: _Graph, remediations: Sequence[frontier.RemediationView]
 ) -> list[tuple[frontier.RemediationView, RemediationRef]]:
     """Remediations (whose concepts are still active) with the failing KP's concept."""
     kp_ids = {r.kp_id for r in remediations}
@@ -358,7 +363,7 @@ async def remediation_refs(
     return out
 
 
-def _home_concept(graph: "_Graph", view: frontier.ConceptView) -> HomeConcept:
+def _home_concept(graph: _Graph, view: frontier.ConceptView) -> HomeConcept:
     waiting = view.waiting
     return HomeConcept(
         id=graph.nodes[view.id].ref,
@@ -725,6 +730,7 @@ async def _active_practice(scope: OrgScope, concept_id: uuid.UUID) -> bool:
         .with_only_columns(PracticeSession.id)
         .where(
             PracticeSession.student_id == scope.user.id,
+            PracticeSession.kind == SessionKind.practice,  # not a review (spec 007)
             PracticeSession.concept_id == concept_id,
             PracticeSession.status == SessionStatus.active,
         )
@@ -805,11 +811,14 @@ async def record_progress(
     remediation = step == REMEDIATION_STEP
     if remediation and not await _review_due_on(scope, access.node.id):
         raise ApiProblem(422, "invalid_step", "There's no brush-up due on this concept.")
-    if step not in content.steps and not remediation:
+    review = step == REVIEW_STEP
+    if review and not await _has_card(scope, access.node.id):
+        raise ApiProblem(422, "invalid_step", "There's no review on this concept.")
+    if step not in content.steps and not remediation and not review:
         raise ApiProblem(422, "invalid_step", "That step isn't part of this lesson.")
     seconds = min(active_seconds, MAX_STEP_SECONDS)
     if seconds > 0:
-        practice = remediation or step.startswith("kpq:") or step == PRACTICE_STEP
+        practice = remediation or review or step.startswith("kpq:") or step == PRACTICE_STEP
         scope.new(
             StudyTime,
             student_id=scope.user.id,
@@ -818,7 +827,7 @@ async def record_progress(
             step=step,
             active_seconds=seconds,
         )
-    if remediation:  # time on a brush-up of this (prerequisite) concept: no lesson progress
+    if remediation or review:  # time on a brush-up or review of this concept: no lesson progress
         await scope.session.commit()
         return _progress_out(access.progress) or ProgressOut(
             seen_steps=[], last_step="", finished_at=None
@@ -829,6 +838,15 @@ async def record_progress(
     await scope.session.commit()
     assert out is not None
     return out
+
+
+async def _has_card(scope: OrgScope, concept_id: uuid.UUID) -> bool:
+    found = await scope.session.scalar(
+        scope.select(ReviewCard)
+        .with_only_columns(ReviewCard.concept_id)
+        .where(ReviewCard.student_id == scope.user.id, ReviewCard.concept_id == concept_id)
+    )
+    return found is not None
 
 
 async def _review_due_on(scope: OrgScope, concept_id: uuid.UUID) -> bool:

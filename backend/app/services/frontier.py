@@ -436,7 +436,8 @@ async def close_review_sessions(scope: OrgScope, concept_id: uuid.UUID) -> None:
 
 
 async def mark_learned(scope: OrgScope, concept_id: uuid.UUID) -> None:
-    """Concept learned; remediations waiting on it being relearned resolve."""
+    """Concept learned; remediations waiting on it being relearned resolve. Spec 007: its review
+    card is created (or, after a relearn, reviewed `Good` again)."""
     await close_review_sessions(scope, concept_id)
     await scope.session.execute(
         update(ConceptState)
@@ -468,3 +469,6 @@ async def mark_learned(scope: OrgScope, concept_id: uuid.UUID) -> None:
         )
         .execution_options(synchronize_session=False)
     )
+    from app.services import srs
+
+    await srs.on_learned(scope, concept_id)

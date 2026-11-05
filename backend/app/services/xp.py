@@ -2,9 +2,11 @@
 
 The top of this module is pure (no DB) so the rules are unit-testable. The DB services below take
 an `OrgScope`. XP is awarded once per `practice_session`, by the answer that ends it
-(`award_for_session`, called by the KP, brush-up and practice answer paths in the same transaction
-that ends the session). Sessions closed as a side effect, previews and "Practise again" earn
-nothing. Rows hold ids, numbers and the subject only.
+(`award_for_session`, called by the KP, brush-up, practice and review answer paths in the same
+transaction that ends the session). A quiz (spec 007) earns one event per subject
+(`award_for_quiz`), also when it ends by time-out. Other sessions closed as a side effect, previews
+and "Practise again" earn nothing. After every award a quiz may become due (`quiz.maybe_create`).
+Rows hold ids, numbers and the subject only.
 """
 
 import uuid
@@ -40,6 +42,7 @@ from app.models import (
     XpGrade,
     XpReason,
 )
+from app.schemas.quiz import QuizSubjectXp, QuizXpOut
 from app.schemas.xp import (
     GoalOut,
     LeaderboardOut,
@@ -50,7 +53,7 @@ from app.schemas.xp import (
     XpSummary,
     XpTodayOut,
 )
-from app.services import kp_flow
+from app.services import kp_flow, quiz
 
 # --- pure rules -----------------------------------------------------------------------------------
 
@@ -135,6 +138,41 @@ def session_xp(
         amount = max(1, _round(product)) if product > 0 else 0
     amount = max(MIN_AMOUNT, min(MAX_AMOUNT, amount))
     return XpCalc(amount, grade, base, rushed, answered, hints)
+
+
+@dataclass(frozen=True)
+class QuizPos:
+    """One quiz question of a subject (spec 007): unanswered questions count as wrong."""
+
+    expected_minutes: Decimal
+    correct: bool
+    answered: bool
+    time_ms: int = 0
+
+
+def quiz_xp(positions: Sequence[QuizPos]) -> XpCalc:
+    """A subject's share of a quiz. Base = expected minutes of the correct answers: all correct
+    x 1.2, some correct x 1.0, none 0. Fewer than half correct with >= min(2, answered wrong)
+    answered wrong items rushed costs 0.25 x the subject's expected minutes (at least 1);
+    unanswered items are never rushed. No hints in quizzes."""
+    right = [p for p in positions if p.correct]
+    wrong = [p for p in positions if p.answered and not p.correct]
+    rushed = sum(1 for p in wrong if is_rushed(PositionXp(p.expected_minutes, False, p.time_ms)))
+    base = sum((p.expected_minutes for p in right), Decimal(0))
+    answered = sum(1 for p in positions if p.answered)
+    if 2 * len(right) < len(positions) and wrong and rushed >= min(2, len(wrong)):
+        total = sum((p.expected_minutes for p in positions), Decimal(0))
+        amount = max(MIN_AMOUNT, -max(1, _round(RUSH_PENALTY * total)))
+        return XpCalc(amount, XpGrade.rushed, total, rushed, answered, 0)
+    if right and len(right) == len(positions):
+        grade = XpGrade.perfect
+    elif right:
+        grade = XpGrade.passed
+    else:
+        grade = XpGrade.poor
+    product = base * MULTIPLIER[grade]
+    amount = min(MAX_AMOUNT, max(1, _round(product)) if product > 0 else 0)
+    return XpCalc(amount, grade, base, rushed, answered, 0)
 
 
 def ist_date(now: datetime) -> date:
@@ -430,7 +468,7 @@ def _award_out(event: XpEvent, goal_met_today: bool) -> XpAwardOut:
 async def event_out(scope: OrgScope, session_id: uuid.UUID) -> XpAwardOut | None:
     """The award stored for a session (a resent or already-answered result)."""
     event = await scope.session.scalar(
-        scope.select(XpEvent).where(XpEvent.session_id == session_id)
+        scope.select(XpEvent).where(XpEvent.session_id == session_id).order_by(XpEvent.id).limit(1)
     )
     if event is None:
         return None
@@ -472,7 +510,7 @@ async def award_for_session(
             created_at=now,
         )
         .on_conflict_do_nothing(
-            index_elements=[XpEvent.session_id], index_where=text("session_id IS NOT NULL")
+            index_elements=[XpEvent.session_id, XpEvent.subject], index_where=_SESSION_WHERE
         )
         .returning(XpEvent.id)
     )
@@ -482,6 +520,7 @@ async def award_for_session(
         return existing
     await _bump_days(scope, session.student_id, day, subject, calc.amount, now)
     met = await _goal_met_by(scope, session.student_id, day, now)
+    await quiz.maybe_create(scope)  # spec 007: every ~150 lifetime XP
     return XpAwardOut(
         amount=calc.amount,
         grade=calc.grade,
@@ -489,6 +528,93 @@ async def award_for_session(
         hints=calc.hints,
         goal_met_today=met,
     )
+
+
+_SESSION_WHERE = text("session_id IS NOT NULL")
+
+
+@dataclass(frozen=True)
+class QuizSubject:
+    """A subject's questions in a quiz: the concept of its first item and its positions."""
+
+    concept_id: uuid.UUID
+    positions: list[QuizPos]
+
+
+async def award_for_quiz(
+    scope: OrgScope, session: PracticeSession, subjects: Mapping[Subject, QuizSubject]
+) -> QuizXpOut:
+    """One `xp_event` per subject in a finished quiz (spec 007), each counting towards that
+    subject's day like any other work. Doesn't create the next quiz (the caller sets the mark)."""
+    now = datetime.now(UTC)
+    day = ist_date(now)
+    out = []
+    for subject in Subject:
+        part = subjects.get(subject)
+        if part is None:
+            continue
+        calc = quiz_xp(part.positions)
+        inserted = await scope.session.scalar(
+            insert(XpEvent)
+            .values(
+                org_id=scope.org_id,
+                student_id=session.student_id,
+                session_id=session.id,
+                reason=XpReason.quiz,
+                concept_id=part.concept_id,
+                subject=subject,
+                amount=calc.amount,
+                grade=calc.grade,
+                base_minutes=calc.base_minutes,
+                answered=calc.answered,
+                rushed_count=calc.rushed_count,
+                hints=0,
+                day=day,
+                created_at=now,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[XpEvent.session_id, XpEvent.subject], index_where=_SESSION_WHERE
+            )
+            .returning(XpEvent.id)
+        )
+        if inserted is not None:
+            await _bump_days(scope, session.student_id, day, subject, calc.amount, now)
+        out.append((subject, calc))
+    met = await _goal_met_by(scope, session.student_id, day, now)
+    return _quiz_out([(s, c.amount, c.grade, c.base_minutes) for s, c in out], met)
+
+
+def _quiz_out(rows: Sequence[tuple[Subject, int, XpGrade, Decimal]], met: bool) -> QuizXpOut:
+    return QuizXpOut(
+        amount=sum(a for _, a, _, _ in rows),
+        base_minutes=sum((b for _, _, _, b in rows), Decimal(0)),
+        goal_met_today=met,
+        subjects=[QuizSubjectXp(subject=s, amount=a, grade=g) for s, a, g, _ in rows],
+    )
+
+
+async def quiz_events_out(scope: OrgScope, session_id: uuid.UUID) -> QuizXpOut | None:
+    """The stored per-subject awards of a finished quiz (the result page)."""
+    events = (
+        await scope.session.scalars(scope.select(XpEvent).where(XpEvent.session_id == session_id))
+    ).all()
+    if not events:
+        return None
+    order = list(Subject)
+    events = sorted(events, key=lambda e: order.index(e.subject))
+    first = events[0]
+    met = await _goal_met_by(scope, first.student_id, first.day, first.created_at)
+    return _quiz_out([(e.subject, e.amount, e.grade, e.base_minutes) for e in events], met)
+
+
+async def lifetime_xp(scope: OrgScope) -> int:
+    """The student's net XP over all subjects (negatives count, not floored)."""
+    total = await scope.session.scalar(
+        select(func.coalesce(func.sum(XpEvent.amount), 0)).where(
+            XpEvent.org_id == scope.org_id, XpEvent.student_id == scope.user.id
+        )
+    )
+    return int(total or 0)
 
 
 # --- DB: reads ------------------------------------------------------------------------------------

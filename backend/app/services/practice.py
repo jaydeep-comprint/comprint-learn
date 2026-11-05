@@ -26,7 +26,7 @@ from app.models import (
 from app.models.content import ItemKind, ItemType
 from app.schemas.kp import AnswerIn, AnswerResult, QuestionPublic
 from app.schemas.learn import ConceptRef
-from app.services import frontier, kp_flow, learn, xp
+from app.services import frontier, kp_flow, learn, quiz, xp
 
 # Index predicate as a SQL literal, never a bound parameter (see learn.LEARN_ATTEMPT_INDEX_WHERE).
 _ACTIVE_PRACTICE_WHERE = text("status = 'active' AND kind = 'practice'")
@@ -192,6 +192,7 @@ async def practice_question(
 
     session = await _locked_session(scope, cid)
     if session is None or session.status != SessionStatus.active:
+        await quiz.ensure_no_pending(scope)  # spec 007: no new attempt while a quiz is due
         session = await _start(scope, cid, pool, session)
     elif session.current_item_id not in {i.id for i in pool}:  # retired mid-attempt
         item = await _choose(scope, cid, pool, None)

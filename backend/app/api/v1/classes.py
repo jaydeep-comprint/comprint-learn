@@ -47,6 +47,8 @@ async def patch_class(class_id: uuid.UUID, body: ClassPatch, scope: StaffScope) 
         subject=body.subject,
         grade=body.grade,
         archived=body.archived,
+        daily_goal=body.daily_goal,
+        leaderboard_enabled=body.leaderboard_enabled,
     )
 
 
@@ -62,8 +64,7 @@ async def remove_teacher(class_id: uuid.UUID, user_id: uuid.UUID, scope: StaffSc
 
 @router.get("/{class_id}/students", response_model=list[ClassStudentOut])
 async def list_class_students(class_id: uuid.UUID, scope: StaffScope) -> list[ClassStudentOut]:
-    students = await tenancy.list_class_students(scope, class_id)
-    return [ClassStudentOut.model_validate(s) for s in students]
+    return await tenancy.list_class_students(scope, class_id)
 
 
 @router.post(

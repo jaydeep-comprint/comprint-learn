@@ -97,13 +97,21 @@ docs/         PRD, architecture, roadmap, specs, plans
     `concept_id`; it passes or fails with that item), with status (active | passed | failed) and the question being shown
     (`current_item_id`, `current_seed`, `current_position`, `current_served_at`), stored before it's returned so
     reloads get the same question. Partial unique indexes allow one active session per student × KP, per
-    remediation and per student × concept (practice). Spec 008 reads failed sessions for negative XP.
+    remediation and per student × concept (practice). Spec 008 awards XP when an answer ends a session.
   - `remediation` (spec 005): created by the 2nd (and later) fail of a KP, one per active key prerequisite
     (`kp_key_prereq`): `review_due` (a 3–5 question review) if the prerequisite is learned, else `relearn`; a failed
     review sends the prerequisite back to in progress (KPs reset, history kept). Resolved when the review passes or
     the prerequisite is learned again.
   - `review_card`: FSRS state per student × **concept**.
-  - `xp_event`: an append-only ledger of XP awarded, with the reason.
+  - `xp_event` (spec 008): an append-only ledger, one row per session ended by an answer (unique `session_id`;
+    amount may be 0 or negative) with the reason, concept, subject, IST `day`, grade and the rule's inputs
+    (`base_minutes`, `answered`, `rushed_count`, `hints`). Sessions closed as a side effect, previews and "Practise
+    again" earn nothing. Spec 007 adds review and quiz reasons.
+  - `xp_day` (spec 008): per student × IST date × subject: net `xp`, the `goal` frozen at the day's first XP (raised
+    the same day, never lowered; null = no class for that subject) and `met_at` (once met, stays met). A day is met
+    when it has a goal row and every goal row is met; the streak is computed on read.
+  - `student_goal` (spec 008): a student's own daily goal per subject (≥ the class goal). `school_class` has
+    `daily_goal` (5–60, default 15) and `leaderboard_enabled` (off by default).
   - `quiz`: mixed timed quizzes and their items; `assignment`: a teacher target (concept or chapter, class, due date).
   - `diagnostic_session`: per-topic evidence for placement.
 - **AI**: `tutor_session` and `tutor_message`, kept for safety review and cost tracking.
@@ -115,7 +123,7 @@ docs/         PRD, architecture, roadmap, specs, plans
 | 2 | Every tenant-owned table has `org_id`; a single FastAPI dependency scopes every query | One choke point for isolation; tested | Separate DB per school (overkill) |
 | 3 | **Mastery = knowledge points.** A concept is 3–4 KPs; each KP is a worked example plus 2–5 questions (more after a wrong answer). Failing a KP ends the lesson, and the student retries **later** with new questions. Two fails at the same KP schedule reviews of its key prerequisites. A concept is *learned* when every KP passes. A concept is *ready* (on the knowledge frontier) when all of its prerequisites are learned | Proven by Math Academy (95% first-try pass rate); simple to explain; Bloom stays useful as tags | A mastery score per Bloom level as the gate (rejected Oct 2026; see research doc) |
 | 4 | Learn layer = intro + worked examples + one misconception check (Remember/Understand). Practice = KP questions, multi-step problems, code (Apply → Create). Bloom levels are **tags on items**, used for teacher analytics and depth views | Matches the two-layer idea without turning Bloom into a gate | |
-| 5 | **XP = item.expected_minutes × performance multiplier** (perfect 1.2, pass 1.0, partial 0.3, poor 0, rushing or guessing a small negative). Hints reduce it, repeats earn less, and there's no "I don't know" button. Daily goal ~30–40 XP. Progress bars count **concepts learned**, not XP | 1 XP ≈ 1 min of focused work (Math Academy); implementations earn most because they take longest; penalties stop XP farming | Bloom-weighted XP (rejected Oct 2026) |
+| 5 | **XP = item.expected_minutes × performance multiplier**, once per session ended by an answer (perfect 1.2, pass 1.0, partial 0.3 for a failed KP/review with ≥ half right, poor 0). **Rushing**: a failed session with ≥ min(2, answered) wrong answers faster than max(5 s, 15% of expected) costs 0.25 × base (at least 1). Hints reduce it (× 1 − 0.25 per hint), repeats ("Practise again") earn 0, and there's no "I don't know" button. A **daily goal per subject**: the teacher's class goal (default 15) or the student's own, higher one; one streak across subjects. Progress bars count **concepts learned**, not XP | 1 XP ≈ 1 min of focused work (Math Academy); implementations earn most because they take longest; penalties stop XP farming | Bloom-weighted XP (rejected Oct 2026) |
 | 6 | Python runs client-side in Pyodide. The browser runs every test (visible tests, and hidden tests' *inputs*) and sends the outputs; the server compares them with expected values only it keeps (`app/grading/code.py`, the same comparison the content validator uses), so hidden expected values never reach the client. Return values travel as JSON text made by Python, so `1`, `1.0` and `True` stay distinct through JavaScript. The server never runs code and can't detect hand-crafted outputs (stored with the code for later review) | No sandbox infrastructure needed | Judge0 / server sandbox (**v2**, when XP needs to be cheat-proof) |
 | 7 | Maths and physics answers are checked **server side** with SymPy | Answers are never sent to the client | Client-side checking (leaks answers) |
 | 8 | **The AI tutor never lowers the bar.** It sees only the current item/KP content and the student's attempts. It points to the worked example, the key prerequisite, or an experiment to try; it never gives the answer or the next step. Hints are capped per item and reduce XP, and teachers see hint usage. Text only. Rate-limited per student per day. Measured in the pilot | Math Academy's critique of chat tutors plus Vizuara's "try this experiment" style; cost and DPDP | General chatbot; voice or screen-watching tutor |

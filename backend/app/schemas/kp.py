@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr
 
 from app.schemas.content import OptionPublic
 from app.schemas.learn import ConceptRef, MisconceptionOut, RemediationRef
+from app.schemas.xp import XpAwardOut
 
 SessionStatus = Literal["active", "passed", "failed"]
 QuestionType = Literal["numeric", "expression", "mcq", "multistep", "code"]
@@ -119,6 +120,8 @@ class AnswerResult(BaseModel):
     item_correct: bool | None = None  # the item result, once done
     tests: list[CodeTestResult] | None = None  # code
     solution: str | None = None  # code: in KP sessions, previews, or after a practice pass
+    # Spec 008: set on the answer that ended the session (and on a resend of it)
+    xp: XpAwardOut | None = None
 
 
 class KpWaiting(BaseModel):

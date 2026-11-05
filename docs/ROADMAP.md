@@ -19,6 +19,11 @@ Each slice should work end to end before starting the next.
 | 007 | **Reviews + quizzes**: FSRS per concept, 3–5 question mixed reviews, one-level implicit credit, daily cap, interleaving; mixed timed quiz every ~150 XP with misses turned into reviews | Due reviews appear on the right days; implicit credit postpones prerequisite reviews; quiz unlocks at 150 XP |
 | 008 | **XP & gamification**: XP = expected minutes × performance, penalties for rushing, hint reduction, daily goal, streaks, progress = concepts learned; opt-in class leaderboard (teacher switch) | Implementation tasks earn the most XP; rushing earns ≤ 0; leaderboard hidden unless the teacher enables it |
 
+**Build order (decided Nov 2026): 008 before 007.** 007's mixed quiz unlocks every ~150 XP, so it needs XP to exist;
+008 needs nothing from 007 (XP comes from KP questions and Practice, already stored since 005/006). Spec numbers stay
+as they are. When 007 lands, review and quiz answers award XP through 008's formula. Until 009 (AI tutor) exists,
+008's hint reduction reads `attempt.hints_used`, which is always 0.
+
 ## Phase 2: AI + teacher
 | # | Spec | Done when |
 |---|---|---|

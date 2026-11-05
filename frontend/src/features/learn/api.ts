@@ -28,7 +28,7 @@ export const learnKeys = {
 };
 
 /** 403/404 are answers, not glitches: don't retry them. */
-function retryUnlessClientError(count: number, error: unknown): boolean {
+export function retryUnlessClientError(count: number, error: unknown): boolean {
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
   return count < 2;
 }

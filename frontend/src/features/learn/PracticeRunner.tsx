@@ -1,4 +1,4 @@
-import type { UseQueryResult } from "@tanstack/react-query";
+import { type UseQueryResult, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type AnswerBody, type AnswerFields, conflictCode } from "@/features/learn/api";
 import { QuestionStep } from "@/features/learn/QuestionStep";
+import { xpKeys } from "@/features/xp/api";
+import { showAwardToast } from "@/features/xp/awardToast";
 import type { AnswerResult, Question } from "@/lib/types";
 
 /** Serves a session's questions one at a time: load, submit, show the result, then the next one.
@@ -38,6 +40,7 @@ export function PracticeRunner({
   const [advancing, setAdvancing] = useState(false);
   const shownAt = useRef(0);
   const question = query.data;
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     shownAt.current = performance.now();
@@ -87,6 +90,11 @@ export function PracticeRunner({
       }
       setResult(next);
       shownAt.current = performance.now(); // time each step from the previous one
+      // Spec 008: the answer that ended the session carries its XP (once per session).
+      if (!preview && next.xp) {
+        showAwardToast(next.xp, question.session_id);
+        void queryClient.invalidateQueries({ queryKey: xpKeys.me });
+      }
     } catch {
       toast.error("Couldn't submit, try again");
     } finally {

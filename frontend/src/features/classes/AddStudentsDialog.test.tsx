@@ -24,6 +24,8 @@ const cls: SchoolClass = {
   archived: false,
   student_count: 0,
   teachers: [],
+  daily_goal: 15,
+  leaderboard_enabled: false,
 };
 
 function renderForm(onDone = vi.fn()) {

@@ -121,6 +121,7 @@ class SchoolClass(TenantMixin, Base):
     __table_args__ = (
         UniqueConstraint("id", "org_id", name="uq_school_class_id_org_id"),
         CheckConstraint("grade IN (9, 10)", name="grade"),
+        CheckConstraint("daily_goal BETWEEN 5 AND 60 AND daily_goal % 5 = 0", name="daily_goal"),
         Index(
             "uq_school_class_org_name_active",
             "org_id",
@@ -140,6 +141,11 @@ class SchoolClass(TenantMixin, Base):
     subject: Mapped[Subject] = mapped_column(_pg_enum(Subject, "class_subject"), nullable=False)
     grade: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Spec 008: the class's daily XP goal and the teacher's opt-in weekly leaderboard.
+    daily_goal: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("15"))
+    leaderboard_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

@@ -69,7 +69,7 @@ from app.schemas.kp import (
     StepResult,
 )
 from app.schemas.learn import ConceptRef, MisconceptionOut, RemediationRef
-from app.services import frontier, learn
+from app.services import frontier, learn, xp
 
 log = logging.getLogger(__name__)
 
@@ -682,7 +682,7 @@ async def _stored_result(
     if done:
         index = sorted({a.position or 0 for a in attempts}).index(attempt.position or 0)
         item_correct = results[index] if index < len(results) else attempt.correct
-    return await _result(
+    out = await _result(
         scope,
         item,
         graded,
@@ -694,6 +694,13 @@ async def _stored_result(
         earlier_steps=await _earlier_steps(scope, item, seed, rows, attempt.step),
         solution=rule == "always" or (rule == "on_pass" and bool(item_correct)),
     )
+    if (
+        done
+        and session.status != SessionStatus.active
+        and attempt.position == session.current_position
+    ):
+        out.xp = await xp.event_out(scope, session.id)  # the answer that ended it (spec 008)
+    return out
 
 
 @dataclass
@@ -1036,8 +1043,10 @@ async def answer(
             answered = _Answered(out, "passed", answered.item)
             await _end_active_kp_sessions(scope, ctx.kp.id)
     if answered.outcome == "passed":
+        out.xp = await xp.award_for_session(scope, session, "passed", ctx.access.node.id)
         out.concept_learned, out.unlocked = await _on_kp_passed(scope, ctx)
     elif answered.outcome == "failed":
+        out.xp = await xp.award_for_session(scope, session, "failed", ctx.access.node.id)
         out.remediations = await _on_kp_failed(scope, ctx)
     await scope.session.commit()
     return out
@@ -1387,8 +1396,10 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
             outcome = out.session_status = "passed"
     if outcome == "passed":
         _resolve_review(rem, session)
+        out.xp = await xp.award_for_session(scope, session, "passed", rem.prereq_concept_id)
         out.kp_open = await _kp_unblocked(scope, rem)
     elif outcome == "failed":
+        out.xp = await xp.award_for_session(scope, session, "failed", rem.prereq_concept_id)
         await _relearn(scope, rem.prereq_concept_id)
     await scope.session.commit()
     return out

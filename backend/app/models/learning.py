@@ -1,5 +1,6 @@
 """Learning state: attempts, lesson progress and study time (spec 004); concept states, KP progress,
-practice sessions and remediations (spec 005).
+practice sessions and remediations (spec 005); the XP ledger, day snapshots and own goals
+(spec 008).
 
 All tenant-owned (`TenantMixin`): the student link is a composite FK to `app_user(id, org_id)`, so a
 row can't point at a student in another school. Content links (`item`, `concept`, `misconception`)
@@ -8,18 +9,21 @@ are plain FKs to the global content tables. Read and write only through `OrgScop
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
     Identity,
     Index,
     Integer,
+    Numeric,
     SmallInteger,
     Text,
     UniqueConstraint,
@@ -30,7 +34,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.models.tenancy import TenantMixin, _pg_enum
+from app.models.tenancy import Subject, TenantMixin, _pg_enum
 
 
 class AttemptContext(enum.StrEnum):
@@ -358,3 +362,90 @@ class PracticeSession(TenantMixin, Base):
     current_served_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime] = _now()
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class XpReason(enum.StrEnum):
+    """What earned an `xp_event`. Spec 007 adds review and quiz."""
+
+    kp = "kp"
+    remediation = "remediation"
+    practice = "practice"
+
+
+class XpGrade(enum.StrEnum):
+    perfect = "perfect"
+    passed = "passed"
+    partial = "partial"
+    poor = "poor"
+    rushed = "rushed"
+
+
+class XpEvent(TenantMixin, Base):
+    """Append-only XP ledger (spec 008): one row per practice session ended by an answer (amount
+    may be 0 or negative), with the rule's inputs so an award can be audited and explained.
+    Ids, numbers and the subject only: no personal data."""
+
+    __tablename__ = "xp_event"
+    __table_args__ = (
+        _student_fk("xp_event"),
+        _tenant_fk("session_id", "xp_event", "practice_session"),
+        CheckConstraint("amount BETWEEN -100 AND 500", name="amount"),
+        Index("ix_xp_event_org_student_day", "org_id", "student_id", "day"),
+        Index(
+            "uq_xp_event_session",
+            "session_id",
+            unique=True,
+            postgresql_where=text("session_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    session_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    reason: Mapped[XpReason] = mapped_column(_pg_enum(XpReason, "xp_reason"), nullable=False)
+    concept_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("concept.id"), nullable=False
+    )
+    subject: Mapped[Subject] = mapped_column(_pg_enum(Subject, "class_subject"), nullable=False)
+    amount: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    grade: Mapped[XpGrade] = mapped_column(_pg_enum(XpGrade, "xp_grade"), nullable=False)
+    base_minutes: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    answered: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    rushed_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    hints: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = _now()
+
+
+class XpDay(TenantMixin, Base):
+    """Per student, IST date and subject: net XP (may be negative), the goal frozen at the day's
+    first XP (raised, never lowered; null = no goal for that subject) and when it was met."""
+
+    __tablename__ = "xp_day"
+    __table_args__ = (
+        _student_fk("xp_day"),
+        CheckConstraint("goal BETWEEN 5 AND 60", name="goal"),
+    )
+
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    subject: Mapped[Subject] = mapped_column(_pg_enum(Subject, "class_subject"), primary_key=True)
+    xp: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    goal: Mapped[int | None] = mapped_column(SmallInteger)
+    met_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = _now()
+
+
+class StudentGoal(TenantMixin, Base):
+    """A student's own daily goal for a subject (at least the class goal when set)."""
+
+    __tablename__ = "student_goal"
+    __table_args__ = (
+        _student_fk("student_goal"),
+        CheckConstraint("goal BETWEEN 5 AND 60 AND goal % 5 = 0", name="goal"),
+    )
+
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    subject: Mapped[Subject] = mapped_column(_pg_enum(Subject, "class_subject"), primary_key=True)
+    goal: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    updated_at: Mapped[datetime] = _now()

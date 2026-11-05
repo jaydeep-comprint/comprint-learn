@@ -50,8 +50,8 @@ Build order and spec numbers: docs/ROADMAP.md.
 9. AI tutor, scoped to the current lesson or question: it points to the worked example, the prerequisite, or an experiment to try.
    It never gives answers or steps; hints are capped and reduce XP ([spec 009](specs/009-ai-tutor.md)).
 10. Teacher dashboard: class overview, per-student knowledge graph, weakest concepts, misconception spread, at-risk students,
-    and **assigned targets** (concept/chapter + due date). Assignments set priority but **never cap**: students can still learn
-    anything whose prerequisites are learned.
+    and **assigned targets** (one or more concepts, a chapter selects all of its concepts, + due date, for the class or chosen students). Assignments set priority but **never cap**: students can still learn
+    anything whose prerequisites are learned ([spec 010](specs/010-teacher-dashboard-assignments.md)).
 11. Teacher AI assist: class/student summaries and suggested notes for re-teaching.
 
 ## Non-goals (NOT in v1)

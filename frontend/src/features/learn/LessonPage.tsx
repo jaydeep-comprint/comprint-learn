@@ -87,6 +87,7 @@ function KpPractice({
   const query = useKpQuestion(lesson.id, kp.slug);
   return (
     <PracticeRunner
+      tutor
       header={`Practice · ${kp.title}`}
       query={query}
       submit={(body) => submitKpAnswer(lesson.id, kp.slug, body)}

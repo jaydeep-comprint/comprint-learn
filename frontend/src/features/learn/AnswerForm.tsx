@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { Markdown } from "@/components/markdown/Markdown";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,7 @@ export function AnswerForm({
   submitting,
   labelledBy,
   onSubmit,
+  onDraftChange,
 }: {
   name: string;
   part: AnswerPart;
@@ -91,11 +92,18 @@ export function AnswerForm({
   submitting: boolean;
   labelledBy: string;
   onSubmit: (fields: AnswerFields) => void;
+  /** The current draft for the AI tutor (spec 009); MCQ picks are never sent (null). */
+  onDraftChange?: (draft: string | null) => void;
 }) {
   const id = useId();
   const inputId = `${id}-input`;
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState("");
+  useEffect(() => {
+    if (!onDraftChange) return;
+    if (part.type === "mcq") onDraftChange(null);
+    else onDraftChange([value.trim(), unit.trim()].filter(Boolean).join(" ") || null);
+  }, [value, unit, part.type, onDraftChange]);
   const answered = marked !== null;
   const disabled = answered || submitting;
   const ready = value.trim() !== "" && (!part.unitRequired || unit.trim() !== "");

@@ -1,5 +1,5 @@
 import { CheckCircle2, XCircle } from "lucide-react";
-import { lazy, Suspense, useId } from "react";
+import { lazy, type ReactNode, Suspense, useId } from "react";
 
 import { Markdown } from "@/components/markdown/Markdown";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,8 @@ export function QuestionStep({
   onContinue,
   passedLabel = "Part passed ✓",
   continueLabel,
+  help,
+  onDraftChange,
 }: {
   header: string;
   question: Question;
@@ -104,6 +106,10 @@ export function QuestionStep({
   passedLabel?: string;
   /** The button after the session ended (default "Continue"). */
   continueLabel?: (result: AnswerResult) => string;
+  /** The AI tutor's button (spec 009): below the answer controls, then beside Next / Continue. */
+  help?: ReactNode;
+  /** The current draft (input + unit, multi-step step input, or code), for the tutor. */
+  onDraftChange?: (draft: string | null) => void;
 }) {
   const id = useId();
   const promptId = `${id}-prompt`;
@@ -128,6 +134,7 @@ export function QuestionStep({
           submitting={submitting}
           assetBase={assetBase}
           onSubmit={onSubmit}
+          onDraftChange={onDraftChange}
         />
       ) : question.type === "code" && question.code ? (
         <Suspense fallback={<Skeleton className="h-64 w-full" />}>
@@ -137,6 +144,7 @@ export function QuestionStep({
             serverTests={result?.tests ?? null}
             submitting={submitting}
             onSubmit={onSubmit}
+            onDraftChange={onDraftChange}
           />
         </Suspense>
       ) : (
@@ -154,8 +162,10 @@ export function QuestionStep({
           submitting={submitting}
           labelledBy={promptId}
           onSubmit={onSubmit}
+          onDraftChange={onDraftChange}
         />
       )}
+      {!done && help}
       {result && done && (
         <>
           {quick && <ResultPanel question={question} result={result} assetBase={assetBase} />}
@@ -165,9 +175,12 @@ export function QuestionStep({
               Another question
             </Button>
           ) : status === "active" ? (
-            <Button onClick={onNext} className="w-full sm:w-auto">
-              Next question
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button onClick={onNext} className="w-full sm:w-auto">
+                Next question
+              </Button>
+              {help}
+            </div>
           ) : (
             <div className="space-y-3">
               {status === "passed" && (
@@ -176,9 +189,12 @@ export function QuestionStep({
                   {passedLabel}
                 </p>
               )}
-              <Button onClick={onContinue} className="w-full sm:w-auto">
-                {continueLabel?.(result) ?? "Continue"}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button onClick={onContinue} className="w-full sm:w-auto">
+                  {continueLabel?.(result) ?? "Continue"}
+                </Button>
+                {help}
+              </div>
             </div>
           )}
         </>

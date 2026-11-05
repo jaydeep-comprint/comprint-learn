@@ -125,6 +125,9 @@ class ClassPatch(BaseModel):
     subject: Subject | None = None
     grade: Grade | None = None
     archived: bool | None = None
+    # Spec 008
+    daily_goal: Annotated[int, Field(ge=5, le=60, multiple_of=5)] | None = None
+    leaderboard_enabled: bool | None = None
 
 
 class TeacherRef(BaseModel):
@@ -140,6 +143,8 @@ class ClassOut(BaseModel):
     archived: bool
     student_count: int
     teachers: list[TeacherRef]
+    daily_goal: int
+    leaderboard_enabled: bool
 
 
 class ClassStudentOut(_Out):
@@ -147,6 +152,8 @@ class ClassStudentOut(_Out):
     display_name: str
     username: str
     status: UserStatus
+    week_xp: int = 0  # this week's XP in the class's subject (spec 008)
+    streak_days: int = 0
 
 
 class EnrollIn(BaseModel):

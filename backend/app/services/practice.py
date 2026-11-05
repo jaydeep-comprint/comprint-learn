@@ -26,7 +26,7 @@ from app.models import (
 from app.models.content import ItemKind, ItemType
 from app.schemas.kp import AnswerIn, AnswerResult, QuestionPublic
 from app.schemas.learn import ConceptRef
-from app.services import frontier, kp_flow, learn
+from app.services import frontier, kp_flow, learn, xp
 
 # Index predicate as a SQL literal, never a bound parameter (see learn.LEARN_ATTEMPT_INDEX_WHERE).
 _ACTIVE_PRACTICE_WHERE = text("status = 'active' AND kind = 'practice'")
@@ -250,8 +250,12 @@ async def practice_answer(
         await scope.session.rollback()
         return answered
     out = answered.result
+    assert session is not None
     if answered.outcome == "passed":
+        out.xp = await xp.award_for_session(scope, session, "passed", cid)
         out.concept_learned, out.unlocked = await _on_practice_passed(scope, access)
+    elif answered.outcome == "failed":
+        out.xp = await xp.award_for_session(scope, session, "failed", cid)
     await scope.session.commit()
     return out
 

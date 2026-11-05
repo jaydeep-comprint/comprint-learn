@@ -25,8 +25,13 @@ from app.models.learning import (
     RemediationState,
     SessionKind,
     SessionStatus,
+    StudentGoal,
     StudyActivity,
     StudyTime,
+    XpDay,
+    XpEvent,
+    XpGrade,
+    XpReason,
 )
 from app.models.tenancy import (
     AppUser,
@@ -69,9 +74,14 @@ __all__ = [
     "SchoolClass",
     "SessionKind",
     "SessionStatus",
+    "StudentGoal",
     "StudyActivity",
     "StudyTime",
     "Subject",
     "TenantMixin",
     "UserStatus",
+    "XpDay",
+    "XpEvent",
+    "XpGrade",
+    "XpReason",
 ]

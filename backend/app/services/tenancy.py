@@ -32,11 +32,13 @@ from app.models import (
 )
 from app.schemas.tenancy import (
     ClassOut,
+    ClassStudentOut,
     CreatedStudentOut,
     StudentOut,
     TeacherRef,
     TempPasswordOut,
 )
+from app.services import xp
 from app.services.supabase_admin import SupabaseAdmin, SupabaseAdminError
 
 logger = logging.getLogger(__name__)
@@ -441,6 +443,8 @@ async def _class_out(scope: OrgScope, classes: Sequence[SchoolClass]) -> list[Cl
             archived=c.archived_at is not None,
             student_count=counts.get(c.id, 0),
             teachers=teachers.get(c.id, []),
+            daily_goal=c.daily_goal,
+            leaderboard_enabled=c.leaderboard_enabled,
         )
         for c in classes
     ]
@@ -497,8 +501,11 @@ async def patch_class(
     subject: Subject | None,
     grade: int | None,
     archived: bool | None,
+    daily_goal: int | None = None,
+    leaderboard_enabled: bool | None = None,
 ) -> ClassOut:
     school_class = await scope.get(SchoolClass, class_id, for_update=True)
+    raised = daily_goal is not None and daily_goal > school_class.daily_goal
     if name is not None:
         school_class.name = name
     if subject is not None:
@@ -509,6 +516,13 @@ async def patch_class(
         school_class.archived_at = datetime.now(UTC)
     elif archived is False:
         school_class.archived_at = None
+    if daily_goal is not None:
+        school_class.daily_goal = daily_goal
+    if leaderboard_enabled is not None:
+        school_class.leaderboard_enabled = leaderboard_enabled
+    if raised and daily_goal is not None and school_class.archived_at is None:
+        # Today's snapshot rises with the goal (a lowered goal applies from tomorrow).
+        await xp.raise_class_goal(scope, class_id, school_class.subject, daily_goal)
     shown_name = school_class.name  # read before commit: rollback expires the instance
     try:
         await scope.session.commit()
@@ -544,8 +558,8 @@ async def remove_class_teacher(scope: OrgScope, class_id: uuid.UUID, user_id: uu
     await scope.session.commit()
 
 
-async def list_class_students(scope: OrgScope, class_id: uuid.UUID) -> Sequence[AppUser]:
-    await scope.get(SchoolClass, class_id)
+async def list_class_students(scope: OrgScope, class_id: uuid.UUID) -> list[ClassStudentOut]:
+    school_class = await scope.get(SchoolClass, class_id)
     stmt = (
         scope.select(AppUser)
         .join(
@@ -555,7 +569,14 @@ async def list_class_students(scope: OrgScope, class_id: uuid.UUID) -> Sequence[
         .where(Enrollment.class_id == class_id)
         .order_by(func.lower(AppUser.display_name), AppUser.username)
     )
-    return (await scope.session.scalars(stmt)).all()
+    students = (await scope.session.scalars(stmt)).all()
+    stats = await xp.roster_stats(scope, school_class, [s.id for s in students])
+    out = []
+    for s in students:
+        row = ClassStudentOut.model_validate(s)
+        row.week_xp, row.streak_days = stats[s.id]
+        out.append(row)
+    return out
 
 
 async def _get_writable_class(scope: OrgScope, class_id: uuid.UUID) -> SchoolClass:

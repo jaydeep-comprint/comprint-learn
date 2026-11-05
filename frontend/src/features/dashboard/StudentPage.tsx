@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AssignmentDialog, type AssignmentDraft } from "@/features/assignments/AssignmentDialog";
 import { ASSIGNMENT_STATUS } from "@/features/assignments/status";
 import type { MapMode } from "@/features/graph/ConceptNode";
+import { SummaryCard } from "@/features/teacher-ai/SummaryCard";
 import { ApiError } from "@/lib/api";
 import { dayDate, shortDate } from "@/lib/dates";
 import type { OutlineConcept, TeacherOutlineConcept } from "@/lib/types";
@@ -68,6 +70,7 @@ export function StudentPage() {
   const detail = useStudentDetail(cls.id, studentId);
   const outline = useStudentOutline(cls.id, studentId);
   const [mode, setMode] = useState<MapMode>("progress");
+  const [draft, setDraft] = useState<AssignmentDraft | null>(null);
 
   if (detail.error instanceof ApiError && detail.error.status === 404) return <NotFoundPage />;
   if (detail.isPending) return <Skeleton className="h-64" />;
@@ -113,7 +116,15 @@ export function StudentPage() {
         </p>
       </header>
 
-      <Card>
+      <SummaryCard
+        classId={cls.id}
+        window="7d"
+        studentId={d.student_id}
+        classCourse={courseSlug}
+        onAssign={setDraft}
+      />
+
+      <Card id="stats" className="scroll-mt-4">
         <CardHeader>
           <CardTitle>Last 7 days</CardTitle>
         </CardHeader>
@@ -144,7 +155,7 @@ export function StudentPage() {
         </CardContent>
       </Card>
 
-      <section className="space-y-2">
+      <section id="graph" className="scroll-mt-4 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-medium">Knowledge graph</h3>
           <div role="group" aria-label="Map view" className="inline-flex rounded-md border p-0.5">
@@ -182,7 +193,7 @@ export function StudentPage() {
         )}
       </section>
 
-      <section className="space-y-2">
+      <section id="assignments" className="scroll-mt-4 space-y-2">
         <h3 className="font-medium">Assignments</h3>
         {d.assignments.length === 0 ? (
           <p className="text-sm text-muted-foreground">No assignments.</p>
@@ -202,7 +213,7 @@ export function StudentPage() {
         )}
       </section>
 
-      <section className="space-y-2">
+      <section id="activity" className="scroll-mt-4 space-y-2">
         <h3 className="font-medium">Recent activity</h3>
         <ActivityList classId={cls.id} studentId={studentId} />
       </section>
@@ -211,6 +222,12 @@ export function StudentPage() {
         <h3 className="font-medium">Tutor chats</h3>
         <TutorThreads classId={cls.id} studentId={studentId} />
       </section>
+      <AssignmentDialog
+        classId={cls.id}
+        courseSlug={courseSlug}
+        draft={draft}
+        onClose={() => setDraft(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { MisconceptionStat } from "@/lib/types";
@@ -11,18 +11,27 @@ import { Empty } from "./DashCard";
 export function MisconceptionList({
   rows,
   onAssign,
+  openId = null,
 }: {
   rows: MisconceptionStat[];
   onAssign?: (concept: string) => void;
+  /** Expand (and scroll to) this row on mount, e.g. from a summary citation (spec 011). The
+   * parent remounts the list (`key`) when it changes. */
+  openId?: string | null;
 }) {
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(openId);
+  const target = useRef<HTMLLIElement | null>(null);
+  const present = openId !== null && rows.some((m) => m.id === openId);
+  useEffect(() => {
+    if (present) target.current?.scrollIntoView?.({ block: "center" });
+  }, [present]);
   if (rows.length === 0) return <Empty>No misconceptions picked up yet.</Empty>;
   return (
     <ul className="divide-y">
       {rows.map((m) => {
         const expanded = open === m.id;
         return (
-          <li key={m.id} className="py-2">
+          <li key={m.id} ref={m.id === openId ? target : undefined} className="py-2">
             <div className="flex items-start gap-2">
               <button
                 type="button"

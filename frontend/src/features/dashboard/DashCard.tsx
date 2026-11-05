@@ -20,7 +20,9 @@ export function DashCard<T>({
   query,
   children,
   className,
+  id,
 }: {
+  id?: string;
   title: string;
   description?: string;
   action?: ReactNode;
@@ -29,7 +31,7 @@ export function DashCard<T>({
   className?: string;
 }) {
   return (
-    <Card className={className}>
+    <Card id={id} className={className}>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div className="space-y-1">
           <CardTitle>{title}</CardTitle>

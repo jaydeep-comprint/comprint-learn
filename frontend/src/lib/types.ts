@@ -716,3 +716,73 @@ export type MyAssignment = {
   }[];
   next: { concept: string; course: string; title: string; brush_up_id: string | null } | null;
 };
+
+// --- Teacher AI assist (spec 011, backend/app/schemas/teacher_ai.py) ---
+
+export type SummaryBlocked =
+  "fresh" | "busy" | "teacher_cap" | "school_cap" | "archived" | "not_enough_data";
+
+export type FactLink = {
+  kind:
+    "concept" | "misconception" | "student" | "assignment" | "overview_card" | "student_section";
+  /** "<course>/<slug>" for `concept`. */
+  concept: string | null;
+  /** Misconception or assignment id. */
+  id: string | null;
+  /** Null when the student is no longer in the class. */
+  student_id: string | null;
+  card: string | null;
+  section: string | null;
+};
+
+export type SummaryFact = { id: string; text: string; link: FactLink };
+
+export type SummaryClaim = { text: string; citations: string[] };
+
+export type SummaryResource = {
+  id: string;
+  kind: "lesson" | "worked_example";
+  title: string;
+  /** "<concept course>/<slug>". */
+  concept: string;
+  concept_title: string;
+  /** KP slug: the lesson opens at `kp:<slug>`. */
+  kp: string | null;
+  /** False when the content was retired (shown as plain text). */
+  available: boolean;
+  /** In the class course, so it can be assigned. */
+  in_course: boolean;
+};
+
+export type SummaryNote = {
+  focus: string;
+  why: SummaryClaim;
+  revisit: SummaryResource[];
+  group: { student_id: string; display_name: string }[];
+  /** For AssignmentDialog: `student_ids` null = the whole class. */
+  assign: { concepts: string[]; student_ids: string[] | null };
+};
+
+export type TeacherSummary = {
+  id: string;
+  kind: "class" | "student";
+  window: DashboardWindow;
+  status: "ok" | "partial";
+  created_at: string;
+  created_by_name: string;
+  claims: SummaryClaim[];
+  notes: SummaryNote[];
+  /** Only the cited facts. */
+  facts: SummaryFact[];
+};
+
+export type SummaryState = {
+  enabled: boolean;
+  enough_data: boolean;
+  summary: TeacherSummary | null;
+  stale: boolean;
+  can_regenerate: boolean;
+  blocked: SummaryBlocked | null;
+  daily_left: number;
+  resets_at: string;
+};

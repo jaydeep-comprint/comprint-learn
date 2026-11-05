@@ -9,7 +9,9 @@ import { AddStudentsDialog } from "@/features/classes/AddStudentsDialog";
 import { AssignmentDialog, type AssignmentDraft } from "@/features/assignments/AssignmentDialog";
 import { dayDate } from "@/lib/dates";
 
-import { useConceptStats, useMisconceptions, useOverview, useWindow } from "./api";
+import { SummaryCard } from "@/features/teacher-ai/SummaryCard";
+
+import { useConceptStats, useMisconceptions, useOverview, useParam, useWindow } from "./api";
 import { AtRiskList } from "./AtRiskList";
 import { useClassContext } from "./classContext";
 import { ConceptDetailSheet } from "./ConceptDetailSheet";
@@ -29,9 +31,16 @@ export function OverviewTab() {
   const overview = useOverview(cls.id, window);
   const [allConcepts, setAllConcepts] = useState(false);
   const [allMisconceptions, setAllMisconceptions] = useState(false);
+  // Summary citations link here with `?concept=` / `?misconception=` (spec 011).
+  const [detail, setDetail] = useParam("concept");
+  const [openMisconception, setOpenMisconception] = useParam("misconception");
+  const outsideTop =
+    openMisconception !== null &&
+    overview.data !== undefined &&
+    !overview.data.misconceptions.some((m) => m.id === openMisconception);
+  const showAllMisconceptions = allMisconceptions || outsideTop;
   const concepts = useConceptStats(cls.id, window, allConcepts);
-  const misconceptions = useMisconceptions(cls.id, window, allMisconceptions);
-  const [detail, setDetail] = useState<string | null>(null);
+  const misconceptions = useMisconceptions(cls.id, window, showAllMisconceptions);
   const [draft, setDraft] = useState<AssignmentDraft | null>(null);
   const assign = (concept: string) => {
     setDetail(null);
@@ -53,6 +62,16 @@ export function OverviewTab() {
       <div className="flex justify-end">
         <WindowPicker value={window} onChange={setWindow} />
       </div>
+      <SummaryCard
+        key={window}
+        classId={cls.id}
+        window={window}
+        classCourse={courseSlug}
+        onAssign={(d) => {
+          setDetail(null);
+          setDraft(d);
+        }}
+      />
       <DashCard
         title="Weakest concepts"
         description="Highest KP fail rate (at least 3 students tried)."
@@ -70,17 +89,31 @@ export function OverviewTab() {
       </DashCard>
       <DashCard
         title="Misconceptions"
-        query={allMisconceptions ? misconceptions : part(overview, (o) => o.misconceptions)}
+        query={showAllMisconceptions ? misconceptions : part(overview, (o) => o.misconceptions)}
         action={
-          <Button variant="ghost" size="sm" onClick={() => setAllMisconceptions((v) => !v)}>
-            {allMisconceptions ? "Show top 5" : "Show all"}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setOpenMisconception(null);
+              setAllMisconceptions(!showAllMisconceptions);
+            }}
+          >
+            {showAllMisconceptions ? "Show top 5" : "Show all"}
           </Button>
         }
       >
-        {(data) => <MisconceptionList rows={data} onAssign={assign} />}
+        {(data) => (
+          <MisconceptionList
+            key={openMisconception ?? ""}
+            rows={data}
+            onAssign={assign}
+            openId={openMisconception}
+          />
+        )}
       </DashCard>
       <div className="grid gap-4 md:grid-cols-2">
-        <DashCard title="Hint use" query={overview}>
+        <DashCard id="hints" title="Hint use" query={overview}>
           {(data) => <HintUseBody classId={cls.id} hints={data.hints} />}
         </DashCard>
         <DashCard title="Flagged chats" query={overview}>
@@ -88,7 +121,7 @@ export function OverviewTab() {
         </DashCard>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <DashCard title="Time in practice" query={overview}>
+        <DashCard id="time" title="Time in practice" query={overview}>
           {(data) => (
             <PracticeShare
               learnSeconds={data.practice_share.learn_seconds}

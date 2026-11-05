@@ -497,6 +497,25 @@ describe("LessonPage", () => {
     expect(progressCalls).toEqual([]);
   });
 
+  it("staff preview opens at ?step= (spec 011)", async () => {
+    mockApi(lesson({ preview: true }));
+    renderAt(`/learn/${COURSE}/${DIST}?step=kp%3Akp2`);
+    const nav = await screen.findByRole("navigation", { name: "Lesson steps" });
+    expect(within(nav).getByRole("button", { name: "Worked example 2" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+  });
+
+  it("staff preview ignores an unknown ?step=", async () => {
+    mockApi(lesson({ preview: true }));
+    renderAt(`/learn/${COURSE}/${DIST}?step=kp%3Anope`);
+    const nav = await screen.findByRole("navigation", { name: "Lesson steps" });
+    expect(within(nav).getByRole("button", { name: "Worked example 2" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
   it("shows the locked panel for a direct URL", async () => {
     vi.stubGlobal(
       "fetch",

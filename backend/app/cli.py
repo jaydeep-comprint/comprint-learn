@@ -403,12 +403,12 @@ async def _teacher_eval(runs: int, case_id: str | None) -> bool:
             typer.echo(f"    {o.error or '; '.join(o.problems)}")
             if o.grades and o.grades.reasons:
                 typer.echo(f"    judge: {o.grades.reasons[0][:200]}")
-    n_claims, n_notes = max(1, claims), max(1, notes)
+    n_claims = max(1, claims)
     typer.echo(
         f"\nTotal {totals['runs']} runs: {totals['unsupported']} unsupported claims, "
         f"{totals['overclaims']} overclaimed causes, {totals['no_claims']} runs without a claim, "
         f"{totals['errors']} unverified runs. Vague quantities {vague / n_claims:.0%} of claims; "
-        f"actionable notes {actionable / n_notes:.0%}."
+        f"actionable notes {f'{actionable / notes:.0%}' if notes else 'n/a (no notes)'}."
     )
     typer.echo(
         f"Tokens: writer {w_in} in ({w_cached} cache hits) / {w_out} out, judge {j_in} in / "

@@ -9,7 +9,7 @@ STALE_PENDING = timedelta(minutes=5)  # an older pending row is treated as error
 
 TIMEOUT_S = 60.0  # per HTTP request
 WALL_CLOCK_S = 150.0  # both attempts together
-MAX_TOKENS = 8000  # reasoning tokens count toward it
+MAX_TOKENS = 16000  # reasoning tokens count toward it (a simple case used ~4k)
 TEMPERATURE = 0.2
 
 CLAIM_WORDS = 40

@@ -273,7 +273,7 @@ be valid). A student note keeps no group.
     - `app/ai/teacher_guard.py` (pure): `check(output, facts) -> GuardResult {kept, dropped: [(where, reason)], status}`.
     - `app/ai/teacher_turn.py`: `run_summary(facts, client, model) -> SummaryResult` (prompt → model → guard → one
       retry), shared by the service and the eval; writes no rows, checks no caps.
-    - `app/ai/teacher_limits.py`: caps, cooldown, word limits, timeout (60 s), `MAX_TOKENS = 8000` (reasoning tokens count toward it).
+    - `app/ai/teacher_limits.py`: caps, cooldown, word limits, timeout (60 s), `MAX_TOKENS = 16000` (reasoning tokens count toward it).
     - `app/ai/eval/teacher_cases.yaml`, `app/ai/eval/teacher_judge.py`, runner in `app/ai/eval/teacher_runner.py`.
     - `app/services/teacher_ai.py`: `get_class_summary`, `create_class_summary`, `get_student_summary`,
       `create_student_summary` (all take `OrgScope`), Tx 1 / call / Tx 2, rendering names.
@@ -305,7 +305,7 @@ be valid). A student note keeps no group.
   `/chat/completions` (`tutor_base_url`), the same request shape as 009's `tutor_turn.build_request`: messages =
   the static system prompt, then **one user turn** (rendered facts + resources + "Reply with the JSON object now.",
   which 009 found DeepSeek's JSON mode needs), the retry note as a trailing `role: "system"` message;
-  `response_format: {"type": "json_object"}`, `temperature` 0.2, `max_tokens` 8000, `stream: false`. Transport
+  `response_format: {"type": "json_object"}`, `temperature` 0.2, `max_tokens` 16000, `stream: false`. Transport
   failures → `TeacherAIUnavailable` → row `error`, 503 `teacher_ai_unavailable`. `finish_reason`
   `insufficient_system_resource` is also unavailable. Parse `choices[0].message.content` with
   `ModelOutput.model_validate_json`; a validation failure counts like a failed guard. If the eval shows

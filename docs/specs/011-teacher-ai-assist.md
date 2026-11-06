@@ -213,7 +213,7 @@ be valid). A student note keeps no group.
   010's links do.
 - **Facts hash**: built from fact text, which holds no time-varying decimals (bands only, no retrievability). It
   still changes at window/day boundaries and when a KP reopens, which is correct: the facts did change.
-- **Timing**: `ChatClient` runs with its one retry on timeouts/429/5xx, a 60 s timeout per request, and a hard wall-clock cap of 150 s per
+- **Timing**: `ChatClient` runs with its one retry on timeouts/429/5xx, a 120 s timeout per request, and a hard wall-clock cap of 180 s per
   generation (both attempts), enforced by `asyncio.timeout`; on expiry the row is `error`. `STALE_PENDING` = 5 min.
   In Tx 1, stale pending rows are written to `error` (like 009's `_reserve`) and don't count toward the caps.
   `failed` rows don't trigger the cooldown (only usable rows do).
@@ -246,7 +246,7 @@ be valid). A student note keeps no group.
     **Assign to these students** / **Assign to class**.
   - Footer note: "Written by AI from the dashboard numbers. Every sentence links to its source; check before acting."
   - States: **empty** ("Get a short written summary of this week, with re-teaching ideas." + Generate),
-    **not enough data** (message, no button), **loading** (skeleton + "Writing… this can take up to a minute"),
+    **not enough data** (message, no button), **loading** (skeleton + "Writing… this can take a minute or two"),
     **stale** badge, **partial** ("Some sentences were removed because they couldn't be checked against the data."),
     **errors** (429 "You've used today's 10 summaries. More after midnight."; school cap message; 409 busy; 502 failed;
     503 hidden card; network error with Try again). A failing summary never blanks the rest of Overview (010's
@@ -273,7 +273,7 @@ be valid). A student note keeps no group.
     - `app/ai/teacher_guard.py` (pure): `check(output, facts) -> GuardResult {kept, dropped: [(where, reason)], status}`.
     - `app/ai/teacher_turn.py`: `run_summary(facts, client, model) -> SummaryResult` (prompt → model → guard → one
       retry), shared by the service and the eval; writes no rows, checks no caps.
-    - `app/ai/teacher_limits.py`: caps, cooldown, word limits, timeout (60 s), `MAX_TOKENS = 16000` (reasoning tokens count toward it).
+    - `app/ai/teacher_limits.py`: caps, cooldown, word limits, timeout (120 s), `MAX_TOKENS = 16000` (reasoning tokens count toward it).
     - `app/ai/eval/teacher_cases.yaml`, `app/ai/eval/teacher_judge.py`, runner in `app/ai/eval/teacher_runner.py`.
     - `app/services/teacher_ai.py`: `get_class_summary`, `create_class_summary`, `get_student_summary`,
       `create_student_summary` (all take `OrgScope`), Tx 1 / call / Tx 2, rendering names.
@@ -309,7 +309,7 @@ be valid). A student note keeps no group.
   failures → `TeacherAIUnavailable` → row `error`, 503 `teacher_ai_unavailable`. `finish_reason`
   `insufficient_system_resource` is also unavailable. Parse `choices[0].message.content` with
   `ModelOutput.model_validate_json`; a validation failure counts like a failed guard. If the eval shows
-  `deepseek-v4-pro` too slow for the 150 s cap, try `deepseek-flash` (config only).
+  `deepseek-v4-pro` too slow for the 180 s cap, try `deepseek-flash` (config only).
 - **Data model** (tenant-owned: `TenantMixin`, composite FKs, RLS on):
   - `teacher_summary`: `id` uuid PK; `org_id`; `class_id` (composite FK → `school_class`); `student_id` null
     (composite FK → `app_user`; null for class summaries); `kind` (class | student); `window` (7d | 30d | all;

@@ -192,7 +192,7 @@ function Body({
   );
   const writingBox = writing && (
     <div className="space-y-2" aria-live="polite">
-      <p className="text-sm text-muted-foreground">Writing… this can take up to a minute.</p>
+      <p className="text-sm text-muted-foreground">Writing… this can take a minute or two.</p>
       <Lines />
     </div>
   );

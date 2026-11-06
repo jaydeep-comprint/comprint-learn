@@ -7,8 +7,8 @@ SCHOOL_DAILY_CAP = 50  # generations per school per IST day
 COOLDOWN = timedelta(minutes=10)  # same facts hash within this → 409 summary_fresh
 STALE_PENDING = timedelta(minutes=5)  # an older pending row is treated as error
 
-TIMEOUT_S = 60.0  # per HTTP request
-WALL_CLOCK_S = 150.0  # both attempts together
+TIMEOUT_S = 120.0  # per HTTP request (reasoning replies can take over a minute)
+WALL_CLOCK_S = 180.0  # both attempts together
 MAX_TOKENS = 16000  # reasoning tokens count toward it (a simple case used ~4k)
 TEMPERATURE = 0.2
 

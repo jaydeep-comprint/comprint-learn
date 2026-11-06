@@ -155,7 +155,7 @@ docs/         PRD, architecture, roadmap, specs, plans
     `student_snapshot` (the same numbers as the cards) plus one query for remediations created in the window
     (`app/ai/teacher_facts.py`) → Tx 1 (advisory lock per school, caps, cooldown, busy, pending row) → model call
     with no transaction open (`app/ai/teacher_turn.run_summary`: prompt → model → citation guard
-    `app/ai/teacher_guard.py` → one retry; 150 s wall clock) → Tx 2 (store). Every claim cites fact ids; the guard
+    `app/ai/teacher_guard.py` → one retry; 180 s wall clock) → Tx 2 (store). Every claim cites fact ids; the guard
     drops uncited claims, numbers or students not in the cited facts, and identity leaks.
 
 ## Key decisions

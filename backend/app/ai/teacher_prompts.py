@@ -7,7 +7,7 @@ from app.ai import teacher_limits as lim
 
 EXAMPLE = """{
   "summary": [
-    {"text": "Linear equations is the class's weakest concept ({S1}, {S3} and {S4} are stuck on it).", "facts": ["F2", "F7"]}
+    {"text": "{S1}, {S3} and {S4} are stuck on Linear equations, where 6 of 14 KP tries failed.", "facts": ["F2", "F7"]}
   ],
   "notes": [
     {
@@ -39,6 +39,8 @@ resource ids like "R2"), and for a class who to group ("group": pseudonyms such 
 group.
 - Every sentence must be backed by the facts it cites. Every number you write must appear in a \
 cited fact. Prefer digits; avoid number words.
+- A comparison ("weakest", "hardest", "most", "biggest") needs cited facts for everything it \
+compares. Otherwise state the numbers without ranking them.
 - Students appear only as tokens like {{S1}}. Write them exactly as tokens, with braces. Never \
 name, guess or describe a student's identity, and never invent a student.
 - Only describe what the facts state. Give no causes beyond the cause facts; say "likely" only \

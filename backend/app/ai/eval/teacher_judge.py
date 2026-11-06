@@ -18,7 +18,8 @@ it cites.
 For each claim (index i):
 - supported_by_cited_facts: everything the claim states follows from its cited facts.
 - overclaims_cause: it states or implies a reason or cause that no cited cause fact supports \
-(cause facts start with "Prerequisite" or "Repeated fails").
+(cause facts start with "Prerequisite" or "Repeated fails"). The reasons an at-risk fact lists \
+after "is at risk:" or "At risk:" are its own stated reasons; repeating them is not an overclaim.
 - vague_quantity: it uses a vague amount ("most", "many", "a few") where the facts give numbers.
 
 For each note (index i):

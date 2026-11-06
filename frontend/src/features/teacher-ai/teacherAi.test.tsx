@@ -118,7 +118,7 @@ describe("SummaryCard", () => {
       },
     });
     fireEvent.click(await screen.findByRole("button", { name: /Generate summary/ }));
-    expect(await screen.findByText(/this can take up to a minute/)).toBeInTheDocument();
+    expect(await screen.findByText(/this can take a minute or two/)).toBeInTheDocument();
     release(jsonResponse(201, SUMMARY));
     expect(await screen.findByText(/Linear equations is the weakest concept/)).toBeInTheDocument();
     expect(screen.getByText(/by Ms Rao · 2 h ago/)).toBeInTheDocument();

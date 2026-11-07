@@ -28,7 +28,7 @@
 | Frontend | Cloudflare Pages / Vercel free | $0 |
 | API | Render free (sleeps; ~30–60 s cold start) for demos, or Fly.io/Railway when it must stay awake | $0–5 / month |
 | AI tutor | DeepSeek `deepseek-flash` (check current per-token prices). ~3k in + 300 out per message, most of the input a cached prefix; the eval and `tutor_message` log tokens per request | low; measure in the pilot |
-| Teacher summaries | DeepSeek `deepseek-v4-pro` (check current prices). ~6k in + 1–3k out each, logged per row in `teacher_summary`; capped at 10/teacher and 50/school a day | well under $1 / month |
+| Teacher summaries | DeepSeek `deepseek-v4-pro` (check current prices). ~3k in + 2–6k out each (eval-measured, reasoning included), logged per row in `teacher_summary`; capped at 10/teacher and 50/school a day | well under $1 / month |
 | Domain (optional) | | ~$10 / year |
 Guards: a spend limit / prepaid balance in the provider console (e.g. $20), a per-student daily tutor cap (e.g. 20 messages), prompt caching on the
 tutor's system prompt + item content, and logging token usage per request (`tutor_message`).

@@ -91,6 +91,33 @@ def test_wall_clock_cap(monkeypatch: pytest.MonkeyPatch) -> None:
         run(fake)
 
 
+class _FirstThenHang:
+    """Answers the first request, then never answers (the retry runs past the wall clock)."""
+
+    def __init__(self, first: dict[str, Any]) -> None:
+        self.inner = FakeTeacherClient(first)
+
+    async def create(self, request: dict[str, Any]) -> TeacherCall:
+        if self.inner.requests:
+            await asyncio.Event().wait()
+        return await self.inner.create(request)
+
+
+def test_wall_clock_after_a_call_keeps_the_partial(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(teacher_limits, "WALL_CLOCK_S", 0.05)
+    result = run(_FirstThenHang({"summary": [GOOD, BAD, BAD]}))
+    assert result.status == "partial" and result.calls == 1
+    assert result.output is not None and len(result.output.summary) == 1
+    assert ("reply", "timed out") in result.dropped
+    assert result.output_tokens > 0  # the finished call is still billed and stored
+
+
+def test_wall_clock_after_an_unusable_call_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(teacher_limits, "WALL_CLOCK_S", 0.05)
+    result = run(_FirstThenHang({"summary": [BAD]}))
+    assert result.status == "failed" and result.output is None and result.calls == 1
+
+
 def _transport(content: str, finish: str = "stop", status: int = 200) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

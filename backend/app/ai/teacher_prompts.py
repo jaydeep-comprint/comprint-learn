@@ -12,7 +12,7 @@ EXAMPLE = """{
   "notes": [
     {
       "focus": "Linear equations: moving terms",
-      "why": {"text": "Most failures are on moving terms, and the open cause is integers.", "facts": ["F3", "F7"]},
+      "why": {"text": "5 of the 7 failed tries were on moving terms, and the open cause is integers.", "facts": ["F3", "F7"]},
       "revisit": ["R2", "R4"],
       "group": ["S1", "S3", "S4"],
       "group_facts": ["F7"]

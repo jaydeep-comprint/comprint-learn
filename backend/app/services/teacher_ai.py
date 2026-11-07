@@ -445,7 +445,7 @@ def _problem(blocked: Blocked, now: datetime) -> ApiProblem:
     if blocked == "fresh":
         return ApiProblem(409, "summary_fresh", "Nothing has changed since the last summary.")
     return ApiProblem(
-        409, "summary_busy", "A summary is already being written. Try again in a minute."
+        409, "summary_busy", "A summary is already being written. Try again in a couple of minutes."
     )
 
 

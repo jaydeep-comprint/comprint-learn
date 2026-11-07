@@ -69,38 +69,53 @@ def _unusable(call: TeacherCall) -> str | None:
 
 
 async def run_summary(fs: FactSet, client: TeacherClient, model: str) -> SummaryResult:
-    """Raises `TeacherAIUnavailable` when the provider fails or the wall-clock cap expires."""
+    """Raises `TeacherAIUnavailable` when the provider fails, or when the wall-clock cap expires
+    before any call finished. If it expires after one, the result so far is returned (with its
+    tokens): `partial` if an attempt left usable claims, else `failed`."""
+    run = _Run(SummaryResult(status="failed", output=None))
     try:
         async with asyncio.timeout(teacher_limits.WALL_CLOCK_S):
-            return await _run(fs, client, model)
+            return await run.go(fs, client, model)
     except TimeoutError as exc:
-        raise TeacherAIUnavailable("timeout") from exc
+        if run.result.calls == 0:
+            raise TeacherAIUnavailable("timeout") from exc
+        run.result.dropped.append(("reply", "timed out"))
+        return run.finish()
 
 
-async def _run(fs: FactSet, client: TeacherClient, model: str) -> SummaryResult:
-    result = SummaryResult(status="failed", output=None)
+@dataclass
+class _Run:
+    result: SummaryResult
     best: teacher_guard.GuardResult | None = None
-    note: str | None = None
-    for _attempt in range(2):
-        call = await client.create(build_request(fs, model, note))
-        _add(result, call)
-        problem = _unusable(call)
-        if problem is not None:
-            dropped = [("reply", problem)]
-        else:
-            assert call.output is not None
-            checked = teacher_guard.check(call.output, fs)
-            dropped = checked.dropped
-            if checked.status != "retry":
-                result.status = checked.status
-                result.output = checked.kept
-                result.dropped += dropped
-                return result
-            if checked.kept.summary and (best is None or checked.survivors > best.survivors):
-                best = checked
-        result.dropped += dropped
-        note = prompts.retry_note(dropped)
-    if best is not None:
-        result.status = "partial"
-        result.output = best.kept
-    return result
+
+    def finish(self) -> SummaryResult:
+        if self.best is not None:
+            self.result.status = "partial"
+            self.result.output = self.best.kept
+        return self.result
+
+    async def go(self, fs: FactSet, client: TeacherClient, model: str) -> SummaryResult:
+        result = self.result
+        note: str | None = None
+        for _attempt in range(2):
+            call = await client.create(build_request(fs, model, note))
+            _add(result, call)
+            problem = _unusable(call)
+            if problem is not None:
+                dropped = [("reply", problem)]
+            else:
+                assert call.output is not None
+                checked = teacher_guard.check(call.output, fs)
+                dropped = checked.dropped
+                if checked.status != "retry":
+                    result.status = checked.status
+                    result.output = checked.kept
+                    result.dropped += dropped
+                    return result
+                if checked.kept.summary and (
+                    self.best is None or checked.survivors > self.best.survivors
+                ):
+                    self.best = checked
+            result.dropped += dropped
+            note = prompts.retry_note(dropped)
+        return self.finish()

@@ -57,7 +57,7 @@ export function generateError(error: unknown): string {
     case "school_ai_daily_cap":
       return "Your school has used today's summaries. More after midnight.";
     case "summary_busy":
-      return "A summary is already being written. Try again in a minute.";
+      return "A summary is already being written. Try again in a couple of minutes.";
     case "summary_fresh":
       return "Nothing has changed since the last summary.";
     case "summary_failed":

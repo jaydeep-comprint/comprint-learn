@@ -9,6 +9,7 @@ from app.api.v1 import (
     kp,
     learn,
     me,
+    placement,
     quiz,
     reviews,
     students,
@@ -34,3 +35,4 @@ api_router.include_router(tutor.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(assignments.router)
 api_router.include_router(teacher_ai.router)
+api_router.include_router(placement.router)

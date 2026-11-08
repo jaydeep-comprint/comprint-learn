@@ -20,6 +20,7 @@ from app.api.deps import OrgScope
 from app.core.errors import not_found
 from app.models import (
     Attempt,
+    AttemptContext,
     Chapter,
     Concept,
     Course,
@@ -324,7 +325,11 @@ async def _questions(
             func.sum(Attempt.time_taken_ms).label("ms"),
         )
         .join(Item, Item.id == Attempt.item_id)
-        .where(Attempt.student_id.in_(sids), Item.concept_id.in_(concepts))
+        .where(
+            Attempt.student_id.in_(sids),
+            Item.concept_id.in_(concepts),
+            Attempt.context != AttemptContext.diagnostic,  # spec 012: assessment, not practice
+        )
         .group_by(Attempt.student_id, Attempt.item_id, Attempt.session_id, Attempt.position)
     )
     if since is not None:
@@ -497,6 +502,7 @@ async def _chosen(
             Attempt.student_id.in_(sids),
             Item.concept_id.in_(concepts),
             Attempt.misconception_id.is_not(None),
+            Attempt.context != AttemptContext.diagnostic,  # spec 012
         )
     )
     if since is not None:
@@ -1289,6 +1295,8 @@ async def student_outline(
                 waiting=None if waiting is None else Waiting(reopen_at=waiting.reopen_at),
                 brush_up=view.brush_up,
                 brush_up_id=view.brush_up_id,
+                placed=view.placed,
+                conditional=view.conditional,
                 state=state,
                 memory=(
                     None
@@ -1388,6 +1396,7 @@ async def student_activity(
             PracticeSession.student_id == sid,
             PracticeSession.status.in_((SessionStatus.passed, SessionStatus.failed)),
             PracticeSession.ended_at.is_not(None),
+            PracticeSession.kind != SessionKind.diagnostic,  # spec 012: not an activity row
             or_(
                 and_(PracticeSession.kind == SessionKind.quiz, in_course_quiz),
                 concept.in_(ctx.concepts),

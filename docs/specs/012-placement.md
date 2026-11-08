@@ -64,10 +64,14 @@ far) and `direct_wrong[c]`.
 - **Wrong answer (or "I don't know") on c**: `e[c] -= 1`, `direct_wrong[c] += 1`; each in-range descendant `d` gets
   `−1` (you can't know a topic built on one you don't know).
 - **Decided**: `e[c] ≥ 2` or `e[c] ≤ −1`, or `asked[c] = 2` (at most 2 direct questions per concept).
-- **Next question**: among askable, undecided concepts, pick the one with the highest
-  `0.5 × (#concepts that would become decided if correct) + 0.5 × (#if wrong)`, counting itself; ties → the
-  concept nearest the middle of the range's outline order, then lowest id. With no answers this picks a mid-graph
-  concept, so the run behaves like a binary search along the graph.
+- **Next question**: among askable, undecided concepts, pick the one whose **worse** outcome makes the most
+  progress: `min(progress if correct, progress if wrong)`, where progress sums, over the range's undecided
+  concepts (itself included), 1 for each concept the outcome decides and otherwise the fraction of the way its
+  evidence moves toward the threshold it heads for (2 up, −1 down). Ties → the concept nearest the middle of the
+  range's outline order, then lowest id. With no answers this picks a mid-graph concept (around the upper middle of a
+  chain), so the run behaves like a binary search along the graph. (Changed while building: the first draft's
+  `0.5 × #decided if correct + 0.5 × #if wrong` always picked the most basic concept first, because one correct
+  answer never decides anything.)
 - **Item choice**: a random active quick `kp_question` of the concept, from its **last** KP for the first question and
   a different KP for the second (fall back to any KP); never an item already served in this diagnostic; a fresh
   random seed (`app.content.params.sample`). Stored on the session (`current_item_id`, `current_seed`,
@@ -246,8 +250,8 @@ Decided with the user: placed concepts' KP steps are real sessions; placing a co
 ancestors (conditional). Everything else below was decided while specifying.
 - **Decided is recomputed** after every answer from the current evidence (not sticky); only the 2-question cap is
   permanent. A concept that becomes undecided again can be asked again if it's under the cap.
-- **Next-question score** counts concepts across the whole range (askable or not) that change from undecided to
-  decided, including c itself, and including c reaching `asked = 2`.
+- **Next-question score** counts progress across the whole range (askable or not), including c itself and c
+  reaching `asked = 2` (which decides it).
 - **Running out of items**: a concept with no unserved quick item left stops being askable (so it can't block the
   end) and keeps its evidence.
 - **Outline order** for the tie-break: the class course first, then other courses by slug; within a course by

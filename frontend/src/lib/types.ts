@@ -123,6 +123,9 @@ export type OutlineConcept = {
   brush_up: boolean;
   /** The due review behind `brush_up` (the map's "Brush up first" button). */
   brush_up_id: string | null;
+  /** Spec 012: learned through a placement check; `conditional`: "check soon". */
+  placed?: boolean;
+  conditional?: boolean;
 };
 
 export type Outline = {
@@ -785,4 +788,62 @@ export type SummaryState = {
   blocked: SummaryBlocked | null;
   daily_left: number;
   resets_at: string;
+};
+
+// --- Placement (spec 012) -------------------------------------------------------------------------
+
+export type PlacementStatus = "not_sent" | "sent" | "active" | "finished" | "cancelled";
+
+export type PlacementCounts = { learned: number; conditional: number; demoted: number };
+
+export type PlacementStudentRow = {
+  student_id: string;
+  display_name: string;
+  status: PlacementStatus;
+  diagnostic_id: string | null;
+  sent_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  answered: number;
+  /** The latest finished check (may be older than `status`). */
+  result_at: string | null;
+  counts: PlacementCounts | null;
+};
+
+export type PlacementOverview = {
+  course: { slug: string; title: string; subject: Subject } | null;
+  archived: boolean;
+  chapters: { id: string; slug: string; title: string; grade: number | null; covered: boolean }[];
+  range: { concepts: number; prereqs: number; askable: number };
+  students: PlacementStudentRow[];
+};
+
+export type PlacementOutcome = "learned" | "conditional" | "demoted" | "unchanged";
+
+export type StudentOutcomes = {
+  student_id: string;
+  display_name: string;
+  diagnostic_id: string | null;
+  finished_at: string | null;
+  concepts: { concept: ConceptRef; outcome: PlacementOutcome }[];
+};
+
+export type DiagnosticState = {
+  id: string;
+  status: "sent" | "active" | "finished" | "cancelled";
+  class_name: string;
+  course: { slug: string; title: string; subject: Subject } | null;
+  answered: number;
+  max_questions: number;
+  /** Finished at start: nothing to check right now. */
+  empty: boolean;
+};
+
+export type DiagnosticSaved = { finished: boolean; answered: number };
+
+export type DiagnosticResult = {
+  answered: number;
+  learned: ConceptRef[];
+  conditional: ConceptRef[];
+  to_learn: ConceptRef[];
 };

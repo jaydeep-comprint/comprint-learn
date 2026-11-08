@@ -30,3 +30,14 @@ export function unfinishedPrereqs(outline: Outline, concept: OutlineConcept): Lo
     .filter((c): c is OutlineConcept => !!c && c.status !== null && c.status !== "learned")
     .map((c) => ({ id: c.id, title: c.title, status: c.status! }));
 }
+
+/** Spec 012: "Placed" for a concept learned through a placement check, "Placed · check soon"
+ * while that placement is conditional; null otherwise. */
+export function placedLabel(concept: {
+  status: string | null;
+  placed?: boolean;
+  conditional?: boolean;
+}): string | null {
+  if (concept.status !== "learned" || !concept.placed) return null;
+  return concept.conditional ? "Placed · check soon" : "Placed";
+}

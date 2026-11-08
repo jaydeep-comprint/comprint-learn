@@ -31,6 +31,19 @@ export const routes: RouteObject[] = [
               Component: (await import("@/features/quiz/QuizPage")).QuizPage,
             }),
           },
+          {
+            // Spec 012: the placement check, also full-screen.
+            path: "/placement/:id",
+            lazy: async () => ({
+              Component: (await import("@/features/placement/PlacementPage")).PlacementPage,
+            }),
+          },
+          {
+            path: "/placement/:id/result",
+            lazy: async () => ({
+              Component: (await import("@/features/placement/PlacementResult")).PlacementResult,
+            }),
+          },
         ],
       },
       {
@@ -89,6 +102,13 @@ export const routes: RouteObject[] = [
                     lazy: async () => ({
                       Component: (await import("@/features/assignments/AssignmentsTab"))
                         .AssignmentsTab,
+                    }),
+                  },
+                  {
+                    path: "placement",
+                    lazy: async () => ({
+                      Component: (await import("@/features/placement/PlacementTab"))
+                        .PlacementTab,
                     }),
                   },
                   {

@@ -2,7 +2,7 @@ import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 import { AlertTriangle, Clock, RotateCcw } from "lucide-react";
 
 import { BAND_FILL, BAND_LABELS, MEMORY_GREY } from "@/features/dashboard/heat";
-import { STATUS_LABELS } from "@/features/learn/paths";
+import { placedLabel, STATUS_LABELS } from "@/features/learn/paths";
 import { StatusIcon } from "@/features/learn/StatusIcon";
 import type { Band, HeatState, OutlineConcept } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -47,8 +47,9 @@ export function ConceptNode({ data }: NodeProps<ConceptFlowNode>) {
   const dark = memory ? learned && band === "strong" : m >= DARK_FROM;
   const background = memory ? (learned ? BAND_FILL[band] : MEMORY_GREY) : masteryFill(m);
   const stuck = concept.state === "stuck";
+  const placed = placedLabel(concept);
   const label = status
-    ? `${concept.title}, ${STATUS_LABELS[status]}${
+    ? `${concept.title}, ${STATUS_LABELS[status]}${placed ? `, ${placed}` : ""}${
         status === "in_progress" ? `, ${concept.parts_passed} of ${concept.parts_total} parts` : ""
       }${stuck ? ", stuck" : ""}${memory && learned ? `, ${BAND_LABELS[band]}` : ""}`
     : concept.title;
@@ -80,7 +81,7 @@ export function ConceptNode({ data }: NodeProps<ConceptFlowNode>) {
           <span className="line-clamp-2 font-medium leading-tight">{concept.title}</span>
           {status && (
             <span className={cn("block text-xs", dark ? "text-white" : "text-slate-800")}>
-              {STATUS_LABELS[status]}
+              {placed ?? STATUS_LABELS[status]}
             </span>
           )}
         </span>

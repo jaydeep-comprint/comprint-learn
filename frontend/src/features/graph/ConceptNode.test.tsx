@@ -55,4 +55,17 @@ describe("ConceptNode (teacher view, spec 010)", () => {
     expect(screen.getByRole("button", { name: /, stuck$/ })).toBeInTheDocument();
     expect(screen.getByLabelText("Stuck")).toBeInTheDocument();
   });
+
+  it("marks placed concepts, and conditional ones as check soon (spec 012)", () => {
+    node(concept({ placed: true, conditional: true, memory: null }), "progress");
+    expect(
+      screen.getByRole("button", { name: /Linear equations, Learned, Placed · check soon/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Placed · check soon")).toBeInTheDocument();
+  });
+
+  it("shows no chip for a lesson-learned concept", () => {
+    node(concept({ memory: null }), "progress");
+    expect(screen.queryByText(/Placed/)).not.toBeInTheDocument();
+  });
 });

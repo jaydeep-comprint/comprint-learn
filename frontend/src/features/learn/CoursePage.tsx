@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOutline } from "@/features/learn/api";
 import { LockedPanel } from "@/features/learn/LockedPanel";
-import { lessonPath, unfinishedPrereqs } from "@/features/learn/paths";
+import { lessonPath, placedLabel, unfinishedPrereqs } from "@/features/learn/paths";
 import { ProgressBar } from "@/features/learn/ProgressBar";
 import { StatusIcon } from "@/features/learn/StatusIcon";
 import { ApiError } from "@/lib/api";
@@ -154,6 +154,7 @@ function ConceptRow({
               Brush up
             </Badge>
           )}
+          {placedLabel(concept) && <Badge variant="secondary">{placedLabel(concept)}</Badge>}
         </span>
         <span className="block truncate text-sm text-muted-foreground">{concept.summary}</span>
       </span>

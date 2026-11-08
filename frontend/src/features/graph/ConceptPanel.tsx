@@ -5,7 +5,13 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { LockedPanel } from "@/features/learn/LockedPanel";
-import { brushUpPath, lessonPath, STATUS_LABELS, unfinishedPrereqs } from "@/features/learn/paths";
+import {
+  brushUpPath,
+  lessonPath,
+  placedLabel,
+  STATUS_LABELS,
+  unfinishedPrereqs,
+} from "@/features/learn/paths";
 import { StatusIcon } from "@/features/learn/StatusIcon";
 import type { Outline, OutlineConcept } from "@/lib/types";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -63,6 +69,9 @@ function Body({
         <p className="flex items-center gap-2 text-sm">
           <StatusIcon status={concept.status} />
           {STATUS_LABELS[concept.status]}
+          {placedLabel(concept) && (
+            <span className="text-muted-foreground">· {placedLabel(concept)}</span>
+          )}
           {concept.status === "in_progress" && concept.parts_total > 0 && (
             <span className="text-muted-foreground">
               · {onPractice ? "Practice left" : `Part ${part} of ${concept.parts_total}`}

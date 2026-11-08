@@ -11,6 +11,7 @@ import { ASSIGNMENT_STATUS } from "@/features/assignments/status";
 import type { MapMode } from "@/features/graph/ConceptNode";
 import { SummaryCard } from "@/features/teacher-ai/SummaryCard";
 import { ApiError } from "@/lib/api";
+import { placedLabel } from "@/features/learn/paths";
 import { dayDate, shortDate } from "@/lib/dates";
 import type { OutlineConcept, TeacherOutlineConcept } from "@/lib/types";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -42,6 +43,7 @@ function Details(concept: OutlineConcept) {
       <p>
         {STATE_LABELS[c.state]}
         {c.state === "learned" && c.memory && `, ${BAND_LABELS[c.memory.band]}`}
+        {placedLabel(c) && ` · ${placedLabel(c)}`}
       </p>
       {c.memory?.next_due && (
         <p className="text-muted-foreground">Next review {shortDate(c.memory.next_due)}</p>

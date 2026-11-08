@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { FormError } from "@/components/FormError";
 import { Button } from "@/components/ui/button";
+import { StudentPicker } from "@/components/StudentPicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -93,7 +94,6 @@ function AssignmentForm({
   const [note, setNote] = useState(draft.note ?? "");
   const [whole, setWhole] = useState(draft.student_ids == null);
   const [chosen, setChosen] = useState<string[]>(draft.student_ids ?? []);
-  const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Only the class course's own concepts (borrowed cross-course prerequisites are left out).
@@ -106,10 +106,6 @@ function AssignmentForm({
         }))
         .filter((ch) => ch.concepts.length > 0),
     [outline.data, courseSlug],
-  );
-  const active = (students.data ?? []).filter((s) => s.status === "active");
-  const shown = active.filter((s) =>
-    s.display_name.toLowerCase().includes(search.trim().toLowerCase()),
   );
   const full = concepts.length >= MAX_CONCEPTS;
 
@@ -240,45 +236,13 @@ function AssignmentForm({
           />
         </div>
 
-        <fieldset className="grid gap-2">
-          <legend className="mb-1 text-sm font-medium">Students</legend>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="audience" checked={whole} onChange={() => setWhole(true)} />
-            Whole class
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="audience" checked={!whole} onChange={() => setWhole(false)} />
-            Choose students
-          </label>
-          {!whole && (
-            <div className="space-y-2 rounded-md border p-3">
-              <Input
-                placeholder="Search students"
-                aria-label="Search students"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <ul className="max-h-40 space-y-1 overflow-y-auto">
-                {shown.map((s) => (
-                  <li key={s.id}>
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={chosen.includes(s.id)}
-                        onCheckedChange={(v) => setChosen((prev) => toggle(prev, s.id, v === true))}
-                        aria-label={s.display_name}
-                      />
-                      {s.display_name}
-                    </label>
-                  </li>
-                ))}
-                {shown.length === 0 && (
-                  <li className="text-sm text-muted-foreground">No students match.</li>
-                )}
-              </ul>
-              <p className="text-xs text-muted-foreground">{chosen.length} chosen</p>
-            </div>
-          )}
-        </fieldset>
+        <StudentPicker
+          students={students.data ?? []}
+          whole={whole}
+          onWholeChange={setWhole}
+          chosen={chosen}
+          onChosenChange={setChosen}
+        />
 
         <div className="grid gap-2">
           <Label htmlFor="assignment-note" className="flex justify-between">

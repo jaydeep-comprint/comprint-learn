@@ -107,8 +107,7 @@ export const routes: RouteObject[] = [
                   {
                     path: "placement",
                     lazy: async () => ({
-                      Component: (await import("@/features/placement/PlacementTab"))
-                        .PlacementTab,
+                      Component: (await import("@/features/placement/PlacementTab")).PlacementTab,
                     }),
                   },
                   {

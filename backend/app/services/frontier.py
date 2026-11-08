@@ -14,8 +14,8 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Literal
 
-from sqlalchemy import Select, func, select, update
 from fsrs import Rating
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope

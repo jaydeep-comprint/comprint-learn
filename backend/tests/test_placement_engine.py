@@ -5,9 +5,9 @@ import random
 import uuid
 
 import pytest
-from app.services.placement_engine import Ev, RangeGraph
 
 from app.services import placement_engine as eng
+from app.services.placement_engine import Ev, RangeGraph
 
 
 def ids(n: int) -> list[uuid.UUID]:
@@ -38,7 +38,7 @@ def test_ancestor_weight_is_the_largest_path_product() -> None:
 
 
 def test_correct_answer_credits_ancestors_by_weight() -> None:
-    g, (a, b, c, d) = diamond()
+    g, (a, b, _c, d) = diamond()
     ev = eng.apply_answer(g, eng.initial(g, set()), d, correct=True)
     assert ev[d] == Ev(1.0, 1, 0)
     assert ev[b].e == pytest.approx(0.5)

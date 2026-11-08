@@ -1435,9 +1435,7 @@ async def end_concept_work(scope: OrgScope, concept_id: uuid.UUID) -> None:
             PracticeSession.org_id == scope.org_id,
             PracticeSession.student_id == scope.user.id,
             PracticeSession.status == SessionStatus.active,
-            (
-                (PracticeSession.kind == SessionKind.kp) & PracticeSession.kp_id.in_(kp_ids)
-            )
+            ((PracticeSession.kind == SessionKind.kp) & PracticeSession.kp_id.in_(kp_ids))
             | (
                 (PracticeSession.kind == SessionKind.practice)
                 & (PracticeSession.concept_id == concept_id)

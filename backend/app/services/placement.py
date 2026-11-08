@@ -688,8 +688,7 @@ async def question(scope: OrgScope, diagnostic_id: str) -> QuestionPublic:
 async def _answered_positions(scope: OrgScope, session: PracticeSession) -> set[int]:
     return {
         p
-        for p in
-        (
+        for p in (
             await scope.session.scalars(
                 scope.select(Attempt)
                 .with_only_columns(Attempt.position)

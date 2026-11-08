@@ -463,6 +463,8 @@ async def outline(scope: OrgScope, course_slug: str) -> Outline:
                 waiting=None if waiting is None else Waiting(reopen_at=waiting.reopen_at),
                 brush_up=False if view is None else view.brush_up,
                 brush_up_id=None if view is None else view.brush_up_id,
+                placed=view is not None and view.placed,
+                conditional=view is not None and view.conditional,
             )
         )
     course = graph.courses[course_slug]

@@ -77,6 +77,8 @@ class OutlineConcept(BaseModel):
     waiting: Waiting | None  # the next KP failed and isn't open yet
     brush_up: bool  # a remediation review is due for one of its KPs
     brush_up_id: uuid.UUID | None  # that review (the map's "Brush up first" button)
+    placed: bool = False  # spec 012: learned through a placement diagnostic
+    conditional: bool = False  # spec 012: placed on thin evidence ("check soon")
 
 
 class OutlineChapter(BaseModel):

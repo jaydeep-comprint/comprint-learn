@@ -78,7 +78,7 @@ TENANT_TABLES = (
     "attempt, lesson_progress, study_time, concept_state, kp_progress, practice_session, "
     "remediation, xp_event, xp_day, student_goal, quiz, quiz_item, review_card, review_log,"
     " tutor_session, tutor_message, assignment, assignment_concept, assignment_student,"
-    " teacher_summary"
+    " teacher_summary, class_covered_chapter, diagnostic_session"
 )
 CONTENT_TABLES = (
     "course, chapter, concept, concept_prereq, knowledge_point, kp_key_prereq, misconception, item"

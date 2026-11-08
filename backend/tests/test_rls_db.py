@@ -27,4 +27,5 @@ async def test_every_public_table_has_rls_enabled(db_app: DbApp) -> None:
     assert {"review_card", "review_log", "quiz", "quiz_item"} <= set(tables)
     assert {"tutor_session", "tutor_message", "teacher_summary"} <= set(tables)
     assert {"assignment", "assignment_concept", "assignment_student"} <= set(tables)
+    assert {"class_covered_chapter", "diagnostic_session"} <= set(tables)
     assert [name for name, rls in tables.items() if not rls] == []

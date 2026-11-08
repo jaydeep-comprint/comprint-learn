@@ -39,7 +39,7 @@ from app.models.tenancy import Subject, TenantMixin, _pg_enum
 
 
 class AttemptContext(enum.StrEnum):
-    """Where an answer was given. Later specs add diagnostic."""
+    """Where an answer was given."""
 
     learn = "learn"
     kp = "kp"
@@ -47,6 +47,7 @@ class AttemptContext(enum.StrEnum):
     practice = "practice"  # spec 006: the lesson's Practice step
     review = "review"  # spec 007: a scheduled (FSRS) review of one concept
     quiz = "quiz"  # spec 007: the mixed timed quiz
+    diagnostic = "diagnostic"  # spec 012: a placement diagnostic
 
 
 class StudyActivity(enum.StrEnum):
@@ -80,6 +81,7 @@ class SessionKind(enum.StrEnum):
     practice = "practice"  # spec 006: one practice item for a concept
     review = "review"  # spec 007: one review of a concept (`concept_id`)
     quiz = "quiz"  # spec 007: one quiz (`quiz_id`)
+    diagnostic = "diagnostic"  # spec 012: one placement diagnostic (`diagnostic_id`)
 
 
 class SessionStatus(enum.StrEnum):
@@ -140,7 +142,7 @@ class Attempt(TenantMixin, Base):
             "session_id", "position", "step", name="uq_attempt_session_id_position_step"
         ),
         CheckConstraint(
-            "(context IN ('kp', 'remediation', 'practice', 'review', 'quiz')) = "
+            "(context IN ('kp', 'remediation', 'practice', 'review', 'quiz', 'diagnostic')) = "
             "(session_id IS NOT NULL)",
             name="session_iff_practice",
         ),
@@ -249,6 +251,10 @@ class ConceptState(TenantMixin, Base):
     relearn_count: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, server_default=text("0")
     )
+    # spec 012: placed by a diagnostic on thin evidence; cleared by the first review outcome
+    conditional: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
 
@@ -319,12 +325,14 @@ class PracticeSession(TenantMixin, Base):
         _student_fk("practice_session"),
         _tenant_fk("remediation_id", "practice_session", "remediation"),
         _tenant_fk("quiz_id", "practice_session", "quiz"),
+        _tenant_fk("diagnostic_id", "practice_session", "diagnostic_session"),
         UniqueConstraint("id", "org_id", name="uq_practice_session_id_org_id"),
         CheckConstraint(
             "(kind = 'kp') = (kp_id IS NOT NULL) "
             "AND (kind = 'remediation') = (remediation_id IS NOT NULL) "
             "AND (kind IN ('practice', 'review')) = (concept_id IS NOT NULL) "
-            "AND (kind = 'quiz') = (quiz_id IS NOT NULL)",
+            "AND (kind = 'quiz') = (quiz_id IS NOT NULL) "
+            "AND (kind = 'diagnostic') = (diagnostic_id IS NOT NULL)",
             name="kind_links",
         ),
         Index(
@@ -355,6 +363,12 @@ class PracticeSession(TenantMixin, Base):
             postgresql_where=text("kind = 'quiz'"),
         ),
         Index(
+            "uq_practice_session_diagnostic",
+            "diagnostic_id",
+            unique=True,
+            postgresql_where=text("kind = 'diagnostic'"),
+        ),
+        Index(
             "uq_practice_session_active_remediation",
             "remediation_id",
             unique=True,
@@ -374,6 +388,7 @@ class PracticeSession(TenantMixin, Base):
         UUID(as_uuid=True), _content_fk("concept.id")
     )
     quiz_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    diagnostic_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     status: Mapped[SessionStatus] = mapped_column(
         _pg_enum(SessionStatus, "session_status"), nullable=False
     )
@@ -493,6 +508,7 @@ class ReviewSource(enum.StrEnum):
     implicit = "implicit"
     quiz_miss = "quiz_miss"
     backfill = "backfill"
+    placed = "placed"  # spec 012: a diagnostic placed the concept
 
 
 class QuizStatus(enum.StrEnum):
@@ -887,3 +903,80 @@ class TeacherSummary(TenantMixin, Base):
     day: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
+
+
+class ClassCoveredChapter(TenantMixin, Base):
+    """A chapter of the class course the teacher marked as covered (spec 012). Rows of another
+    course (after a subject change) are kept but ignored."""
+
+    __tablename__ = "class_covered_chapter"
+    __table_args__ = (
+        _tenant_fk("class_id", "class_covered_chapter", "school_class"),
+        ForeignKeyConstraint(
+            ["created_by", "org_id"],
+            ["app_user.id", "app_user.org_id"],
+            ondelete="RESTRICT",
+            name="fk_class_covered_chapter_created_by_app_user",
+        ),
+    )
+
+    class_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), _content_fk("chapter.id"), primary_key=True
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = _now()
+
+
+class DiagnosticStatus(enum.StrEnum):
+    sent = "sent"
+    active = "active"
+    finished = "finished"
+    cancelled = "cancelled"
+
+
+class DiagnosticSession(TenantMixin, Base):
+    """One placement diagnostic for a student in a class (spec 012). Sent by a teacher, frozen
+    (`chapter_ids`, `range_ids`) at start; `evidence` is `{concept_id: {e, asked, wrong}}`;
+    `results` is written at finish. At most one open (sent/active) per student and class."""
+
+    __tablename__ = "diagnostic_session"
+    __table_args__ = (
+        _student_fk("diagnostic_session"),
+        _tenant_fk("class_id", "diagnostic_session", "school_class"),
+        ForeignKeyConstraint(
+            ["sent_by", "org_id"],
+            ["app_user.id", "app_user.org_id"],
+            ondelete="RESTRICT",
+            name="fk_diagnostic_session_sent_by_app_user",
+        ),
+        UniqueConstraint("id", "org_id", name="uq_diagnostic_session_id_org_id"),
+        Index(
+            "uq_diagnostic_session_open",
+            "student_id",
+            "class_id",
+            unique=True,
+            postgresql_where=text("status IN ('sent', 'active')"),
+        ),
+        Index("ix_diagnostic_session_class", "org_id", "class_id", "student_id", "sent_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    class_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    status: Mapped[DiagnosticStatus] = mapped_column(
+        _pg_enum(DiagnosticStatus, "diagnostic_status"), nullable=False
+    )
+    sent_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    sent_at: Mapped[datetime] = _now()
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    chapter_ids: Mapped[list[uuid.UUID] | None] = mapped_column(ARRAY(UUID(as_uuid=True)))
+    range_ids: Mapped[list[uuid.UUID] | None] = mapped_column(ARRAY(UUID(as_uuid=True)))
+    evidence: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    served_item_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=False, server_default=text("'{}'")
+    )
+    answered: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
+    results: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

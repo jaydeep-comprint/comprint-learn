@@ -1,6 +1,6 @@
 # Spec 012: Placement (covered chapters + adaptive diagnostic)
 
-Status: draft
+Status: built
 PRD link: docs/PRD.md#mvp-scope-v1 (item 8) · ARCHITECTURE decision 12 · ROADMAP 012
 Builds on: [spec 005](005-kp-flow-knowledge-graph.md) (concept_state, frontier, relearn),
 [spec 006](006-practice-formats.md) (quick item types, grading), [spec 007](007-reviews-quizzes.md) (review cards,

@@ -53,7 +53,11 @@ function Chapters({ data, classId }: { data: PlacementOverview; classId: string 
   const save = useSaveChapters(classId);
   const dirty = ticked.length !== saved.length || ticked.some((id) => !saved.includes(id));
 
-  const blocker = useBlocker(dirty);
+  // Only leaving the tab counts: opening a result sheet (`?placement=`) keeps the edits.
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty && currentLocation.pathname !== nextLocation.pathname,
+  );
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();

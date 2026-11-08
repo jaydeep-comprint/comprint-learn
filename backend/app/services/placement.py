@@ -819,7 +819,9 @@ async def _finish(
     conditional = {c for c, (s, cond) in stored.items() if s == ConceptStatus.learned and cond}
     ev = {c: x for c, x in run.ev.items() if c in set(active)}
     res = eng.classify(run.graph, ev, learned=learned, conditional=conditional)
-    shaky = set(res.conditional)
+    # Conditional needs a review card to clear it; a concept with no quick-check item gets none,
+    # so it's placed as plainly learned (it can't come back for a check).
+    shaky = set(res.conditional) & await srs.gradable(scope, res.conditional)
     for cid in eng.topo(run.graph, [*res.learned, *res.conditional]):
         if cid in stored:  # in progress: its open KP/practice work ends
             await kp_flow.end_concept_work(scope, cid)

@@ -165,6 +165,8 @@ export type Lesson = {
   preview: boolean;
   /** null for staff. */
   concept_status: LessonStatus | null;
+  /** Spec 012: placed by a placement check; KP steps run as real sessions, as if in progress. */
+  placed?: boolean;
   waiting: LessonWaiting | null;
   /** The Practice step (spec 006); `none` when the concept has no practice items. */
   practice: { status: PracticeStatus; active: boolean };

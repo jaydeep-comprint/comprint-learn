@@ -200,7 +200,12 @@ export function PlacementPage() {
     afterFinish();
     void navigate(placementResultPath(id), { replace: true });
   };
-  const onClosed = () => void state.refetch();
+  // Cancelled by the teacher, or finished on the server (e.g. the last item was retired): a
+  // finish goes to the result like any other.
+  const onClosed = () =>
+    void state.refetch().then((r) => {
+      if (r.data?.status === "finished" && !r.data.empty) onFinished();
+    });
 
   let body;
   if (state.isPending) {

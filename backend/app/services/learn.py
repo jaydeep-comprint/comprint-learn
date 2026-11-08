@@ -684,6 +684,7 @@ async def lesson(scope: OrgScope, course_slug: str, concept_slug: str) -> Lesson
         check_result=check_result,
         preview=scope.user.is_staff,
         concept_status=None if view is None else view.status,
+        placed=view is not None and view.placed,
         waiting=waiting,
         practice=practice,
     )

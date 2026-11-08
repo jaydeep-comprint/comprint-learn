@@ -165,6 +165,8 @@ class Lesson(BaseModel):
     check_result: CheckResult | None
     preview: bool
     concept_status: LessonStatus | None  # null for staff
+    # Spec 012: learned through a placement check; its KP steps still run as real sessions.
+    placed: bool = False
     waiting: LessonWaiting | None
     practice: LessonPractice
 

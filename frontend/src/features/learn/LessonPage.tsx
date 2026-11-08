@@ -40,12 +40,13 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 
 /** The first step that isn't done: an active question session or practice attempt, the waiting
  * panel, a reopened part's worked example, Practice once every part passed, else `last_step` (as
- * in 004). Preview and learned concepts open at intro. */
+ * in 004). Preview and learned concepts open at intro (placed ones resume like in-progress ones,
+ * spec 012). */
 function initialIndex(lesson: Lesson, step?: string | null): number {
   const { steps, kps } = lesson;
   // Staff preview may open at a step (`?step=kp:<slug>`, spec 011); unknown steps start at intro.
   if (lesson.preview) return step ? Math.max(0, steps.indexOf(step)) : 0;
-  if (lesson.concept_status === "learned") return 0;
+  if (lesson.concept_status === "learned" && !lesson.placed) return 0;
   const practice = steps.indexOf("practice");
   if (practice >= 0 && lesson.practice.active) return practice;
   const active = kps.find((k) => k.active);
@@ -173,7 +174,10 @@ function LessonView({
 }) {
   const queryClient = useQueryClient();
   const { steps, preview } = lesson;
-  const review = !preview && lesson.concept_status === "learned";
+  // Spec 012: a placed concept's KP steps are real sessions (not review), so a weak placement
+  // surfaces on its own.
+  const placed = !preview && lesson.concept_status === "learned" && !!lesson.placed;
+  const review = !preview && lesson.concept_status === "learned" && !placed;
   const allOpen = preview || review;
   const [passed, setPassed] = useState<Set<string>>(
     () => new Set(lesson.kps.filter((k) => k.status === "passed").map((k) => k.slug)),
@@ -325,6 +329,12 @@ function LessonView({
       {review && (
         <p className="mx-auto mb-4 max-w-prose text-sm text-muted-foreground">
           You&apos;ve learned this concept. Every step is open for review.
+        </p>
+      )}
+      {placed && (
+        <p className="mx-auto mb-4 max-w-prose text-sm text-muted-foreground">
+          You placed out of this concept. Working through the steps is optional, and still earns XP
+          the first time.
         </p>
       )}
       <article className="mx-auto max-w-prose pb-4">

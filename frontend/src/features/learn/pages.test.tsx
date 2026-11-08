@@ -516,6 +516,30 @@ describe("LessonPage", () => {
     );
   });
 
+  it("a placed concept runs its KP steps as real questions (spec 012)", async () => {
+    const user = userEvent.setup();
+    mockApi(
+      lesson({
+        concept_status: "learned",
+        placed: true,
+        check_result: ANSWERED_CHECK,
+        progress: {
+          seen_steps: ["intro", "check", "kp:kp1"],
+          last_step: "kp:kp1",
+          finished_at: null,
+        },
+      }),
+      { [`GET ${Q_URL}`]: () => jsonResponse(200, question(1)) },
+    );
+    renderAt(`/learn/${COURSE}/${DIST}`);
+    expect(await screen.findByText(/You placed out of this concept/)).toBeInTheDocument();
+    expect(screen.queryByText(/Every step is open for review/)).not.toBeInTheDocument();
+    expect(screen.getByText("Example one.")).toBeInTheDocument(); // resumes, not at intro
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("Practice · Along a road")).toBeInTheDocument();
+    expect(screen.queryByText("Passed ✓")).not.toBeInTheDocument();
+  });
+
   it("shows the locked panel for a direct URL", async () => {
     vi.stubGlobal(
       "fetch",

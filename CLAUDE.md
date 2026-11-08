@@ -26,7 +26,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 ## Rules
 - Every tenant-owned query must go through the org-scoping dependency. Never query by id alone.
 - Answer keys and hidden tests never go to the client. Maths answers are checked server side (SymPy).
-- All AI model calls go through backend/app/ai/. Tutor: DeepSeek (`deepseek-flash`, decided Nov 2026); teacher summaries: Sonnet (spec 011).
+- All AI model calls go through backend/app/ai/. Tutor: DeepSeek (`deepseek-flash`, decided Nov 2026); teacher summaries: DeepSeek too (`deepseek-v4-pro`, spec 011).
 - Students are minors: store as little personal data as possible, and never log personal details in AI prompts or analytics.
 - Never edit `.env*` files or lockfiles by hand (a hook blocks this).
 - Prefer existing patterns and libraries in the codebase over adding new dependencies.
@@ -38,6 +38,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 - New tables: inherit `TenantMixin`, add composite FKs for links, and enable RLS in the migration (`test_rls_db.py`).
 - Content tables (`course`…`item`) are global: no `TenantMixin`/`OrgScope`, but still RLS. Item answers live in `item.answer`; API shapes come only from `item.public`.
 - Teacher reads of learning state use `frontier.class_states` (batched, read-only); never call `frontier.load` for staff (it promotes on read). Class views share `services/class_view.load`.
+- Teacher AI summaries (spec 011) build their facts from `dashboard.class_snapshot` / `student_snapshot`: change dashboard numbers there, not in `overview`, so cards and summary facts stay the same numbers.
 - FastAPI 0.143 nests included routers: walk routes with `fastapi.routing.iter_route_contexts(app.routes)`, not `app.routes`.
 
 ## Compaction

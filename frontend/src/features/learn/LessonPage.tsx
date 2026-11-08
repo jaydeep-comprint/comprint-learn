@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ArrowLeft, CheckCircle2, Eye } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { Markdown } from "@/components/markdown/Markdown";
@@ -41,9 +41,11 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 /** The first step that isn't done: an active question session or practice attempt, the waiting
  * panel, a reopened part's worked example, Practice once every part passed, else `last_step` (as
  * in 004). Preview and learned concepts open at intro. */
-function initialIndex(lesson: Lesson): number {
+function initialIndex(lesson: Lesson, step?: string | null): number {
   const { steps, kps } = lesson;
-  if (lesson.preview || lesson.concept_status === "learned") return 0;
+  // Staff preview may open at a step (`?step=kp:<slug>`, spec 011); unknown steps start at intro.
+  if (lesson.preview) return step ? Math.max(0, steps.indexOf(step)) : 0;
+  if (lesson.concept_status === "learned") return 0;
   const practice = steps.indexOf("practice");
   if (practice >= 0 && lesson.practice.active) return practice;
   const active = kps.find((k) => k.active);
@@ -159,7 +161,16 @@ function LessonHeader({
   );
 }
 
-function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
+function LessonView({
+  course,
+  lesson,
+  startStep,
+}: {
+  course: string;
+  lesson: Lesson;
+  /** Staff preview only: open at this step (`?step=`). */
+  startStep?: string | null;
+}) {
   const queryClient = useQueryClient();
   const { steps, preview } = lesson;
   const review = !preview && lesson.concept_status === "learned";
@@ -170,9 +181,9 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
   const [ended, setEnded] = useState<Ended | null>(null);
   const practicePassed = lesson.practice.status === "passed";
 
-  const [index, setIndex] = useState(() => initialIndex(lesson));
+  const [index, setIndex] = useState(() => initialIndex(lesson, startStep));
   const [furthest, setFurthest] = useState(() =>
-    Math.max(furthestSeen(lesson), initialIndex(lesson)),
+    Math.max(furthestSeen(lesson), initialIndex(lesson, startStep)),
   );
   const [result, setResult] = useState<CheckResult | null>(lesson.check_result);
   const submit = useSubmitCheck(lesson.id);
@@ -399,6 +410,7 @@ function LessonView({ course, lesson }: { course: string; lesson: Lesson }) {
 
 export function LessonPage() {
   const { course = "", conceptCourse = "", conceptSlug = "" } = useParams();
+  const [params] = useSearchParams();
   const ref = `${conceptCourse}/${conceptSlug}`;
   const lesson = useLesson(ref);
 
@@ -441,5 +453,7 @@ export function LessonPage() {
       </div>
     );
   }
-  return <LessonView key={ref} course={course} lesson={lesson.data} />;
+  return (
+    <LessonView key={ref} course={course} lesson={lesson.data} startStep={params.get("step")} />
+  );
 }

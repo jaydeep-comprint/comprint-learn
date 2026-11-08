@@ -16,7 +16,7 @@
 | Auth | **Supabase Auth** (same project as the DB). FastAPI verifies its JWTs against the project JWKS (`app/core/auth.py`); our `app_user.id` = the auth user id. Teachers are invited by email; students get teacher-created accounts with a synthetic, never-emailed auth email | Don't build password, reset and invite flows ourselves; one free-tier project for DB + auth |
 | Maths answer checking | SymPy (server side, `app/grading/`): student expressions go through the safe AST walker, never `parse_expr`; `simplify` runs in a time-limited process pool (1 s, numeric fallback) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs 6.3), one module-level `Scheduler` in `app/services/srs.py` (retention 0.9, no learning steps, no fuzzing) | Modern scheduler with fewer reviews than SM-2 |
-| AI | Tutor (spec 009): **DeepSeek** (`deepseek-flash`) over its OpenAI-compatible API with `httpx`, JSON mode, automatic prefix caching, a server-side answer guard (`app/ai/guard.py`) on every reply (decided Nov 2026; first specified as Claude Haiku). Teacher summaries (spec 011): Claude Sonnet 5.5 (`claude-sonnet-5-5`). All model calls only in `backend/app/ai/` | Low cost per student; better reasoning where needed |
+| AI | Tutor (spec 009): **DeepSeek** (`deepseek-flash`) over its OpenAI-compatible API with `httpx`, JSON mode, automatic prefix caching, a server-side answer guard (`app/ai/guard.py`) on every reply (decided Nov 2026; first specified as Claude Haiku). Teacher summaries (spec 011): DeepSeek `deepseek-v4-pro` on the same client and key, JSON mode, a server-side citation guard (decided Nov 2026; first planned as Claude Sonnet). All model calls only in `backend/app/ai/` | Low cost per student; better reasoning where needed |
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
 | JS tooling | pnpm, eslint, prettier, vitest, Playwright (e2e) | Standard |
 | Hosting | Free tiers: Supabase (DB + Auth), Cloudflare Pages or Vercel (SPA), Render free or Fly.io/Railway (~$5/mo) for the API, GitHub Actions, Sentry free | POC budget ~$50 total (see Cost budget) |
@@ -28,7 +28,7 @@
 | Frontend | Cloudflare Pages / Vercel free | $0 |
 | API | Render free (sleeps; ~30–60 s cold start) for demos, or Fly.io/Railway when it must stay awake | $0–5 / month |
 | AI tutor | DeepSeek `deepseek-flash` (check current per-token prices). ~3k in + 300 out per message, most of the input a cached prefix; the eval and `tutor_message` log tokens per request | low; measure in the pilot |
-| Teacher summaries | Claude Sonnet 5.5 ($2 / $10 per 1M). ~10k in + 1k out ≈ $0.03 each; 10 teachers × weekly ≈ $1.20/month | ~$1–2 / month |
+| Teacher summaries | DeepSeek `deepseek-v4-pro` (check current prices). ~3k in + 2–6k out each (eval-measured, reasoning included), logged per row in `teacher_summary`; capped at 10/teacher and 50/school a day | well under $1 / month |
 | Domain (optional) | | ~$10 / year |
 Guards: a spend limit / prepaid balance in the provider console (e.g. $20), a per-student daily tutor cap (e.g. 20 messages), prompt caching on the
 tutor's system prompt + item content, and logging token usage per request (`tutor_message`).
@@ -144,6 +144,19 @@ docs/         PRD, architecture, roadmap, specs, plans
   - Flow: Tx 1 (advisory lock per student, caps, pending student row) → model call with no transaction open
     (`app/ai/tutor_turn.run_turn`: prompt → model → answer guard → one retry → canned fallback) → Tx 2 (store and
     charge; `late` if the question was answered meanwhile).
+  - `teacher_summary` (spec 011): one row per Generate, for a class × window (`7d` | `30d` | `all`) or a class ×
+    student (`7d`): status (pending | ok | partial | failed | error), `facts` (the numbered facts and resources
+    exactly as sent, students as `{Sn}` pseudonyms), `pseudonyms` (`{S1: student_id}`, never sent), `facts_hash`
+    (staleness and the 10-minute cooldown), `content` (the guarded output, still with tokens), `dropped` (guard
+    reasons), `created_by`, model, tokens, latency, `calls`, IST `day`. Shared by the school's teachers; names are
+    filled in on read from the current roster ("a student no longer in this class" otherwise). Caps: 10 per teacher
+    and 50 per school per IST day (pending, ok, partial and failed count; error doesn't).
+  - Summary flow (`app/services/teacher_ai.py`): facts from 010's `dashboard.class_snapshot` /
+    `student_snapshot` (the same numbers as the cards) plus one query for remediations created in the window
+    (`app/ai/teacher_facts.py`) → Tx 1 (advisory lock per school, caps, cooldown, busy, pending row) → model call
+    with no transaction open (`app/ai/teacher_turn.run_summary`: prompt → model → citation guard
+    `app/ai/teacher_guard.py` → one retry; 180 s wall clock) → Tx 2 (store). Every claim cites fact ids; the guard
+    drops uncited claims, numbers or students not in the cited facts, and identity leaks.
 
 ## Key decisions
 | # | Decision | Reason | Alternatives rejected |

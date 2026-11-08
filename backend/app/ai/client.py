@@ -113,43 +113,70 @@ class ChatClient:
         raise TutorUnavailable("unreachable")  # pragma: no cover
 
 
+@dataclass(frozen=True)
+class Completion:
+    """One JSON-mode completion, provider-neutral: text, finish reason and usage."""
+
+    text: str
+    stop_reason: str | None  # "stop", "length", "refusal" (a content filter), ...
+    model: str
+    input_tokens: int  # uncached prompt tokens
+    output_tokens: int
+    cache_read_tokens: int
+    latency_ms: int
+
+
+async def complete_json(chat: ChatClient, request: dict[str, Any]) -> Completion:
+    """`chat.complete` plus DeepSeek's quirks, shared by the tutor (009) and teacher summaries
+    (011). Raises `TutorUnavailable` on transport failures and an overloaded provider."""
+    started = time.monotonic()
+    for _ in range(BLANK_RETRIES + 1):
+        data = await chat.complete(request)
+        try:
+            choice = data["choices"][0]
+            text = choice["message"].get("content") or ""
+            finish = choice.get("finish_reason")
+        except (KeyError, IndexError, TypeError, AttributeError) as exc:
+            raise TutorUnavailable("unexpected response shape") from exc
+        # DeepSeek's JSON mode sometimes returns blank content with finish "stop": transient,
+        # so ask again here rather than spend the guard's one retry on it.
+        if text.strip() or finish != "stop":
+            break
+    latency = int((time.monotonic() - started) * 1000)
+    if finish == "insufficient_system_resource":
+        raise TutorUnavailable("provider overloaded")
+    usage = data.get("usage") or {}
+    hit = int(usage.get("prompt_cache_hit_tokens") or 0)
+    prompt = int(usage.get("prompt_tokens") or 0)
+    return Completion(
+        text=text,
+        stop_reason="refusal" if finish == "content_filter" else finish,
+        model=str(data.get("model") or request.get("model") or ""),
+        input_tokens=max(0, prompt - hit),
+        output_tokens=int(usage.get("completion_tokens") or 0),
+        cache_read_tokens=hit,
+        latency_ms=latency,
+    )
+
+
 class DeepSeekTutorClient:
     def __init__(self, chat: ChatClient) -> None:
         self.chat = chat
 
     async def create(self, request: dict[str, Any]) -> TutorCall:
-        started = time.monotonic()
-        for _ in range(BLANK_RETRIES + 1):
-            data = await self.chat.complete(request)
-            try:
-                choice = data["choices"][0]
-                text = choice["message"].get("content") or ""
-                finish = choice.get("finish_reason")
-            except (KeyError, IndexError, TypeError, AttributeError) as exc:
-                raise TutorUnavailable("unexpected response shape") from exc
-            # DeepSeek's JSON mode sometimes returns blank content with finish "stop": transient,
-            # so ask again here rather than spend the guard's one retry on it.
-            if text.strip() or finish != "stop":
-                break
-        latency = int((time.monotonic() - started) * 1000)
-        if finish == "insufficient_system_resource":
-            raise TutorUnavailable("provider overloaded")
-        stop = "refusal" if finish == "content_filter" else finish
+        c = await complete_json(self.chat, request)
         category, reply = (None, None)
-        if stop == "stop":
-            category, reply = parse_output(text)
-        usage = data.get("usage") or {}
-        hit = int(usage.get("prompt_cache_hit_tokens") or 0)
-        prompt = int(usage.get("prompt_tokens") or 0)
+        if c.stop_reason == "stop":
+            category, reply = parse_output(c.text)
         return TutorCall(
             category=category,
             reply=reply,
-            stop_reason=stop,
-            model=str(data.get("model") or request.get("model") or ""),
-            input_tokens=max(0, prompt - hit),
-            output_tokens=int(usage.get("completion_tokens") or 0),
-            cache_read_tokens=hit,
-            latency_ms=latency,
+            stop_reason=c.stop_reason,
+            model=c.model,
+            input_tokens=c.input_tokens,
+            output_tokens=c.output_tokens,
+            cache_read_tokens=c.cache_read_tokens,
+            latency_ms=c.latency_ms,
         )
 
 

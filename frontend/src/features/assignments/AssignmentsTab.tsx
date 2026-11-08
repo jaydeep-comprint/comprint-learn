@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useParam } from "@/features/dashboard/api";
 import { useClassContext } from "@/features/dashboard/classContext";
 import { dayDate } from "@/lib/dates";
 import { errorMessage } from "@/lib/errors";
@@ -128,7 +129,7 @@ export function AssignmentsTab() {
   const list = useAssignments(cls.id);
   const remove = useDeleteAssignment(cls.id);
   const [draft, setDraft] = useState<AssignmentDraft | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useParam("assignment");
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [showPast, setShowPast] = useState(false);
 

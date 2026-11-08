@@ -55,6 +55,23 @@ export function useWindow(): [DashboardWindow, (w: DashboardWindow) => void] {
   return [value, set];
 }
 
+/** A search param as state (spec 011 citation links: `?concept=`, `?misconception=`,
+ * `?assignment=`). Other params are kept; changes replace the history entry. */
+export function useParam(name: string): [string | null, (v: string | null) => void] {
+  const [params, setParams] = useSearchParams();
+  const set = (v: string | null) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (v === null) next.delete(name);
+        else next.set(name, v);
+        return next;
+      },
+      { replace: true },
+    );
+  return [params.get(name), set];
+}
+
 const base = (id: string) => `/api/v1/classes/${id}`;
 
 export function useOverview(id: string, w: DashboardWindow) {

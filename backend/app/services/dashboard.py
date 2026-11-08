@@ -20,6 +20,9 @@ from app.api.deps import OrgScope
 from app.core.errors import not_found
 from app.models import (
     Attempt,
+    Chapter,
+    Concept,
+    Course,
     Item,
     KnowledgePoint,
     KpStatus,
@@ -41,6 +44,7 @@ from app.models import (
     XpEvent,
 )
 from app.models.content import ItemKind
+from app.schemas.assignments import AssignmentSummary, StudentAssignmentRow
 from app.schemas.content import CourseRef
 from app.schemas.dashboard import (
     ActivityRow,
@@ -80,6 +84,7 @@ from app.schemas.dashboard import (
     Window,
 )
 from app.schemas.learn import Waiting
+from app.schemas.quiz import LastQuizOut
 from app.services import assignments, class_view, frontier, quiz, srs, xp
 from app.services.class_view import ClassCtx
 
@@ -514,6 +519,78 @@ async def _misconception_rows(scope: OrgScope, ctx: ClassCtx) -> list[Misconcept
     return list(rows.all())
 
 
+@dataclass(frozen=True)
+class RemediationRow:
+    student_id: uuid.UUID
+    kp_id: uuid.UUID
+    concept_id: uuid.UUID
+    prereq_id: uuid.UUID
+    state: RemediationState
+
+
+async def _remediations_since(
+    scope: OrgScope,
+    sids: Sequence[uuid.UUID],
+    concepts: Sequence[uuid.UUID],
+    since: datetime | None,
+) -> list[RemediationRow]:
+    """Remediations created in the window (any state) on KPs of these concepts, oldest first.
+    Ones whose prerequisite is retired are left out, like `frontier.open_remediations`."""
+    if not sids or not concepts:
+        return []
+    stmt = (
+        scope.select(Remediation)
+        .with_only_columns(
+            Remediation.student_id,
+            Remediation.kp_id,
+            KnowledgePoint.concept_id,
+            Remediation.prereq_concept_id,
+            Remediation.state,
+        )
+        .join(KnowledgePoint, KnowledgePoint.id == Remediation.kp_id)
+        .join(Concept, Concept.id == Remediation.prereq_concept_id)
+        .join(Chapter, Chapter.id == Concept.chapter_id)
+        .join(Course, Course.id == Concept.course_id)
+        .where(
+            Remediation.student_id.in_(sids),
+            KnowledgePoint.concept_id.in_(concepts),
+            Concept.retired_at.is_(None),
+            Chapter.retired_at.is_(None),
+            Course.retired_at.is_(None),
+        )
+        .order_by(Remediation.created_at, Remediation.id)
+    )
+    if since is not None:
+        stmt = stmt.where(Remediation.created_at >= since)
+    return [RemediationRow(*r) for r in (await scope.session.execute(stmt)).all()]
+
+
+@dataclass(frozen=True)
+class KpInfo:
+    id: uuid.UUID
+    concept_id: uuid.UUID
+    slug: str
+    title: str
+    retired: bool
+
+
+async def kp_info(scope: OrgScope, kp_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, KpInfo]:
+    """Titles and slugs of these KPs (content is global), in one query."""
+    ids = list(set(kp_ids))
+    if not ids:
+        return {}
+    rows = await scope.session.execute(
+        select(
+            KnowledgePoint.id,
+            KnowledgePoint.concept_id,
+            KnowledgePoint.slug,
+            KnowledgePoint.title,
+            KnowledgePoint.retired_at,
+        ).where(KnowledgePoint.id.in_(ids))
+    )
+    return {r[0]: KpInfo(r[0], r[1], r[2], r[3], r[4] is not None) for r in rows.all()}
+
+
 # --- assembled pieces -----------------------------------------------------------------------------
 
 
@@ -765,40 +842,97 @@ def _at_risk_rows(
 # --- endpoints ------------------------------------------------------------------------------------
 
 
-async def overview(scope: OrgScope, class_id: uuid.UUID, window: Window) -> ClassOverview:
-    ctx = await class_view.load(scope, class_id)
+@dataclass
+class ClassSnapshot:
+    """The intermediate results behind the Overview, shared by the dashboard and spec 011's
+    fact builder so both see the same numbers."""
+
+    ctx: ClassCtx
+    window: Window
+    now: datetime
+    since: datetime | None
+    tries: list[tuple[uuid.UUID, uuid.UUID, uuid.UUID, bool, int]]
+    items: dict[uuid.UUID, ItemRow]
+    questions: dict[tuple[uuid.UUID, uuid.UUID], QStat]
+    chosen: list[tuple[uuid.UUID, uuid.UUID, uuid.UUID, str | None, int]]
+    miscs: list[Misconception]
+    chats: dict[uuid.UUID, int]
+    study: dict[uuid.UUID, dict[StudyActivity, int]]
+    reasons: dict[uuid.UUID, list[AtRiskReason]]
+    summaries: list[AssignmentSummary]
+    today: date
+    concept_stats: list[ConceptStat] = field(default_factory=list)
+    misconception_stats: list[MisconceptionStat] = field(default_factory=list)
+    hint_use: HintUse | None = None
+
+    @property
+    def weakest(self) -> list[ConceptStat]:
+        return [s for s in self.concept_stats if s.fail_rate is not None][:TOP]
+
+    @property
+    def top_misconceptions(self) -> list[MisconceptionStat]:
+        return _rank_misconceptions(self.misconception_stats)[:TOP]
+
+    @property
+    def practice_share(self) -> PracticeShare:
+        return PracticeShare(
+            learn_seconds=sum(s.get(StudyActivity.learn, 0) for s in self.study.values()),
+            practice_seconds=sum(s.get(StudyActivity.practice, 0) for s in self.study.values()),
+        )
+
+    @property
+    def assignments_due(self) -> list[AssignmentSummary]:
+        return [s for s in self.summaries if s.active and s.content_available][:3]
+
+    @property
+    def overdue(self) -> list[AssignmentSummary]:
+        return [s for s in self.summaries if s.due_date < self.today and s.counts.overdue > 0]
+
+
+async def class_snapshot(scope: OrgScope, ctx: ClassCtx, window: Window) -> ClassSnapshot:
     now = datetime.now(UTC)
     since = window_start(window, now)
     sids, concepts = ctx.student_ids, ctx.concepts
-    tries = await _kp_tries(scope, sids, concepts, since)
-    items = await _items(scope, concepts)
-    questions = await _questions(scope, sids, concepts, since)
-    chosen = await _chosen(scope, sids, concepts, since)
-    miscs = await _misconception_rows(scope, ctx)
-    chats = await _chats(scope, sids, concepts, since)
-    study = await _study(scope, sids, concepts, since)
-    reasons = await at_risk(scope, ctx)
-    summaries = await assignments.summaries(scope, ctx)
-    today = assignments.today_ist(now)
+    snap = ClassSnapshot(
+        ctx=ctx,
+        window=window,
+        now=now,
+        since=since,
+        tries=await _kp_tries(scope, sids, concepts, since),
+        items=await _items(scope, concepts),
+        questions=await _questions(scope, sids, concepts, since),
+        chosen=await _chosen(scope, sids, concepts, since),
+        miscs=await _misconception_rows(scope, ctx),
+        chats=await _chats(scope, sids, concepts, since),
+        study=await _study(scope, sids, concepts, since),
+        reasons=await at_risk(scope, ctx),
+        summaries=await assignments.summaries(scope, ctx),
+        today=assignments.today_ist(now),
+    )
+    snap.concept_stats = _concept_stats(ctx, snap.tries)
+    snap.misconception_stats = _misconceptions(
+        ctx, snap.miscs, snap.items, snap.questions, snap.chosen
+    )
+    snap.hint_use = _hint_use(ctx, snap.questions, snap.chats)
+    return snap
+
+
+async def overview(scope: OrgScope, class_id: uuid.UUID, window: Window) -> ClassOverview:
+    ctx = await class_view.load(scope, class_id)
+    snap = await class_snapshot(scope, ctx, window)
+    assert snap.hint_use is not None
     return ClassOverview(
         window=window,
-        students_in_scope=len(sids),
+        students_in_scope=len(ctx.student_ids),
         has_course=ctx.course is not None,
-        weakest=[s for s in _concept_stats(ctx, tries) if s.fail_rate is not None][:TOP],
-        at_risk=_at_risk_rows(ctx, reasons),
-        misconceptions=_rank_misconceptions(_misconceptions(ctx, miscs, items, questions, chosen))[
-            :TOP
-        ],
-        hints=_hint_use(ctx, questions, chats),
-        flagged=await _flagged(scope, ctx, since),
-        practice_share=PracticeShare(
-            learn_seconds=sum(s.get(StudyActivity.learn, 0) for s in study.values()),
-            practice_seconds=sum(s.get(StudyActivity.practice, 0) for s in study.values()),
-        ),
-        assignments_due=[s for s in summaries if s.active and s.content_available][:3],
-        overdue_assignments=sum(
-            1 for s in summaries if s.due_date < today and s.counts.overdue > 0
-        ),
+        weakest=snap.weakest,
+        at_risk=_at_risk_rows(ctx, snap.reasons),
+        misconceptions=snap.top_misconceptions,
+        hints=snap.hint_use,
+        flagged=await _flagged(scope, ctx, snap.since),
+        practice_share=snap.practice_share,
+        assignments_due=snap.assignments_due,
+        overdue_assignments=len(snap.overdue),
     )
 
 
@@ -1004,10 +1138,49 @@ async def heatmap(scope: OrgScope, class_id: uuid.UUID) -> Heatmap:
 # --- one student ----------------------------------------------------------------------------------
 
 
-async def student_detail(
-    scope: OrgScope, class_id: uuid.UUID, student_id: uuid.UUID
-) -> StudentDetail:
-    ctx = await class_view.load(scope, class_id, student_id=student_id)
+@dataclass
+class StudentSnapshot:
+    """What the student page header computes (last 7 days), shared with spec 011."""
+
+    ctx: ClassCtx
+    student: class_view.Student
+    now: datetime
+    since: datetime | None
+    reasons: list[AtRiskReason]
+    week_xp: int
+    streak_days: int
+    reviews_due: int
+    last_quiz: LastQuizOut | None
+    study: dict[StudyActivity, int]
+    tries: list[tuple[uuid.UUID, uuid.UUID, uuid.UUID, bool, int]]
+    questions: dict[tuple[uuid.UUID, uuid.UUID], QStat]
+    assignment_rows: list[StudentAssignmentRow]
+
+    @property
+    def kp_ended(self) -> int:
+        return sum(t[4] for t in self.tries)
+
+    @property
+    def kp_failed(self) -> int:
+        return sum(t[4] for t in self.tries if t[3])
+
+    @property
+    def hints(self) -> int:
+        return sum(q.hints for q in self.questions.values())
+
+    @property
+    def answered(self) -> int:
+        return sum(q.answered for q in self.questions.values())
+
+    @property
+    def learned(self) -> int:
+        return sum(
+            1 for c in self.ctx.concepts if _status(self.ctx, self.student.id, c) == "learned"
+        )
+
+
+async def student_snapshot(scope: OrgScope, ctx: ClassCtx) -> StudentSnapshot:
+    """`ctx` is loaded for one student (`class_view.load(..., student_id=...)`)."""
     s = ctx.students[0]
     now = datetime.now(UTC)
     since = window_start("7d", now)
@@ -1017,31 +1190,69 @@ async def student_detail(
     quizzes = await quiz.last_quiz_stats(scope, [s.id])
     study = (await _study(scope, [s.id], ctx.concepts, since)).get(s.id, {})
     tries = await _kp_tries(scope, [s.id], ctx.concepts, since)
-    ended = sum(t[4] for t in tries)
-    failed = sum(t[4] for t in tries if t[3])
     questions = await _questions(scope, [s.id], ctx.concepts, since)
-    hints = sum(q.hints for q in questions.values())
-    answered = sum(q.answered for q in questions.values())
     week_xp, streak = stats[s.id]
-    return StudentDetail(
-        student_id=s.id,
-        display_name=s.display_name,
-        status=s.status,
-        at_risk=reasons,
+    return StudentSnapshot(
+        ctx=ctx,
+        student=s,
+        now=now,
+        since=since,
+        reasons=reasons,
         week_xp=week_xp,
         streak_days=streak,
         reviews_due=due.get(s.id, 0),
         last_quiz=quizzes.get(s.id),
+        study=study,
+        tries=tries,
+        questions=questions,
+        assignment_rows=await assignments.student_rows(scope, ctx),
+    )
+
+
+async def student_detail(
+    scope: OrgScope, class_id: uuid.UUID, student_id: uuid.UUID
+) -> StudentDetail:
+    ctx = await class_view.load(scope, class_id, student_id=student_id)
+    snap = await student_snapshot(scope, ctx)
+    s = snap.student
+    ended, failed = snap.kp_ended, snap.kp_failed
+    return StudentDetail(
+        student_id=s.id,
+        display_name=s.display_name,
+        status=s.status,
+        at_risk=snap.reasons,
+        week_xp=snap.week_xp,
+        streak_days=snap.streak_days,
+        reviews_due=snap.reviews_due,
+        last_quiz=snap.last_quiz,
         stats=StudentStats(
-            learn_seconds=study.get(StudyActivity.learn, 0),
-            practice_seconds=study.get(StudyActivity.practice, 0),
+            learn_seconds=snap.study.get(StudyActivity.learn, 0),
+            practice_seconds=snap.study.get(StudyActivity.practice, 0),
             kp_fail_rate=round(failed / ended, 3) if ended else None,
-            hints_per_10=per_10(hints, answered),
-            learned=sum(1 for c in ctx.concepts if _status(ctx, s.id, c) == "learned"),
+            hints_per_10=per_10(snap.hints, snap.answered),
+            learned=snap.learned,
             total=len(ctx.concepts),
         ),
-        assignments=await assignments.student_rows(scope, ctx),
+        assignments=snap.assignment_rows,
     )
+
+
+async def outline_states(
+    scope: OrgScope, ctx: ClassCtx
+) -> tuple[
+    list[tuple[uuid.UUID, uuid.UUID]],
+    frontier.Frontier,
+    dict[tuple[uuid.UUID, uuid.UUID], tuple[float, datetime, datetime]],
+]:
+    """The student's outline (class course + cross-course prerequisites, with each concept's
+    anchor), its read-only frontier and review cards. `ctx` is loaded for one student with a
+    course."""
+    assert ctx.course is not None
+    pairs = ctx.graph.outline(ctx.course.slug)
+    ids = [c for c, _ in pairs]
+    sid = ctx.students[0].id
+    front = (await frontier.class_states(scope, [sid], ids, ctx.graph.prereqs))[sid]
+    return pairs, front, await _cards(scope, [sid], ids)
 
 
 async def student_outline(
@@ -1053,11 +1264,8 @@ async def student_outline(
     if ctx.course is None:  # no active course for the class subject: an empty state
         return TeacherOutline(course=None, chapters=[])
     graph = ctx.graph
-    pairs = graph.outline(ctx.course.slug)
-    ids = [c for c, _ in pairs]
     sid = ctx.students[0].id
-    front = (await frontier.class_states(scope, [sid], ids, graph.prereqs))[sid]
-    cards = await _cards(scope, [sid], ids)
+    pairs, front, cards = await outline_states(scope, ctx)
     now = datetime.now(UTC)
     chapters: dict[uuid.UUID, list[TeacherOutlineConcept]] = {}
     for cid, anchor in pairs:

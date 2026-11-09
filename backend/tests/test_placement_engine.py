@@ -169,6 +169,15 @@ def test_a_directly_missed_prerequisite_is_not_implied() -> None:
     assert res.conditional == [a]  # still implied through c; b was missed
 
 
+def test_an_ancestor_without_evidence_is_not_implied() -> None:
+    # Retired since the start: `_finish` drops it from the evidence, so it's never placed.
+    g, (_a, b, c) = chain(3, w=0.1)
+    ev = {b: Ev(0.1, 0, 0), c: Ev(2.0, 2, 0)}
+    res = eng.classify(g, ev, learned=set(), conditional=set())
+    assert res.learned == [c]
+    assert res.conditional == [b]
+
+
 def test_a_later_strong_result_confirms_a_conditional_concept() -> None:
     a, b = ids(2)
     g = RangeGraph.build([a, b], [])

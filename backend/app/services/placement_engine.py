@@ -227,8 +227,8 @@ def classify(
     implied: set[uuid.UUID] = set()
     for c in list(placed):
         for a in ancestor_weights(g, c):
-            missed = (x := ev.get(a)) is not None and x.wrong >= 1
-            if a not in learned and a not in placed and not missed:
+            x = ev.get(a)  # None: retired since the start, never placed
+            if x is not None and x.wrong == 0 and a not in learned and a not in placed:
                 implied.add(a)
     for a in implied:
         placed[a] = True

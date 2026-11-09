@@ -302,11 +302,21 @@ async def set_chapters(scope: OrgScope, class_id: uuid.UUID, body: ChaptersIn) -
                 ClassCoveredChapter.chapter_id.in_(own),
             )
         )
-    for ch in wanted:
-        scope.session.add(
-            scope.new(
-                ClassCoveredChapter, class_id=class_id, chapter_id=ch, created_by=scope.user.id
+    if wanted:  # a concurrent save of the same chapters is a no-op, not a PK error
+        await scope.session.execute(
+            insert(ClassCoveredChapter)
+            .values(
+                [
+                    {
+                        "org_id": scope.org_id,
+                        "class_id": class_id,
+                        "chapter_id": ch,
+                        "created_by": scope.user.id,
+                    }
+                    for ch in wanted
+                ]
             )
+            .on_conflict_do_nothing()
         )
     await scope.session.commit()
     return await overview(scope, class_id)
@@ -822,6 +832,10 @@ async def _finish(
     # Conditional needs a review card to clear it; a concept with no quick-check item gets none,
     # so it's placed as plainly learned (it can't come back for a check).
     shaky = set(res.conditional) & await srs.gradable(scope, res.conditional)
+    res.learned = eng.topo(
+        run.graph, [*res.learned, *(c for c in res.conditional if c not in shaky)]
+    )
+    res.conditional = [c for c in res.conditional if c in shaky]  # the stored results match
     for cid in eng.topo(run.graph, [*res.learned, *res.conditional]):
         if cid in stored:  # in progress: its open KP/practice work ends
             await kp_flow.end_concept_work(scope, cid)

@@ -206,7 +206,9 @@ def classify(
     g: RangeGraph, ev: Evidence, *, learned: set[uuid.UUID], conditional: set[uuid.UUID]
 ) -> Results:
     """The final table, against the student's current `learned` set (and which of those are
-    `conditional`). Placed concepts imply their unlearned in-range ancestors as conditional."""
+    `conditional`). Placed concepts imply their unlearned in-range ancestors as conditional,
+    except ones the student missed directly: as in Math Academy, a gap the diagnostic found is
+    left to learn, not credited away by a harder concept above it."""
     res = Results()
     placed: dict[uuid.UUID, bool] = {}  # concept -> conditional
     for c in g.concepts:
@@ -225,7 +227,8 @@ def classify(
     implied: set[uuid.UUID] = set()
     for c in list(placed):
         for a in ancestor_weights(g, c):
-            if a not in learned and a not in placed:
+            missed = (x := ev.get(a)) is not None and x.wrong >= 1
+            if a not in learned and a not in placed and not missed:
                 implied.add(a)
     for a in implied:
         placed[a] = True

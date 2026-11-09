@@ -160,6 +160,15 @@ def test_placed_concepts_imply_their_ancestors_conditionally() -> None:
     assert res.conditional == [b]  # implied; a is already learned
 
 
+def test_a_directly_missed_prerequisite_is_not_implied() -> None:
+    # Math Academy: a gap the diagnostic found stays to learn, even under a placed concept.
+    g, (a, b, c) = chain(3, w=0.1)
+    ev = {a: Ev(0.1, 0, 0), b: Ev(-0.9, 1, 1), c: Ev(2.0, 2, 0)}
+    res = eng.classify(g, ev, learned=set(), conditional=set())
+    assert res.learned == [c]
+    assert res.conditional == [a]  # still implied through c; b was missed
+
+
 def test_a_later_strong_result_confirms_a_conditional_concept() -> None:
     a, b = ids(2)
     g = RangeGraph.build([a, b], [])

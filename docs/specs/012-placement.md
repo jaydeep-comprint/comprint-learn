@@ -92,7 +92,8 @@ diagnostic, so state may have moved):
 | anything else | any | unchanged |
 
 - **Ancestors are implied**: when c is placed (learned or conditional), every in-range ancestor that isn't learned
-  and wasn't placed by its own evidence is placed too, as **conditional** (decided with the user). A demoted
+  and wasn't placed by its own evidence is placed too, as **conditional** (decided with the user), unless the
+  student got it wrong directly (`wrong ≥ 1`): as in Math Academy, a gap the diagnostic found is left to learn. A demoted
   prerequisite leaves its learned dependants in place (stored rows win).
 - Promotion goes through `frontier.mark_learned`, extended with `source`, `rating` and `conditional` and turned
   into an **upsert** (most range concepts have no `concept_state` row), so an in-progress concept's waiting

@@ -20,6 +20,7 @@ const TABS = [
   { to: "", label: "Overview", end: true },
   { to: "students", label: "Students", end: false },
   { to: "assignments", label: "Assignments", end: false },
+  { to: "placement", label: "Placement", end: false },
   { to: "settings", label: "Settings", end: false },
 ];
 

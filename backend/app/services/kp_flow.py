@@ -1424,6 +1424,63 @@ async def remediation_answer(scope: OrgScope, remediation_id: str, body: AnswerI
     return out
 
 
+async def end_concept_work(scope: OrgScope, concept_id: uuid.UUID) -> None:
+    """Spec 012: an in-progress concept is about to be placed as learned. Its active KP and
+    practice sessions end (`failed`, no XP) and the open remediations created by its own KPs
+    resolve (`relearned`), so a learned concept shows no brush-up."""
+    kp_ids = select(KnowledgePoint.id).where(KnowledgePoint.concept_id == concept_id)
+    await scope.session.execute(
+        update(PracticeSession)
+        .where(
+            PracticeSession.org_id == scope.org_id,
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.status == SessionStatus.active,
+            ((PracticeSession.kind == SessionKind.kp) & PracticeSession.kp_id.in_(kp_ids))
+            | (
+                (PracticeSession.kind == SessionKind.practice)
+                & (PracticeSession.concept_id == concept_id)
+            ),
+        )
+        .values(status=SessionStatus.failed, ended_at=func.now())
+        .execution_options(synchronize_session="fetch")
+    )
+    own = (
+        scope.select(Remediation)
+        .with_only_columns(Remediation.id)
+        .where(
+            Remediation.student_id == scope.user.id,
+            Remediation.kp_id.in_(kp_ids),
+            Remediation.state != RemediationState.resolved,
+        )
+    )
+    await scope.session.execute(
+        update(PracticeSession)
+        .where(
+            PracticeSession.org_id == scope.org_id,
+            PracticeSession.student_id == scope.user.id,
+            PracticeSession.remediation_id.in_(own),
+            PracticeSession.status == SessionStatus.active,
+        )
+        .values(status=SessionStatus.failed, ended_at=func.now())
+        .execution_options(synchronize_session="fetch")
+    )
+    await scope.session.execute(
+        update(Remediation)
+        .where(
+            Remediation.org_id == scope.org_id,
+            Remediation.student_id == scope.user.id,
+            Remediation.kp_id.in_(kp_ids),
+            Remediation.state != RemediationState.resolved,
+        )
+        .values(
+            state=RemediationState.resolved,
+            outcome=RemediationOutcome.relearned,
+            resolved_at=func.now(),
+        )
+        .execution_options(synchronize_session=False)
+    )
+
+
 async def _relearn(scope: OrgScope, concept_id: uuid.UUID) -> None:
     """A failed review: the prereq goes back to in progress with every KP reset (history kept);
     its open reviews become relearns (their active sessions end), resolved when it's learned
@@ -1452,6 +1509,7 @@ async def _relearn(scope: OrgScope, concept_id: uuid.UUID) -> None:
             status=ConceptStatus.in_progress,
             learned_at=None,
             relearn_count=ConceptState.relearn_count + 1,
+            conditional=False,  # spec 012
             updated_at=func.now(),
         )
         .execution_options(synchronize_session=False)

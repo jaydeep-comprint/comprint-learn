@@ -15,7 +15,7 @@ from decimal import Decimal
 from typing import Literal
 
 from fsrs import Card, Rating, Scheduler, State
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope
@@ -98,9 +98,10 @@ class Scheduled:
     due: datetime
 
 
-def first_review(at: datetime) -> Scheduled:
-    """A new card reviewed `Good` at `at` (a concept just learned)."""
-    card, _ = SCHEDULER.review_card(Card(card_id=0), Rating.Good, utc(at))
+def first_review(at: datetime, rating: Rating = Rating.Good) -> Scheduled:
+    """A new card reviewed `Good` at `at` (a concept just learned); `Hard` for a conditional
+    placement (spec 012)."""
+    card, _ = SCHEDULER.review_card(Card(card_id=0), rating, utc(at))
     assert card.stability is not None and card.difficulty is not None
     return Scheduled(card.stability, card.difficulty, min_tomorrow(card.due, at))
 
@@ -276,16 +277,24 @@ def _rate(card: ReviewCard, rating: Rating, at: datetime) -> tuple[datetime, flo
     return before
 
 
-async def on_learned(scope: OrgScope, concept_id: uuid.UUID, at: datetime | None = None) -> None:
+async def on_learned(
+    scope: OrgScope,
+    concept_id: uuid.UUID,
+    at: datetime | None = None,
+    *,
+    rating: Rating = Rating.Good,
+    source: Literal[ReviewSource.learned, ReviewSource.placed] = ReviewSource.learned,
+) -> None:
     """A concept became learned: create its card (a first `Good`), or, when one exists, this is a
     relearn: `Good` again with the fail count, credit and reason reset. No gradable KP items → no
-    card."""
+    card. Spec 012: a placement logs `placed` for both (never `relearned`, so it doesn't count as
+    struggling) and rates `Hard` when conditional."""
     at = at or datetime.now(UTC)
     if not await gradable(scope, [concept_id]):
         return
     card = await _locked_card(scope, concept_id)
     if card is None:
-        first = first_review(at)
+        first = first_review(at, rating)
         created = await scope.session.scalar(
             insert(ReviewCard)
             .values(
@@ -309,8 +318,8 @@ async def on_learned(scope: OrgScope, concept_id: uuid.UUID, at: datetime | None
                     org_id=scope.org_id,
                     student_id=scope.user.id,
                     concept_id=concept_id,
-                    source=ReviewSource.learned,
-                    rating=int(Rating.Good),
+                    source=source,
+                    rating=int(rating),
                     due_after=first.due,
                     stability_after=first.stability,
                     created_at=at,
@@ -318,15 +327,15 @@ async def on_learned(scope: OrgScope, concept_id: uuid.UUID, at: datetime | None
             )
         return
     old_reason = card.due_reason
-    due_before, stab_before = _rate(card, Rating.Good, at)
+    due_before, stab_before = _rate(card, rating, at)
     card.consecutive_fails = 0
     card.credit = 0.0
     card.due_reason = ReviewDueReason.schedule
     _log(
         scope,
         concept_id,
-        ReviewSource.relearned,
-        rating=Rating.Good,
+        ReviewSource.placed if source == ReviewSource.placed else ReviewSource.relearned,
+        rating=rating,
         after=card,
         due_before=due_before,
         stability_before=stab_before,
@@ -352,7 +361,9 @@ async def apply_review(
     source: Literal[ReviewSource.review, ReviewSource.brushup],
     session_id: uuid.UUID | None,
 ) -> ReviewInfo | None:
-    """An explicit review (a review or a brush-up) ended: rate the card. None when it has none."""
+    """An explicit review (a review or a brush-up) ended: rate the card. None when it has none.
+    Spec 012: the first review outcome clears a conditional placement."""
+    await clear_conditional(scope, [concept_id])
     card = await _locked_card(scope, concept_id)
     if card is None:
         return None
@@ -375,6 +386,41 @@ async def apply_review(
         at=now,
     )
     return ReviewInfo(rating, ist_day(card.due), card.consecutive_fails, old_reason)
+
+
+async def clear_conditional(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> None:
+    """Spec 012: a conditional placement becomes a normal learned concept."""
+    if not concept_ids:
+        return
+    await scope.session.execute(
+        update(ConceptState)
+        .where(
+            ConceptState.org_id == scope.org_id,
+            ConceptState.student_id == scope.user.id,
+            ConceptState.concept_id.in_(list(concept_ids)),
+            ConceptState.conditional.is_(True),
+        )
+        .values(conditional=False, updated_at=func.now())
+        .execution_options(synchronize_session=False)
+    )
+
+
+async def _conditional(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
+    if not concept_ids:
+        return set()
+    return set(
+        (
+            await scope.session.scalars(
+                scope.select(ConceptState)
+                .with_only_columns(ConceptState.concept_id)
+                .where(
+                    ConceptState.student_id == scope.user.id,
+                    ConceptState.concept_id.in_(list(concept_ids)),
+                    ConceptState.conditional.is_(True),
+                )
+            )
+        ).all()
+    )
 
 
 async def _last_relearn(scope: OrgScope, concept_id: uuid.UUID) -> datetime | None:
@@ -408,10 +454,13 @@ async def give_implicit_credit(scope: OrgScope, concept_id: uuid.UUID, kind: Cre
     n_kps = len(await frontier.active_kps(scope, [concept_id])) if kind == "kp" else 0
     graph = await learn._graph(scope)  # active content only (retired prereqs aren't in it)
     learned = await _learned(scope, [p for p, _ in edges])
+    shaky = await _conditional(scope, [p for p, _ in edges])  # spec 012: treated as struggling
     now = datetime.now(UTC)
     for prereq_id, weight in sorted(edges, key=lambda e: str(e[0])):
         share = implicit_share(float(weight), n_kps, kind)
         if share <= 0 or prereq_id not in graph.nodes or prereq_id not in learned:
+            continue
+        if prereq_id in shaky:
             continue
         card = await _locked_card(scope, prereq_id)
         if card is None or card.due_reason == ReviewDueReason.quiz_miss:
@@ -445,7 +494,9 @@ async def give_implicit_credit(scope: OrgScope, concept_id: uuid.UUID, kind: Cre
 async def mark_quiz_miss(
     scope: OrgScope, concept_ids: Collection[uuid.UUID], quiz_id: uuid.UUID
 ) -> None:
-    """Each missed concept's card is due now, outside the cap (FSRS state untouched)."""
+    """Each missed concept's card is due now, outside the cap (FSRS state untouched). Spec 012: a
+    quiz miss clears a conditional placement."""
+    await clear_conditional(scope, concept_ids)
     now = datetime.now(UTC)
     for cid in sorted(concept_ids, key=str):
         card = await _locked_card(scope, cid)
@@ -528,15 +579,15 @@ async def _state(scope: OrgScope, *, create_missing: bool = True) -> _QueueState
     graph = await learn._graph(scope)
     me = scope.user.id
     now = datetime.now(UTC)
-    learned = set(
-        (
-            await scope.session.scalars(
-                scope.select(ConceptState)
-                .with_only_columns(ConceptState.concept_id)
-                .where(ConceptState.student_id == me, ConceptState.status == ConceptStatus.learned)
-            )
-        ).all()
-    )
+    learned_rows = (
+        await scope.session.execute(
+            scope.select(ConceptState)
+            .with_only_columns(ConceptState.concept_id, ConceptState.conditional)
+            .where(ConceptState.student_id == me, ConceptState.status == ConceptStatus.learned)
+        )
+    ).all()
+    learned = {cid for cid, _ in learned_rows}
+    conditional = {cid for cid, cond in learned_rows if cond}
     cards = {
         c.concept_id: c
         for c in (
@@ -546,7 +597,9 @@ async def _state(scope: OrgScope, *, create_missing: bool = True) -> _QueueState
     missing = [c for c in learned if c in graph.nodes and c not in cards]
     if create_missing and missing:  # gradable items appeared since the concept was learned
         for cid in await gradable(scope, missing):
-            await on_learned(scope, cid, now)
+            await on_learned(
+                scope, cid, now, rating=Rating.Hard if cid in conditional else Rating.Good
+            )
         await scope.session.flush()
         cards = {
             c.concept_id: c

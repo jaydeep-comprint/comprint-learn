@@ -46,7 +46,7 @@ Build order and spec numbers: docs/ROADMAP.md.
 5. Mastery: the KP flow (fail → retry later → remediate key prerequisites), the knowledge frontier, and a visual knowledge graph ([spec 005](specs/005-kp-flow-knowledge-graph.md)).
 6. Spaced repetition per concept with implicit credit, a daily review cap, and a mixed timed quiz every ~150 XP ([spec 007](specs/007-reviews-quizzes.md)).
 7. XP (minutes × performance), daily goal, streaks. **Class leaderboards are opt-in, switched on by the teacher**, and ranked by XP, never time spent ([spec 008](specs/008-xp-gamification.md); built before 007).
-8. Placement: the teacher marks the chapters already covered, then a **short adaptive diagnostic within that range**.
+8. Placement: the teacher marks the chapters already covered, then a **short adaptive diagnostic within that range** ([spec 012](specs/012-placement.md)).
 9. AI tutor, scoped to the current lesson or question: it points to the worked example, the prerequisite, or an experiment to try.
    It never gives answers or steps; hints are capped and reduce XP ([spec 009](specs/009-ai-tutor.md)).
 10. Teacher dashboard: class overview, per-student knowledge graph, weakest concepts, misconception spread, at-risk students,

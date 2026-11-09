@@ -14,6 +14,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Literal
 
+from fsrs import Rating
 from sqlalchemy import Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
@@ -34,6 +35,7 @@ from app.models import (
     Remediation,
     RemediationOutcome,
     RemediationState,
+    ReviewSource,
     SessionKind,
     SessionStatus,
 )
@@ -97,6 +99,8 @@ class ConceptView:
     kps: list[KpView]
     has_practice: bool = False  # an active practice item exists (spec 006)
     practice_passed: bool = False  # the student passed a practice attempt for it
+    placed: bool = False  # spec 012: stored learned with source = diagnostic
+    conditional: bool = False  # spec 012: placed on thin evidence, not reviewed yet
 
     @property
     def practice(self) -> PracticeStatus:
@@ -112,6 +116,9 @@ class ConceptView:
 
     @property
     def parts_passed(self) -> int:
+        """A learned concept shows as complete (spec 012: placed concepts have no KP passes)."""
+        if self.status == "learned":
+            return self.parts_total
         return self.kps_passed + (self.practice == "passed")
 
     @property
@@ -166,6 +173,8 @@ class Frontier:
     kp_concept: dict[uuid.UUID, uuid.UUID]  # kp id -> concept id, for the loaded KPs
     learned_at: dict[uuid.UUID, datetime | None] = field(default_factory=dict)  # stored rows
     practice_passed_at: dict[uuid.UUID, datetime] = field(default_factory=dict)  # last pass
+    source: dict[uuid.UUID, ConceptSource] = field(default_factory=dict)  # stored rows
+    conditional: set[uuid.UUID] = field(default_factory=set)  # spec 012
 
     def status(self, concept: uuid.UUID) -> Status:
         view = self.views.get(concept)
@@ -301,6 +310,8 @@ class StudentRows:
 
     stored: dict[uuid.UUID, ConceptStatus] = field(default_factory=dict)
     learned_at: dict[uuid.UUID, datetime | None] = field(default_factory=dict)
+    source: dict[uuid.UUID, ConceptSource] = field(default_factory=dict)
+    conditional: set[uuid.UUID] = field(default_factory=set)
     progress: dict[uuid.UUID, KpProgress] = field(default_factory=dict)
     remediations: list[RemediationView] = field(default_factory=list)  # oldest first
     kp_passes: dict[uuid.UUID, datetime] = field(default_factory=dict)  # concept -> last KP pass
@@ -327,7 +338,7 @@ async def fetch(
     rows = {sid: StudentRows() for sid in student_ids}
     if not student_ids:
         return rows
-    for sid, cid, status, learned_at in (
+    for sid, cid, status, learned_at, source, conditional in (
         await scope.session.execute(
             scope.select(ConceptState)
             .with_only_columns(
@@ -335,12 +346,17 @@ async def fetch(
                 ConceptState.concept_id,
                 ConceptState.status,
                 ConceptState.learned_at,
+                ConceptState.source,
+                ConceptState.conditional,
             )
             .where(ConceptState.student_id.in_(student_ids))
         )
     ).all():
         rows[sid].stored[cid] = status
         rows[sid].learned_at[cid] = learned_at
+        rows[sid].source[cid] = source
+        if conditional:
+            rows[sid].conditional.add(cid)
     kp_ids = [kp.id for kp in content.kps]
     if kp_ids:
         for p in (
@@ -417,6 +433,11 @@ def build(
             kps_by_concept.get(cid, []),
             has_practice=cid in content.with_practice,
             practice_passed=cid in rows.practice_passed,
+            placed=(
+                stored.get(cid) == ConceptStatus.learned
+                and rows.source.get(cid) == ConceptSource.diagnostic
+            ),
+            conditional=stored.get(cid) == ConceptStatus.learned and cid in rows.conditional,
         )
         for cid in content.concept_ids
     }
@@ -427,6 +448,8 @@ def build(
         {kp.id: kp.concept_id for kp in kps},
         learned_at=dict(rows.learned_at),
         practice_passed_at=dict(rows.practice_passed),
+        source=dict(rows.source),
+        conditional=set(rows.conditional),
     )
 
 
@@ -585,22 +608,30 @@ async def close_review_sessions(scope: OrgScope, concept_id: uuid.UUID) -> None:
     )
 
 
-async def mark_learned(scope: OrgScope, concept_id: uuid.UUID) -> None:
+async def mark_learned(
+    scope: OrgScope,
+    concept_id: uuid.UUID,
+    *,
+    source: ConceptSource = ConceptSource.lesson,
+    conditional: bool = False,
+) -> None:
     """Concept learned; remediations waiting on it being relearned resolve. Spec 007: its review
-    card is created (or, after a relearn, reviewed `Good` again)."""
+    card is created (or, after a relearn, reviewed `Good` again). Spec 012: an upsert (a placed
+    concept usually has no row yet); a diagnostic places with `source = diagnostic`, and a
+    conditional placement starts its card at `Hard`."""
     await close_review_sessions(scope, concept_id)
+    values = {
+        "status": ConceptStatus.learned,
+        "learned_at": func.now(),
+        "source": source,
+        "conditional": conditional,
+        "updated_at": func.now(),
+    }
     await scope.session.execute(
-        update(ConceptState)
-        .where(
-            ConceptState.org_id == scope.org_id,
-            ConceptState.student_id == scope.user.id,
-            ConceptState.concept_id == concept_id,
-        )
-        .values(
-            status=ConceptStatus.learned,
-            learned_at=func.now(),
-            source=ConceptSource.lesson,
-            updated_at=func.now(),
+        insert(ConceptState)
+        .values(org_id=scope.org_id, student_id=scope.user.id, concept_id=concept_id, **values)
+        .on_conflict_do_update(
+            index_elements=[ConceptState.student_id, ConceptState.concept_id], set_=values
         )
         .execution_options(synchronize_session=False)
     )
@@ -621,4 +652,10 @@ async def mark_learned(scope: OrgScope, concept_id: uuid.UUID) -> None:
     )
     from app.services import srs
 
-    await srs.on_learned(scope, concept_id)
+    placed = source == ConceptSource.diagnostic
+    await srs.on_learned(
+        scope,
+        concept_id,
+        rating=Rating.Hard if conditional else Rating.Good,
+        source=ReviewSource.placed if placed else ReviewSource.learned,
+    )

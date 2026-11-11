@@ -273,7 +273,7 @@ Three PRs, each self-reviewed as above:
       a fixed one; MCQ correct option and misconception titles; images inlined; content text only in the JSON block
       (a `<script>` in a prompt doesn't create a script tag); refusal on a tree with errors; same output twice
       (ignoring the header).
-- [ ] `cd backend && uv run mypy` and `make check` green; `make test-db` green (shared test DB, run alone).
+- [x] `cd backend && uv run mypy` and `make check` green; `make test-db` green (shared test DB, run alone).
 - [x] `make content-import ARGS=--dry-run` lists the new chapters/concepts/items; `make content-import` twice, the
       second reports no changes (after `alembic current` shows head on the dev DB).
 - [ ] `make review-pack` writes `review-packs/{maths-9-10,physics-9-10,python-basics}.html`; open each: KaTeX,

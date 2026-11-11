@@ -54,7 +54,7 @@ the reason in the commit message).
 | | N `equations-of-motion` | acceleration (0.8), motion-graphs (0.3), maths-9-10/linear-equations-two-variables (0.2) | s = ut + ½at² · v² = u² + 2as · choosing the right equation · braking and stopping-distance problems |
 | `force-and-laws-of-motion` (9) "Force and laws of motion" | N `forces-and-inertia` | acceleration (0.3) | balanced and unbalanced forces (net force along a line) · first law and friction · inertia and mass · identifying the forces in everyday situations |
 | | N `momentum-and-second-law` | forces-and-inertia (0.5), acceleration (0.6) | momentum p = mv · F = ma · force as rate of change of momentum (F·t = Δp) · units and combined problems |
-| | N `third-law-and-momentum-conservation` | momentum-and-second-law (0.7) | action–reaction pairs · conservation of momentum in collisions · recoil (gun, jumping from a boat) · combined problems |
+| | N `third-law-and-momentum-conservation` (title "Newton's third law of motion") | momentum-and-second-law (0.7) | action–reaction pairs · why the pair doesn't cancel · equal forces, unequal effects (recoil as a = F/m: gun, jumping from a boat) · third law with F = ma. *Changed under decision 5: rationalised NCERT Class 9 deleted §9.6 Conservation of Momentum; the id is kept.* |
 
 Cross-course edges stay light (decided): only to `maths-9-10/linear-equations-two-variables`, weight ≤ 0.3, so
 physics never waits on Class 10 maths. No edges to the new maths concepts.

@@ -1,14 +1,14 @@
 ## Worked example: reading a graph of non-uniform motion
 
-![Distance–time graph of a toy car](img/dt-trip.svg)
+![Distance–time graph of a cyclist](img/dt-trip-example.svg)
 
-The toy car's motion has three parts:
+The cyclist's motion has three parts:
 
-1. **0 → 4 s**: the line rises 20 m in 4 s, so the speed is 20 ÷ 4 = **5 m/s**.
-2. **4 → 8 s**: the line is flat, so the car is **at rest** for 4 s.
-3. **8 → 10 s**: the line rises 20 m in 2 s, so the speed is 20 ÷ 2 = **10 m/s**, the steepest part.
+1. **0 → 2 s**: the line rises 10 m in 2 s, so the speed is 10 ÷ 2 = **5 m/s**, the steepest part.
+2. **2 → 5 s**: the line is flat, so the cyclist is **at rest** for 3 s.
+3. **5 → 10 s**: the line rises 20 m in 5 s, so the speed is 20 ÷ 5 = **4 m/s**.
 
-**Average speed** for the whole trip = total distance ÷ total time = 40 ÷ 10 = **4 m/s**. The time at rest is
+**Average speed** for the whole trip = total distance ÷ total time = 30 ÷ 10 = **3 m/s**. The time at rest is
 part of the total time.
 
 A **curved** distance–time graph means the speed is changing: getting steeper means speeding up, and flattening

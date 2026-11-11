@@ -123,7 +123,7 @@ kps:
           A bullet of mass {{mg}} g moves at {{v}} m/s. How fast would a {{mp}} kg student have to walk to have
           the same momentum? Give it as a decimal if needed.
         params:
-          mg: {choices: [20, 25, 50]}
+          mg: {choices: [20, 50]}
           v: {choices: [200, 400]}
           mp: {choices: [40, 50]}
         derived:

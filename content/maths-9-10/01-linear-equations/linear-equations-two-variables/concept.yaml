@@ -98,6 +98,23 @@ kps:
               - {id: d, text: "$x + 1 = 0$"}
         explanation: |
           Each variable must appear only to the first power and never multiplied together. $x + 1 = 0$ has only one variable.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $x = {{p}}$, $y = {{q}}$ is a solution of ${{a}}x + ky = {{c}}$. Find $k$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          k: {min: 1, max: 9, step: 1}
+          p: {min: 1, max: 6, step: 1}
+          q: {min: 1, max: 6, step: 1}
+        derived:
+          c: "a * p + k * q"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Substitute: ${{a}} \times {{p}} + {{q}}k = {{c}}$, so ${{q}}k = {{c}} - {{a}} \times {{p}}$ and $k = {{k}}$.
 
   - id: kp2
     title: Solutions of a linear equation
@@ -176,6 +193,26 @@ kps:
               - {id: d, text: "$(2, 3)$"}
         explanation: |
           $(4, 1)$: $4 + 2(1) = 6$ ✓. $(1, 4)$ gives $1 + 8 = 9$: the first number is always $x$.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $({{x0}}, {{y0}})$ is a solution of ${{a}}x + {{b}}y = {{c}}$. Find $y$ for the solution with $x = {{x1}}$.
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 6, step: 1}
+          x0: {min: 0, max: 5, step: 1}
+          y0: {min: 0, max: 9, step: 1}
+        derived:
+          c: "a * x0 + b * y0"
+          x1: "x0 + b"
+          y1: "y0 - a"
+        answer:
+          numeric: {value: "y1", mode: exact}
+        explanation: |
+          Substitute $x = {{x1}}$: ${{a}} \times {{x1}} + {{b}}y = {{c}}$, so ${{b}}y = {{c}} - {{a}} \times {{x1}}$ and $y = {{y1}}$.
+          Every value of $x$ gives a matching $y$: there are infinitely many solutions.
 
   - id: kp3
     title: The graph and its intercepts
@@ -251,6 +288,22 @@ kps:
               - {id: c, text: "put $x = y$ and solve"}
         explanation: |
           Every point on the x-axis has $y = 0$, so $3x = 12$ and the line meets it at $(4, 0)$.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          The line $y = {{m}}x + k$ passes through $({{x0}}, {{y0}})$. At what y-value does it cut the y-axis?
+        params:
+          m: {min: 2, max: 5, step: 1}
+          x0: {min: 1, max: 4, step: 1}
+          k: {min: -5, max: 8, step: 1}
+        derived:
+          y0: "m * x0 + k"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Substitute the point: ${{y0}} = {{m}} \times {{x0}} + k$, so $k = {{k}}$. On the y-axis $x = 0$, so $y = k = {{k}}$.
 
 practice:
   - id: practice-taxi
@@ -283,3 +336,39 @@ practice:
               numeric: {value: "D", mode: exact}
     explanation: |
       $y = {{f}} + {{r}}x$. For {{d}} km: ${{f}} + {{r}} \times {{d}}$. For ₹{{T}}: ${{r}}x = {{T}} - {{f}}$, so $x = {{D}}$ km.
+  - id: practice-mobile-plan
+    type: multistep
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      A mobile data plan costs ₹{{F}} a month plus ₹{{r}} for every GB of data used. In a month a student uses $x$ GB and pays ₹$y$.
+    params:
+      F: {min: 99, max: 199, step: 10}
+      r: {min: 10, max: 25, step: 5}
+      g: {min: 2, max: 9, step: 1}
+      g2: {min: 3, max: 12, step: 1}
+    constraints: ["g2 != g"]
+    derived:
+      B: "F + r * g2"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write $y$ in terms of $x$.
+            answer:
+              expression: {value: "F + r*x", variables: [x], sympy_mode: equivalent}
+          - prompt: |
+              How much, in ₹, is the bill for {{g}} GB?
+            answer:
+              numeric: {value: "F + r * g", mode: exact}
+          - prompt: |
+              One month the bill is ₹{{B}}. How many GB were used?
+            answer:
+              numeric: {value: "g2", mode: exact}
+          - prompt: |
+              The graph of $y$ against $x$ is a straight line. At what value of $y$ does it cut the y-axis?
+            answer:
+              numeric: {value: "F", mode: exact}
+    explanation: |
+      $y = {{F}} + {{r}}x$. For {{g}} GB: ${{F}} + {{r}} \times {{g}}$. For a bill of ₹{{B}}: ${{r}}x = {{B}} - {{F}}$, so $x = {{g2}}$.
+      At $x = 0$ (no data used) the bill is the fixed charge, ₹{{F}}.

@@ -101,6 +101,26 @@ kps:
               - {id: c, text: "$2x = 9$"}
         explanation: |
           $y$ is replaced by the whole of $2x$: $x + 2x = 9$, so $x = 3$ and $y = 6$.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Solve by substitution: $x = {{m}}y - {{k}}$ and ${{a}}x + {{b}}y = {{c}}$. Find $y$.
+        params:
+          m: {min: 2, max: 4, step: 1}
+          k: {min: 1, max: 5, step: 1}
+          y0: {min: 1, max: 6, step: 1}
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 6, step: 1}
+        derived:
+          x0: "m * y0 - k"
+          c: "a * x0 + b * y0"
+        answer:
+          numeric: {value: "y0", mode: exact}
+        explanation: |
+          Replace $x$ by the whole of ${{m}}y - {{k}}$: ${{a}}({{m}}y - {{k}}) + {{b}}y = {{c}}$.
+          Expand and collect: $({{a}} \times {{m}} + {{b}})y = {{c}} + {{a}} \times {{k}}$, so $y = {{y0}}$ (and $x = {{x0}}$).
 
   - id: kp2
     title: Elimination
@@ -183,6 +203,26 @@ kps:
           numeric: {value: 7, mode: exact}
         explanation: |
           Add: $2x = 14$, so $x = 7$ (and $y = 3$).
+      - id: kp2-q6
+        type: numeric
+        bloom: understand
+        expected_minutes: 1.5
+        prompt: |
+          To eliminate $y$ from (1) ${{a1}}x + {{b1}}y = {{c1}}$ and (2) ${{a2}}x - {{b2}}y = {{c2}}$, you multiply (1) by {{b2}} and (2) by {{b1}}, then add.
+          What is the coefficient of $x$ in the equation you get?
+        params:
+          a1: {min: 2, max: 6, step: 1}
+          b1: {min: 2, max: 5, step: 1}
+          a2: {min: 2, max: 6, step: 1}
+          b2: {min: 2, max: 5, step: 1}
+          c1: {min: 5, max: 30, step: 1}
+          c2: {min: 1, max: 20, step: 1}
+        constraints: ["b1 != b2"]
+        answer:
+          numeric: {value: "a1 * b2 + a2 * b1", mode: exact}
+        explanation: |
+          (1) × {{b2}}: ${{a1}} \times {{b2}}\,x + {{b1}} \times {{b2}}\,y = \ldots$; (2) × {{b1}}: ${{a2}} \times {{b1}}\,x - {{b2}} \times {{b1}}\,y = \ldots$
+          The $y$-terms are now opposite and cancel when you add, leaving $({{a1}} \times {{b2}} + {{a2}} \times {{b1}})x$.
 
   - id: kp3
     title: Word problems
@@ -262,6 +302,26 @@ kps:
               - {id: c, text: "$3y = 2x + 5$", misconception: swaps-coordinates}
         explanation: |
           The pens are the bigger amount: pens = pencils + 5, so $3x = 2y + 5$.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          The sum of the ages of a father and his son is {{s}} years. {{n}} years ago, the father was {{k}} times as old as the son.
+          How old is the son now, in years?
+        params:
+          s0: {min: 3, max: 10, step: 1}
+          k: {min: 3, max: 5, step: 1}
+          n: {min: 2, max: 6, step: 1}
+        derived:
+          S: "s0 + n"
+          F: "k * s0 + n"
+          s: "S + F"
+        answer:
+          numeric: {value: "S", mode: exact}
+        explanation: |
+          Let the ages now be $F$ and $S$: $F + S = {{s}}$ and $F - {{n}} = {{k}}(S - {{n}})$.
+          The second gives $F = {{k}}S - {{k}} \times {{n}} + {{n}}$; substitute into the first and solve: $S = {{S}}$ (and $F = {{F}}$).
 
 practice:
   - id: practice-tickets
@@ -304,3 +364,40 @@ practice:
               numeric: {value: "a3 * A + k3 * C", mode: exact}
     explanation: |
       ${{a1}}x + {{k1}}y = {{T1}}$ and ${{a2}}x + {{k2}}y = {{T2}}$ give $x = {{A}}$ and $y = {{C}}$. Then ${{a3}} \times {{A}} + {{k3}} \times {{C}}$.
+  - id: practice-boat
+    type: multistep
+    bloom: analyze
+    expected_minutes: 7
+    prompt: |
+      A boat goes {{d1}} km downstream in {{t1}} h and {{d2}} km upstream in {{t2}} h.
+      Let the speed of the boat in still water be $u$ km/h and the speed of the stream $v$ km/h.
+    params:
+      u: {min: 8, max: 20, step: 1}
+      v: {min: 1, max: 4, step: 1}
+      t1: {min: 1, max: 4, step: 1}
+      t2: {min: 1, max: 4, step: 1}
+    derived:
+      d1: "(u + v) * t1"
+      d2: "(u - v) * t2"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              What is the boat's speed downstream, $u + v$?
+            answer:
+              numeric: {value: "u + v", unit: "km/h", mode: exact}
+          - prompt: |
+              What is its speed upstream, $u - v$?
+            answer:
+              numeric: {value: "u - v", unit: "km/h", mode: exact}
+          - prompt: |
+              Find the speed of the boat in still water.
+            answer:
+              numeric: {value: "u", unit: "km/h", mode: exact}
+          - prompt: |
+              Find the speed of the stream.
+            answer:
+              numeric: {value: "v", unit: "km/h", mode: exact}
+    explanation: |
+      Downstream $u + v = \dfrac{ {{d1}} }{ {{t1}} } = {{u}} + {{v}}$; upstream $u - v = \dfrac{ {{d2}} }{ {{t2}} }$.
+      Add the two equations: $2u = $ their sum, so $u = {{u}}$; subtract: $2v = $ their difference, so $v = {{v}}$.

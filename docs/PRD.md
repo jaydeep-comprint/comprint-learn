@@ -38,7 +38,8 @@ Build order and spec numbers: docs/ROADMAP.md.
 0. Foundations: monorepo scaffold, `make dev` / `make check`, CI ([spec 001](specs/001-scaffold.md)).
 1. Multi-school accounts: schools → teachers → classes → students, with roles ([spec 002](specs/002-auth-tenancy.md)).
 2. Pre-authored courses (content-as-code): concepts, KPs, prerequisite graph, items. First content is a **6–8 concept slice
-   of each of** CBSE Class 9–10 Maths (algebra), Physics (motion and force) and Python basics ([spec 003](specs/003-content-model-importer.md)).
+   of each of** CBSE Class 9–10 Maths (algebra), Physics (motion and force) and Python basics ([spec 003](specs/003-content-model-importer.md));
+   completed to 8 concepts per subject in [spec 013](specs/013-pilot-content.md).
 3. Student **Learn** layer: intro + worked examples (text, images, diagrams, maths) + misconception check ([spec 004](specs/004-learn-layer.md)).
 4. Student **Practice** layer, with these formats: numeric + units (exact / significant figures / tolerance, randomised numbers),
    SymPy expressions, limited multiple choice (misconception-tagged), multi-step problems, and Python code with tests
@@ -82,7 +83,8 @@ Build order and spec numbers: docs/ROADMAP.md.
 - Leaderboards: personal stats by default; teachers see everyone; class leaderboards are opt-in per class.
 - Teacher control: assign targets with due dates; never cap students who are ahead.
 
-- Content review: light self-review for the POC (no formal subject-teacher review yet).
+- Content review: self-review (strict validator + an independent AI subject review) ships the content (spec 013);
+  a subject-teacher review of every concept, tracked in docs/content-review.md, is a pilot gate (spec 014).
 
 ## Open questions
 - Pilot timeline; how many pilot schools and classes?

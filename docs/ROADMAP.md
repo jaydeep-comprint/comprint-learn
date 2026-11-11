@@ -40,8 +40,8 @@ facts (a server guard drops anything it can't check) and re-teaching notes open 
 ## Phase 3: Pilot readiness
 | # | Spec | Done when |
 |---|---|---|
-| 013 | **Content**: complete the pilot slices: 6–8 concepts each for CBSE 9–10 Maths (algebra), Physics (motion and force) and Python basics | Reviewed by a subject teacher |
-| 014 | **Hardening**: privacy/consent flow for minors, data export/delete, error tracking, backups, load test | Security review passes; consent flow is live |
+| 013 | **Content** ([spec](specs/013-pilot-content.md)): complete the pilot slices: 8 concepts each for CBSE 9–10 Maths (algebra), Physics (motion and force) and Python basics; review pack | Strict check + independent AI subject review pass; every concept `ai-reviewed` in docs/content-review.md |
+| 014 | **Hardening**: privacy/consent flow for minors, data export/delete, error tracking, backups, load test | Security review passes; consent flow is live; every concept `teacher-reviewed` in docs/content-review.md |
 
 ## Later (v2 candidates)
 Server-side code grading sandbox · authoring UI · parent view · full multi-level FIRe (learning speed, repetition compression) · interactive physics simulations (sliders, free-body diagrams) · goal lenses (board vs JEE depth) · AI-graded free response · analytics per KP and per question · Hindi and regional languages · offline/PWA

@@ -34,8 +34,8 @@ kps:
         prompt: |
           The lines ${{a1}}x + {{b1}}y = 7$ and $kx + {{b2}}y = 9$ are parallel. Find $k$.
         params:
-          a1: {min: 1, max: 6, step: 1}
-          b1: {min: 1, max: 6, step: 1}
+          a1: {min: 2, max: 6, step: 1}
+          b1: {min: 2, max: 6, step: 1}
           m: {min: 2, max: 4, step: 1}
         derived:
           b2: "m * b1"
@@ -50,11 +50,11 @@ kps:
         prompt: |
           For the pair ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = {{c2}}$, calculate $a_1b_2 - a_2b_1$.
         params:
-          a1: {min: 1, max: 6, step: 1}
-          b1: {min: 1, max: 6, step: 1}
+          a1: {min: 2, max: 6, step: 1}
+          b1: {min: 2, max: 6, step: 1}
           c1: {min: 1, max: 12, step: 1}
-          a2: {min: 1, max: 6, step: 1}
-          b2: {min: 1, max: 6, step: 1}
+          a2: {min: 2, max: 6, step: 1}
+          b2: {min: 2, max: 6, step: 1}
           c2: {min: 1, max: 12, step: 1}
         constraints: ["a1 * b2 != a2 * b1"]
         answer:
@@ -68,8 +68,8 @@ kps:
         prompt: |
           For which value of $k$ do ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = k$ have infinitely many solutions?
         params:
-          a1: {min: 1, max: 5, step: 1}
-          b1: {min: 1, max: 5, step: 1}
+          a1: {min: 2, max: 5, step: 1}
+          b1: {min: 2, max: 5, step: 1}
           c1: {min: 1, max: 9, step: 1}
           m: {min: 2, max: 4, step: 1}
         derived:
@@ -167,10 +167,10 @@ kps:
         params:
           x0: {min: 0, max: 5, step: 1}
           y0: {min: 0, max: 5, step: 1}
-          a1: {min: 1, max: 4, step: 1}
-          b1: {min: 1, max: 4, step: 1}
-          a2: {min: 1, max: 4, step: 1}
-          b2: {min: 1, max: 4, step: 1}
+          a1: {min: 2, max: 4, step: 1}
+          b1: {min: 2, max: 4, step: 1}
+          a2: {min: 2, max: 4, step: 1}
+          b2: {min: 2, max: 4, step: 1}
         constraints: ["a1 * b2 != a2 * b1"]
         derived:
           c1: "a1 * x0 + b1 * y0"
@@ -228,10 +228,10 @@ kps:
         bloom: apply
         expected_minutes: 2
         prompt: |
-          The line ${{q}}x + {{p}}y = {{pq}}$ meets the x-axis at $A$ and the y-axis at $B$. Find the area of triangle $OAB$ in square units.
+          The line ${{q}}x + {{p}}y = {{pq}}$ meets the x-axis at $A$ and the y-axis at $B$. Find the area of triangle $OAB$ in square units, where $O$ is the origin.
         params:
-          p: {min: 1, max: 9, step: 1}
-          q: {min: 1, max: 9, step: 1}
+          p: {min: 2, max: 9, step: 1}
+          q: {min: 2, max: 9, step: 1}
         derived:
           pq: "p * q"
         answer:
@@ -260,6 +260,7 @@ kps:
           p: {min: 1, max: 9, step: 1}
           a: {min: 2, max: 5, step: 1}
           d: {min: 1, max: 9, step: 1}
+        constraints: ["p != d"]
         derived:
           c1: "a * p"
         answer:
@@ -361,13 +362,13 @@ practice:
       multistep:
         steps:
           - prompt: |
-              Write the fare $y$ for Service A in terms of $x$.
+              Write the fare $y$ for Service A in terms of $x$. Enter only the expression for $y$, without "y =".
             answer:
               expression: {value: "a + r1*x", variables: [x], sympy_mode: equivalent}
           - prompt: |
               The two fare lines meet. For what trip length, in km, do both services charge the same?
             answer:
-              numeric: {value: "x0", unit: "km", mode: exact}
+              numeric: {value: "x0", mode: exact}
           - prompt: |
               What is that equal fare, in ₹?
             answer:

@@ -37,7 +37,7 @@ kps:
         params:
           x0: {min: 0, max: 6, step: 1}
           m: {min: 2, max: 4, step: 1}
-          k: {min: 0, max: 6, step: 1}
+          k: {min: 1, max: 6, step: 1}
           a: {min: 2, max: 5, step: 1}
           b: {min: 2, max: 4, step: 1}
         derived:
@@ -69,7 +69,7 @@ kps:
         bloom: apply
         expected_minutes: 1
         prompt: |
-          The first step of substitution: from ${{a}}x + y = {{c}}$, write $y$ in terms of $x$.
+          The first step of substitution: from ${{a}}x + y = {{c}}$, write $y$ in terms of $x$. Enter only the expression for $y$, without "y =".
         params:
           a: {min: 2, max: 9, step: 1}
           c: {min: 1, max: 20, step: 1}
@@ -136,8 +136,8 @@ kps:
         params:
           x0: {min: 1, max: 6, step: 1}
           y0: {min: 0, max: 6, step: 1}
-          a1: {min: 1, max: 5, step: 1}
-          a2: {min: 1, max: 5, step: 1}
+          a1: {min: 2, max: 5, step: 1}
+          a2: {min: 2, max: 5, step: 1}
           b: {min: 2, max: 5, step: 1}
         derived:
           c1: "a1 * x0 + b * y0"
@@ -153,10 +153,10 @@ kps:
         prompt: |
           Solve ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = {{c2}}$. Find $y$.
         params:
-          a1: {min: 1, max: 5, step: 1}
-          b1: {min: 1, max: 5, step: 1}
-          a2: {min: 1, max: 5, step: 1}
-          b2: {min: 1, max: 5, step: 1}
+          a1: {min: 2, max: 5, step: 1}
+          b1: {min: 2, max: 5, step: 1}
+          a2: {min: 2, max: 5, step: 1}
+          b2: {min: 2, max: 5, step: 1}
           x0: {min: 0, max: 6, step: 1}
           y0: {min: 0, max: 6, step: 1}
         constraints: ["a1 * b2 != a2 * b1"]
@@ -176,9 +176,9 @@ kps:
         params:
           a1: {min: 2, max: 6, step: 1}
           a2: {min: 2, max: 6, step: 1}
-          b1: {min: 1, max: 5, step: 1}
-          b2: {min: 1, max: 5, step: 1}
-        constraints: ["a1 != a2"]
+          b1: {min: 2, max: 5, step: 1}
+          b2: {min: 2, max: 5, step: 1}
+        constraints: ["a1 != a2", "a1 * b2 != a2 * b1"]
         answer:
           numeric: {value: "a2 * b1 - a1 * b2", mode: exact}
         explanation: |
@@ -310,9 +310,10 @@ kps:
           The sum of the ages of a father and his son is {{s}} years. {{n}} years ago, the father was {{k}} times as old as the son.
           How old is the son now, in years?
         params:
-          s0: {min: 3, max: 10, step: 1}
+          s0: {min: 6, max: 12, step: 1}
           k: {min: 3, max: 5, step: 1}
           n: {min: 2, max: 6, step: 1}
+        constraints: ["(k - 1) * s0 >= 20"]
         derived:
           S: "s0 + n"
           F: "k * s0 + n"
@@ -347,7 +348,7 @@ practice:
       multistep:
         steps:
           - prompt: |
-              Using the first group only, write $y$ in terms of $x$.
+              Using the first group only, write $y$ in terms of $x$. Enter only the expression for $y$, without "y =".
             answer:
               expression: {value: "(T1 - a1*x) / k1", variables: [x], sympy_mode: equivalent}
           - prompt: |

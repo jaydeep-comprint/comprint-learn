@@ -40,14 +40,14 @@ role and school code only (e.g. "maths teacher, ABC"), never by name or contact 
 
 | Course | Concept | Status | AI review | Teacher reviewer | Teacher review | Notes / PR |
 |---|---|---|---|---|---|---|
-| maths-9-10 | polynomials-basics | draft | | | | |
-| maths-9-10 | algebraic-identities | draft | | | | |
-| maths-9-10 | factorisation-of-polynomials | draft | | | | |
-| maths-9-10 | linear-equations-two-variables | draft | | | | |
-| maths-9-10 | pair-of-linear-equations-graphical | draft | | | | |
-| maths-9-10 | pair-of-linear-equations-algebraic | draft | | | | |
-| maths-9-10 | quadratic-equations-solving | draft | | | | |
-| maths-9-10 | nature-of-roots | draft | | | | |
+| maths-9-10 | polynomials-basics | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
+| maths-9-10 | algebraic-identities | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
+| maths-9-10 | factorisation-of-polynomials | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
+| maths-9-10 | linear-equations-two-variables | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
+| maths-9-10 | pair-of-linear-equations-graphical | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
+| maths-9-10 | pair-of-linear-equations-algebraic | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
+| maths-9-10 | quadratic-equations-solving | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
+| maths-9-10 | nature-of-roots | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
 | physics-9-10 | distance-and-displacement | draft | | | | |
 | physics-9-10 | speed-and-velocity | draft | | | | |
 | physics-9-10 | acceleration | draft | | | | |

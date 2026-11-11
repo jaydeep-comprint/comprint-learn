@@ -34,7 +34,7 @@ kps:
         bloom: apply
         expected_minutes: 1
         prompt: |
-          Find the discriminant of ${{a}}x^2 - {{b}}x + {{c}} = 0$.
+          Find the discriminant of ${{a}}x^2 - {{b}}x + {{c}} = 0$. Use the coefficients as written (don't divide through).
         params:
           a: {min: 2, max: 6, step: 1}
           b: {min: 2, max: 12, step: 1}
@@ -50,7 +50,7 @@ kps:
         bloom: apply
         expected_minutes: 1
         prompt: |
-          Find the discriminant of ${{a}}x^2 + {{b}}x - {{c}} = 0$.
+          Find the discriminant of ${{a}}x^2 + {{b}}x - {{c}} = 0$. Use the coefficients as written (don't divide through).
         params:
           a: {min: 2, max: 5, step: 1}
           b: {min: 2, max: 9, step: 1}
@@ -67,7 +67,7 @@ kps:
         bloom: apply
         expected_minutes: 1.5
         prompt: |
-          Write ${{a}}x^2 = {{b}}x - {{c}}$ in the form $ax^2 + bx + c = 0$ and find its discriminant.
+          Write ${{a}}x^2 = {{b}}x - {{c}}$ in the form $ax^2 + bx + c = 0$ and find its discriminant. Use the coefficients as written (don't divide through).
         params:
           a: {min: 2, max: 5, step: 1}
           b: {min: 2, max: 12, step: 1}
@@ -84,7 +84,7 @@ kps:
         bloom: apply
         expected_minutes: 1.5
         prompt: |
-          Write $x({{a}}x + {{b}}) = {{c}}$ in the form $ax^2 + bx + c = 0$ and find its discriminant.
+          Write $x({{a}}x + {{b}}) = {{c}}$ in the form $ax^2 + bx + c = 0$ and find its discriminant. Use the coefficients as written (don't divide through).
         params:
           a: {min: 2, max: 5, step: 1}
           b: {min: 1, max: 9, step: 1}
@@ -117,12 +117,12 @@ kps:
         bloom: understand
         expected_minutes: 1
         prompt: |
-          Find the discriminant of $2x^2 = 18$.
+          Find the discriminant of $2x^2 = 7$.
         answer:
-          numeric: {value: 144, mode: exact}
+          numeric: {value: 56, mode: exact}
         explanation: |
-          In standard form: $2x^2 + 0x - 18 = 0$, so $a = 2$, $b = 0$, $c = -18$.
-          $D = 0^2 - 4 \times 2 \times (-18) = 144$.
+          In standard form: $2x^2 + 0x - 7 = 0$, so $a = 2$, $b = 0$, $c = -7$.
+          $D = 0^2 - 4 \times 2 \times (-7) = 56$.
 
   - id: kp2
     title: Nature of roots from D
@@ -271,7 +271,7 @@ kps:
         bloom: apply
         expected_minutes: 1.5
         prompt: |
-          ${{a}}x^2 - {{b}}x + k = 0$ has real roots. What is the **greatest** possible value of $k$?
+          ${{a}}x^2 - {{b}}x + k = 0$ has real roots. What is the **greatest** possible value of $k$? Give it as a decimal if it isn't a whole number.
         params:
           a: {choices: [2, 4, 5]}
           b: {min: 2, max: 12, step: 1}
@@ -488,7 +488,7 @@ practice:
       multistep:
         steps:
           - prompt: |
-              Write its discriminant $D$ in terms of $k$.
+              Write its discriminant $D$ in terms of $k$. Enter only the expression, without "D =".
             answer:
               expression: {value: "b^2 - 4*c*k", variables: [k], sympy_mode: equivalent}
           - prompt: |
@@ -496,7 +496,7 @@ practice:
             answer:
               numeric: {value: "k0", mode: exact}
           - prompt: |
-              For that value of $k$, find the equal root.
+              For that value of $k$, find the equal root. Give it as a decimal if it isn't a whole number.
             answer:
               numeric: {value: "r", mode: exact}
           - prompt: |

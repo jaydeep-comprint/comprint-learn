@@ -74,6 +74,7 @@ kps:
           a: {choices: [2, 3]}
           r: {min: 1, max: 5, step: 1}
           s: {min: 1, max: 5, step: 1}
+        constraints: ["s != r"]
         derived:
           c: "a * r * s"
           k: "a * (s - r)"
@@ -194,7 +195,7 @@ kps:
         bloom: apply
         expected_minutes: 1
         prompt: |
-          Solve ${{a}}x^2 = {{b}}x$. One root is 0. What is the other root?
+          Solve ${{a}}x^2 = {{b}}x$. One root is 0. What is the other root? Give it as a decimal if it isn't a whole number.
         params:
           a: {choices: [2, 4, 5]}
           b: {min: 2, max: 20, step: 1}
@@ -241,7 +242,7 @@ kps:
         bloom: apply
         expected_minutes: 1
         prompt: |
-          To solve ${{a}}x^2 + {{b}}x - {{c}} = 0$ with the quadratic formula, first find the value of $b^2 - 4ac$.
+          To solve ${{a}}x^2 + {{b}}x - {{c}} = 0$ with the quadratic formula, first find the value of $b^2 - 4ac$, using the coefficients as written.
         params:
           a: {min: 2, max: 5, step: 1}
           b: {min: 2, max: 9, step: 1}

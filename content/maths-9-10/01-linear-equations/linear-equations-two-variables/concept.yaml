@@ -95,9 +95,9 @@ kps:
               - {id: a, text: "$x^2 + y = 4$", misconception: any-equation-is-linear}
               - {id: b, text: "$2x + 5y = 7$", correct: true}
               - {id: c, text: "$xy = 6$", misconception: any-equation-is-linear}
-              - {id: d, text: "$x + 1 = 0$"}
+              - {id: d, text: '$\dfrac{1}{x} + y = 3$', misconception: any-equation-is-linear}
         explanation: |
-          Each variable must appear only to the first power and never multiplied together. $x + 1 = 0$ has only one variable.
+          Each variable must appear only to the first power and never multiplied together. $\dfrac{1}{x}$ is $x$ to the power $-1$, so that equation is not linear either.
       - id: kp1-q6
         type: numeric
         bloom: apply
@@ -159,7 +159,7 @@ kps:
         bloom: apply
         expected_minutes: 1.5
         prompt: |
-          Write $y$ in terms of $x$ for ${{a}}x + {{b}}y = {{c}}$.
+          Write $y$ in terms of $x$ for ${{a}}x + {{b}}y = {{c}}$. Enter only the expression for $y$, without "y =".
         params:
           a: {min: 2, max: 9, step: 1}
           b: {min: 2, max: 9, step: 1}
@@ -323,7 +323,7 @@ practice:
       multistep:
         steps:
           - prompt: |
-              Write $y$ in terms of $x$.
+              Write $y$ in terms of $x$. Enter only the expression for $y$, without "y =".
             answer:
               expression: {value: "f + r*x", variables: [x], sympy_mode: equivalent}
           - prompt: |
@@ -354,7 +354,7 @@ practice:
       multistep:
         steps:
           - prompt: |
-              Write $y$ in terms of $x$.
+              Write $y$ in terms of $x$. Enter only the expression for $y$, without "y =".
             answer:
               expression: {value: "F + r*x", variables: [x], sympy_mode: equivalent}
           - prompt: |

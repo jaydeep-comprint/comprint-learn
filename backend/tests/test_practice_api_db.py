@@ -227,12 +227,17 @@ async def test_failed_multistep_try_again_draws_new_numbers(db_app: DbApp) -> No
             )
         ).all()
     assert [p.status.value for p in sessions] == ["failed", "active"]
-    # The next practice item, or the same one with new numbers (content/README.md).
+    # The least recently answered practice item comes next (the concept has two), or the only
+    # one with new numbers (content/README.md).
     first, second = sessions
-    assert (first.current_item_id, first.current_seed) != (
-        second.current_item_id,
-        second.current_seed,
-    )
+    async with db_app.sessions() as session:
+        served = await session.get(Item, first.current_item_id)
+        assert served is not None
+        pool = await count(db_app, Item, concept_id=served.concept_id, kind=ItemKind.practice)
+    if pool > 1:
+        assert second.current_item_id != first.current_item_id
+    else:
+        assert second.current_seed != first.current_seed
 
 
 async def test_code_practice_retry_prefill_then_pass(db_app: DbApp) -> None:

@@ -100,7 +100,7 @@ async def test_physics_student_courses_and_outline(db_app: DbApp) -> None:
 
     outline = await _get(db_app, w.physics_student, f"/api/v1/learn/courses/{PHYSICS}/outline")
     order = list(_statuses(outline))
-    assert order.index(LIN) < order.index(SPEED)
+    assert order.index(LIN) == order.index(SPEED) - 1  # just before its first dependant
     assert [c for c in order if c != LIN] == own  # course order, LIN before its dependant
     assert "course" not in _keys(outline["chapters"])  # no "From Maths" label
     statuses = _statuses(outline)

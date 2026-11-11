@@ -97,6 +97,27 @@ kps:
               - {id: d, text: 24 km/h}
         explanation: |
           Times: 1 h and 0.5 h, so 24 km ÷ 1.5 h = 16 km/h.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A train covers {{d1}} km in {{t1}} h, stops at a station for {{s}} minutes, then covers {{d2}} km in {{t2}} h.
+          What is its average speed for the whole journey, in km/h? Give 3 significant figures.
+        params:
+          d1: {choices: [60, 90, 120]}
+          t1: {choices: [1, 1.5, 2]}
+          s: {choices: [15, 30]}
+          d2: {choices: [40, 80]}
+          t2: {choices: [0.5, 1]}
+        derived:
+          d: "d1 + d2"
+          tt: "t1 + s / 60 + t2"
+        answer:
+          numeric: {value: "d / tt", unit: km/h, mode: sigfig, sigfigs: 3}
+        explanation: |
+          Total distance = {{d1}} + {{d2}} = {{d}} km. Total time = {{t1}} h + {{s}} min + {{t2}} h = {{tt}} h
+          (the stop counts). Average speed = {{d}} ÷ {{tt}}.
 
   - id: kp2
     title: Velocity and converting km/h ↔ m/s
@@ -162,6 +183,26 @@ kps:
               - {id: a, text: 15 m/s, correct: true}
               - {id: b, text: 194.4 m/s, misconception: kmh-to-ms-multiply}
               - {id: c, text: 54 m/s}
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Take north as positive. A bus travels {{d}} m north in {{t1}} s, then turns back and travels {{e}} m south
+          in {{t2}} s. What is its average velocity for the whole trip? Give 2 significant figures.
+        params:
+          d: {choices: [600, 800, 1000]}
+          e: {choices: [200, 400]}
+          t1: {choices: [40, 60]}
+          t2: {choices: [20, 40]}
+        derived:
+          disp: "d - e"
+          tt: "t1 + t2"
+        answer:
+          numeric: {value: "disp / tt", unit: m/s, mode: sigfig, sigfigs: 2}
+        explanation: |
+          Displacement = {{d}} − {{e}} = {{disp}} m north; total time = {{tt}} s.
+          Average velocity = {{disp}} ÷ {{tt}}, pointing north. (Average speed would use the full distance instead.)
 
   - id: kp3
     title: Using s = vt to find time, distance or a rule
@@ -227,6 +268,19 @@ kps:
               - {id: a, text: t = s ÷ v, correct: true}
               - {id: b, text: t = v ÷ s, misconception: rearranges-formula-wrongly}
               - {id: c, text: t = s × v}
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A car moves at a steady {{v}} m/s. How far does it travel in {{t}} minutes? Give the answer in metres.
+        params:
+          v: {choices: [10, 15, 20, 25]}
+          t: {choices: [2, 3, 5]}
+        answer:
+          numeric: {value: "v * t * 60", unit: m, mode: exact}
+        explanation: |
+          Convert the time first: {{t}} min = {{t}} × 60 s. Then s = vt = {{v}} × {{t}} × 60 m.
 
 practice:
   - id: practice-1
@@ -260,3 +314,34 @@ practice:
               numeric: {value: 0, unit: km/h, mode: exact}
     explanation: |
       Going: {{t1}} h; returning: {{t2}} h. Average speed = 2 × {{d}} km ÷ total time. She ends at home, so her displacement and average velocity are 0.
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A train runs at a steady {{v}} km/h along a straight track from one town to another {{d}} km away,
+      and then comes back along the same track at the same speed.
+    params:
+      v: {choices: [36, 54, 72, 90, 108]}
+      d: {choices: [1.8, 3.6, 5.4]}
+    derived:
+      ms: "v / 3.6"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the train's speed in m/s?
+            answer:
+              numeric: {value: "ms", unit: m/s, mode: exact}
+          - prompt: How far does it travel in 30 s?
+            answer:
+              numeric: {value: "ms * 30", unit: m, mode: exact}
+          - prompt: How many seconds does the one-way trip take?
+            answer:
+              numeric: {value: "d * 1000 / ms", unit: s, mode: exact}
+          - prompt: What is its average velocity for the whole round trip?
+            answer:
+              numeric: {value: 0, unit: m/s, mode: exact}
+    explanation: |
+      {{v}} km/h ÷ 3.6 = {{ms}} m/s. In 30 s it goes {{ms}} × 30 m. One way: {{d}} km = {{d}} × 1000 m, so
+      t = distance ÷ speed. The round trip ends where it started, so the displacement and the average velocity are 0
+      (the average speed is still {{ms}} m/s).

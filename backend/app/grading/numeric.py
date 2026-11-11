@@ -110,7 +110,7 @@ def _with_unit(text: str, unit: str | None) -> str:
     return f"{text} {unit}" if unit else text
 
 
-def _display(spec: dict[str, Any], v: Decimal) -> str:
+def display_value(spec: dict[str, Any], v: Decimal) -> str:
     mode = spec["mode"]
     sci = bool(spec.get("sci_notation"))
     if mode == "sigfig":
@@ -191,7 +191,7 @@ def grade_numeric(
     value = params.evaluate(spec["value"], values)
     v = to_decimal(value)
     authored = spec.get("unit")
-    display = _with_unit(_display(spec, v), authored)
+    display = _with_unit(display_value(spec, v), authored)
     parsed = parse_number(response)
     if parsed is None:
         return NumericGrade(False, display, NOTE_NOT_A_NUMBER)

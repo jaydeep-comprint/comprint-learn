@@ -2,7 +2,7 @@
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: install dev dev-api dev-web check check-api check-web content-check content-import test-db migrate fmt fmt-api fmt-web
+.PHONY: install dev dev-api dev-web check check-api check-web content-check content-import review-pack test-db migrate fmt fmt-api fmt-web
 
 install:
 	cd $(BACKEND) && uv sync --frozen
@@ -38,8 +38,13 @@ check-web:
 	cd $(FRONTEND) && pnpm exec vitest run
 
 # Validates content/ offline (schema, graph, answers, code solutions); part of `check`.
+# Strict (spec 013): warnings fail too. The CLI flag itself stays opt-in.
 content-check:
-	cd $(BACKEND) && uv run --frozen app content check --root ../content
+	cd $(BACKEND) && uv run --frozen app content check --root ../content --strict
+
+# One HTML file per course with every answer, for reviewers (spec 013); gitignored review-packs/.
+review-pack:
+	cd $(BACKEND) && uv run app content review-pack --root ../content $(ARGS)
 
 # Imports content/ into DATABASE_URL (idempotent; add ARGS=--dry-run to preview).
 content-import:

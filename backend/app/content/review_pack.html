@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review pack</title>
+<link rel="stylesheet" href="%KATEX%/katex.min.css">
+<script src="%KATEX%/katex.min.js"></script>
+<script src="%MARKED%"></script>
+<style>
+  :root { --ink: #1c1f24; --muted: #5b6370; --line: #d8dce2; --soft: #f4f6f8; --ok: #11683a; --ok-bg: #e6f4ec;
+          --warn: #8a4b00; --warn-bg: #fff3e0; --accent: #2851a3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 21px; margin: 32px 0 8px; border-bottom: 2px solid var(--ink); padding-bottom: 4px; }
+  h3 { font-size: 18px; margin: 24px 0 6px; }
+  h4 { font-size: 15px; margin: 18px 0 6px; color: var(--accent); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 2px 0; }
+  .concept { margin-top: 32px; }
+  .md :first-child { margin-top: 0; } .md :last-child { margin-bottom: 0; }
+  .md img { max-width: 100%; height: auto; background: #fff; }
+  .box { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin: 8px 0; }
+  .worked { background: var(--soft); }
+  .item { border: 1px solid var(--line); border-radius: 6px; margin: 10px 0; break-inside: avoid; }
+  .item > header { background: var(--soft); padding: 6px 10px; font-size: 12px; color: var(--muted);
+                   border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .item > header b { color: var(--ink); }
+  .item .body { padding: 8px 10px; }
+  .sample { border-top: 1px dashed var(--line); padding: 8px 0 4px; }
+  .sample:first-child { border-top: 0; padding-top: 0; }
+  .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .answer { background: var(--ok-bg); color: var(--ok); border-radius: 4px; padding: 4px 8px; display: inline-block; margin: 4px 0; font-weight: 600; }
+  .error { background: var(--warn-bg); color: var(--warn); border-radius: 4px; padding: 4px 8px; }
+  .explanation { border-left: 3px solid var(--line); padding-left: 10px; margin-top: 6px; }
+  ol.options { padding-left: 0; list-style: none; margin: 4px 0; }
+  ol.options li { padding: 3px 6px; border-radius: 4px; display: flex; gap: 8px; align-items: baseline; }
+  ol.options li.correct { background: var(--ok-bg); }
+  .tag { font-size: 12px; color: var(--warn); }
+  pre, code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  pre { background: var(--soft); padding: 8px 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 6px 0; }
+  th, td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+  th { background: var(--soft); }
+  td pre { margin: 0; padding: 2px 4px; }
+  .notes { border: 1.5px solid var(--ink); border-radius: 6px; min-height: 160px; margin-top: 20px; padding: 8px 10px; }
+  @media print {
+    body { font-size: 12px; }
+    main { max-width: none; padding: 0; }
+    .concept { break-before: page; margin-top: 0; }
+    .item, .box { break-inside: avoid; }
+    pre { white-space: pre-wrap; }
+  }
+  @page { size: A4; margin: 14mm; }
+</style>
+</head>
+<body>
+<main id="root"><p>Loading… (this page needs an internet connection the first time, for the maths renderer)</p></main>
+<script type="application/json" id="pack">%DATA%</script>
+<script>
+(function () {
+  "use strict";
+  const data = JSON.parse(document.getElementById("pack").textContent);
+  const MERMAID_URL = "%MERMAID%";
+  let images = {};
+  let needsMermaid = false;
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // Raw HTML in content is shown as text (the app never renders it either).
+  if (window.marked) {
+    marked.use({
+      gfm: true,
+      renderer: { html(token) { return escapeHtml(token.text !== undefined ? token.text : token.raw); } },
+    });
+  }
+
+  // $…$ and $$…$$ are pulled out before marked runs and rendered with KaTeX (the app uses
+  // remark-math + rehype-katex); code spans and fences are left alone.
+  const MATH = /(```[\s\S]*?```|`[^`\n]*`)|\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+  function md(text) {
+    if (text === null || text === undefined || text === "") return "";
+    const maths = [];
+    const src = String(text).replace(MATH, function (all, code, display, inline) {
+      if (code !== undefined) return all;
+      maths.push(display !== undefined ? [display, true] : [inline, false]);
+      return "\u0000M" + (maths.length - 1) + "\u0000";
+    });
+    let html = window.marked ? marked.parse(src) : "<pre>" + escapeHtml(src) + "</pre>";
+    html = html.replace(/\u0000M(\d+)\u0000/g, function (_, i) {
+      const m = maths[Number(i)];
+      if (!window.katex) return escapeHtml("$" + m[0] + "$");
+      return katex.renderToString(m[0], { displayMode: m[1], throwOnError: false });
+    });
+    return html;
+  }
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = String(text);
+    return e;
+  }
+  function mdEl(text, cls) {
+    const e = el("div", "md" + (cls ? " " + cls : ""));
+    e.innerHTML = md(text);
+    e.querySelectorAll("img").forEach(function (img) {
+      const ref = img.getAttribute("src");
+      if (Object.prototype.hasOwnProperty.call(images, ref)) img.src = images[ref];
+    });
+    e.querySelectorAll("code.language-mermaid").forEach(function (c) {
+      needsMermaid = true;
+      const pre = c.parentElement;
+      const div = el("div", "mermaid", c.textContent);
+      pre.replaceWith(div);
+    });
+    return e;
+  }
+  function label(text) { return el("div", "label", text); }
+  function pre(text) { return el("pre", null, text); }
+  function json(v) { return JSON.stringify(v); }
+
+  function table(headers, rows) {
+    const t = el("table");
+    const tr = el("tr");
+    headers.forEach(function (h) { tr.appendChild(el("th", null, h)); });
+    t.appendChild(tr);
+    rows.forEach(function (r) {
+      const row = el("tr");
+      r.forEach(function (c) {
+        const td = el("td");
+        if (c instanceof Node) td.appendChild(c); else td.textContent = c === undefined || c === null ? "" : String(c);
+        row.appendChild(td);
+      });
+      t.appendChild(row);
+    });
+    return t;
+  }
+
+  function options(opts) {
+    const ol = el("ol", "options");
+    opts.forEach(function (o) {
+      const li = el("li", o.correct ? "correct" : "");
+      li.appendChild(el("b", null, "(" + o.id + ")" + (o.correct ? " ✓" : "")));
+      li.appendChild(mdEl(o.text));
+      if (o.misconception) li.appendChild(el("span", "tag", "misconception: " + o.misconception.title + " [" + o.misconception.id + "]"));
+      ol.appendChild(li);
+    });
+    return ol;
+  }
+
+  function specText(type, spec) {
+    if (!spec) return "";
+    if (type === "numeric") {
+      let s = "value " + spec.value + (spec.unit ? " " + spec.unit : "") + " · mode " + spec.mode;
+      if (spec.sigfigs) s += " · " + spec.sigfigs + " sig figs";
+      if (spec.rel_tol !== undefined) s += " · rel_tol " + spec.rel_tol;
+      if (spec.abs_tol !== undefined) s += " · abs_tol " + spec.abs_tol;
+      if (spec.sci_notation) s += " · scientific notation";
+      return s;
+    }
+    if (type === "expression") {
+      return "value " + spec.value + " · variables " + (spec.variables || []).join(", ") + " · sympy_mode " + spec.sympy_mode;
+    }
+    return json(spec);
+  }
+
+  function item(it) {
+    const box = el("section", "item");
+    const h = el("header");
+    [["", it.id], ["kind ", it.kind], ["type ", it.type], ["Bloom ", it.bloom],
+     ["", it.expected_minutes + " min"], ["pool weight ", it.pool_weight]].forEach(function (p) {
+      const s = el("span", null, p[0]);
+      s.appendChild(el("b", null, p[1]));
+      h.appendChild(s);
+    });
+    box.appendChild(h);
+    const body = el("div", "body");
+    box.appendChild(body);
+
+    const hasParams = it.params && Object.keys(it.params).length > 0;
+    if (hasParams) {
+      body.appendChild(label("Params as written"));
+      const rows = Object.keys(it.params).map(function (k) { return ["param " + k, json(it.params[k])]; });
+      (it.constraints || []).forEach(function (c) { rows.push(["constraint", c]); });
+      Object.keys(it.derived || {}).forEach(function (k) { rows.push(["derived " + k, it.derived[k]]); });
+      body.appendChild(table(["", ""], rows));
+    } else if (it.derived && Object.keys(it.derived).length) {
+      body.appendChild(table(["derived", ""], Object.keys(it.derived).map(function (k) { return [k, it.derived[k]]; })));
+    }
+    if (it.answer_spec) {
+      body.appendChild(label("Answer spec"));
+      body.appendChild(el("div", "muted", specText(it.type, it.answer_spec)));
+    }
+    if (it.step_specs) {
+      body.appendChild(label("Step specs"));
+      body.appendChild(table(["step", "type", "spec"], it.step_specs.map(function (s, i) {
+        return [String(i + 1), s.type, specText(s.type, s.spec)];
+      })));
+    }
+
+    if (it.code) {
+      body.appendChild(label("Prompt"));
+      body.appendChild(mdEl(it.prompt));
+      body.appendChild(label("Starter (entry: " + it.code.entry + ", time limit " + it.code.time_limit_ms + " ms)"));
+      body.appendChild(pre(it.code.starter));
+      body.appendChild(label("Solution"));
+      body.appendChild(pre(it.code.solution));
+      body.appendChild(label("Tests"));
+      body.appendChild(table(["#", "visible", "args", "stdin", "expected"], it.code.tests.map(function (t, i) {
+        const exp = t.expected_stdout !== undefined ? pre(t.expected_stdout) : pre(json(t.expected));
+        return [String(i + 1), t.visible ? "visible" : "hidden", pre(json(t.args)), t.stdin === undefined ? "" : pre(t.stdin), exp];
+      })));
+      if (it.explanation) { body.appendChild(label("Explanation")); body.appendChild(mdEl(it.explanation, "explanation")); }
+      return box;
+    }
+
+    if (it.options) {
+      body.appendChild(label("Options (as written; shuffled for students)"));
+      body.appendChild(options(it.options));
+    }
+    it.samples.forEach(function (s) {
+      const div = el("div", "sample");
+      body.appendChild(div);
+      div.appendChild(label(s.seed === null ? "Question" : "Seed " + s.seed + " · " + Object.keys(s.values || {}).map(function (k) { return k + " = " + s.values[k]; }).join(", ")));
+      if (s.error) { div.appendChild(el("div", "error", s.error)); return; }
+      div.appendChild(mdEl(s.prompt));
+      if (s.steps) {
+        s.steps.forEach(function (st, i) {
+          div.appendChild(label("Step " + (i + 1) + " (" + st.type + ")"));
+          div.appendChild(mdEl(st.prompt));
+          if (st.type === "mcq" && it.step_specs[i].options) div.appendChild(options(it.step_specs[i].options));
+          const a = el("div", "answer"); a.innerHTML = md(st.answer); div.appendChild(a);
+        });
+      } else if (it.type !== "mcq") {
+        const a = el("div", "answer"); a.innerHTML = md(s.answer); div.appendChild(a);
+      }
+      if (s.explanation) { div.appendChild(label("Explanation")); div.appendChild(mdEl(s.explanation, "explanation")); }
+    });
+    return box;
+  }
+
+  function concept(c, chapter) {
+    images = c.images || {};
+    const sec = el("section", "concept");
+    sec.appendChild(el("div", "meta", chapter));
+    sec.appendChild(el("h2", null, c.title));
+    sec.appendChild(el("div", "meta", "id " + c.id));
+    sec.appendChild(el("p", null, c.summary));
+    sec.appendChild(el("div", "meta", "Prerequisites: " + (c.prereqs.length ? c.prereqs.map(function (p) { return p.concept + " (" + p.weight + ")"; }).join(", ") : "none")));
+    sec.appendChild(el("h3", null, "Intro"));
+    sec.appendChild(mdEl(c.intro, "box"));
+    sec.appendChild(el("h3", null, "Misconception check"));
+    sec.appendChild(item(c.check));
+    c.kps.forEach(function (kp, i) {
+      sec.appendChild(el("h3", null, "KP " + (i + 1) + ": " + kp.title));
+      sec.appendChild(el("div", "meta", "id " + kp.id + " · key prerequisites: " + (kp.key_prereqs.length ? kp.key_prereqs.join(", ") : "none") +
+        " · pool weight " + kp.items.reduce(function (a, it) { return a + it.pool_weight; }, 0) + " (" + kp.items.length + " items)"));
+      sec.appendChild(el("h4", null, "Worked example"));
+      sec.appendChild(mdEl(kp.worked_example, "box worked"));
+      sec.appendChild(el("h4", null, "Questions"));
+      kp.items.forEach(function (it) { sec.appendChild(item(it)); });
+    });
+    sec.appendChild(el("h3", null, "Practice"));
+    c.practice.forEach(function (it) { sec.appendChild(item(it)); });
+    const notes = el("div", "notes");
+    notes.appendChild(label("Reviewer notes"));
+    sec.appendChild(notes);
+    return sec;
+  }
+
+  function render() {
+    const root = document.getElementById("root");
+    root.textContent = "";
+    document.title = data.course.title + " · review pack";
+    root.appendChild(el("h1", null, data.course.title + ": review pack"));
+    const m = data.meta || {};
+    root.appendChild(el("div", "meta", "Course " + data.course.id + " · " + data.counts.chapters + " chapters, " + data.counts.concepts +
+      " concepts, " + data.counts.items + " items" + (m.generated ? " · generated " + m.generated : "") + (m.sha ? " · commit " + m.sha : "")));
+    root.appendChild(el("p", "muted", data.seed_note + " Contains every answer and hidden test: do not share with students."));
+
+    root.appendChild(el("h2", null, "Misconceptions"));
+    root.appendChild(table(["id", "title (students see this)", "description (for teachers)"],
+      data.misconceptions.map(function (x) { return [x.id, x.title, x.description]; })));
+
+    root.appendChild(el("h2", null, "Contents"));
+    const toc = el("ol");
+    data.chapters.forEach(function (ch) {
+      const li = el("li", null, ch.title + (ch.grade ? " (Class " + ch.grade + ")" : ""));
+      const sub = el("ol");
+      ch.concepts.forEach(function (c) { sub.appendChild(el("li", null, c.title)); });
+      li.appendChild(sub);
+      toc.appendChild(li);
+    });
+    root.appendChild(toc);
+
+    data.chapters.forEach(function (ch) {
+      const label = "Chapter: " + ch.title + (ch.grade ? " · Class " + ch.grade : "");
+      ch.concepts.forEach(function (c) { root.appendChild(concept(c, label)); });
+    });
+
+    if (needsMermaid) {
+      import(MERMAID_URL).then(function (mod) {
+        mod.default.initialize({ startOnLoad: false, securityLevel: "strict" });
+        mod.default.run({ querySelector: ".mermaid" });
+      }).catch(function () {});
+    }
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

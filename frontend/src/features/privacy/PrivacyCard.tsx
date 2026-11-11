@@ -66,6 +66,11 @@ export function PrivacyCard({ student }: { student: StudentDetail }) {
           )}
         </div>
 
+        {!me?.is_admin && student.erase_due_at && (
+          <p className="text-destructive" title="Runs nightly">
+            Erasure scheduled for {istDate(student.erase_due_at)}
+          </p>
+        )}
         {me?.is_admin && (
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
             <Button

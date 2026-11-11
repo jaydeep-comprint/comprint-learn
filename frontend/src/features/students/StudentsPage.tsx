@@ -231,6 +231,7 @@ export function StudentsPage() {
                             Reset password
                           </DropdownMenuItem>
                           {me?.is_admin &&
+                            !s.erase_due_at &&
                             (s.status === "deactivated" ? (
                               <DropdownMenuItem onSelect={() => setStatus(s, "active")}>
                                 <UserCheck aria-hidden />

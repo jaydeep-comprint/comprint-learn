@@ -20,7 +20,10 @@ from app.services import audit, tenancy, tutor
 
 has_consent = tutor.has_consent
 
-CONSENT_NOT_ALLOWED = "Consent can't be recorded for a student whose erasure is pending."
+CONSENT_NOT_ALLOWED = (
+    "Consent can't be recorded for these students "
+    "(an erasure is pending or the account isn't set up)."
+)
 
 
 async def apply(

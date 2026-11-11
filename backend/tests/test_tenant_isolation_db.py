@@ -76,7 +76,11 @@ def _cross_school_calls(a: School, b: School) -> list[tuple[str, str, Any, Any]]
         ("PATCH", f"/api/v1/classes/{bc}/assignments/{uuid.uuid4()}", {"note": "x"}, tch),
         ("DELETE", f"/api/v1/classes/{bc}/assignments/{uuid.uuid4()}", None, tch),
         ("GET", f"/api/v1/classes/{ac}/assignments/{uuid.uuid4()}", None, tch),
-        # Spec 014: consent (all-or-nothing, so one foreign id spoils the request).
+        # Spec 014: export and erasure (admins), consent (all-or-nothing, so one foreign id
+        # spoils the request).
+        ("GET", f"/api/v1/students/{bs}/export", None, adm),
+        ("POST", f"/api/v1/students/{bs}/erasure", {"confirm_username": "bbb00"}, adm),
+        ("DELETE", f"/api/v1/students/{bs}/erasure", None, adm),
         *[
             ("POST", "/api/v1/students/consent", {"student_ids": ids, "action": act}, tch)
             for ids in ([str(bs)], [str(as_), str(bs)])

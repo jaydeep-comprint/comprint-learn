@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { useUnenroll } from "@/features/classes/api";
 import { AT_RISK_LABELS } from "@/features/dashboard/atRisk";
-import { ConsentStatus } from "@/features/privacy/consent";
+import { ConsentStatus, ErasureBadge } from "@/features/privacy/consent";
 import { slipsStore } from "@/features/slips/store";
 import { useResetPassword } from "@/features/students/api";
 import { shortDate } from "@/lib/dates";
@@ -146,6 +146,7 @@ export function StudentRows({
                 {s.display_name}
               </Link>
               {s.at_risk.length > 0 && <AtRiskBadge codes={s.at_risk} />}
+              {s.erase_due_at && <ErasureBadge dueAt={s.erase_due_at} />}
             </TableCell>
             <TableCell className="font-mono text-sm">{s.username}</TableCell>
             <TableCell>

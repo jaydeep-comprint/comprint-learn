@@ -36,7 +36,7 @@ export function useConsentFlow(confirm: (r: ConfirmRequest) => void) {
         ? {
             title: `Record tutor consent for ${who}?`,
             description: `I confirm the school holds a signed consent form (version ${
-              notice.data?.version ?? "current"
+              notice.data?.version ?? ""
             }) from a parent or guardian of each selected student.`,
             confirmLabel: "Record consent",
             onConfirm: run,
@@ -51,5 +51,6 @@ export function useConsentFlow(confirm: (r: ConfirmRequest) => void) {
           },
     );
   };
-  return { ask, pending: setConsent.isPending };
+  // Recording names the form version, so it waits for the notice.
+  return { ask, pending: setConsent.isPending || !notice.data };
 }

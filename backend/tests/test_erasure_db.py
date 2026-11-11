@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 from sqlalchemy import func, select
 
+from app.ai import teacher_facts as tf
 from app.api.deps import CurrentUser, OrgScope
 from app.models import (
     AppUser,
@@ -22,7 +23,7 @@ from app.models import (
     TutorMessage,
     UserStatus,
 )
-from app.services import class_view, erasure
+from app.services import class_view, erasure, teacher_ai
 from tests.conftest import DbApp
 from tests.db_seed import School, grant_consent, seed_school, student
 from tests.learn_helpers import world
@@ -195,6 +196,9 @@ async def test_completion_anonymises_and_hides_the_student(db_app: DbApp) -> Non
         scope = OrgScope(session, CurrentUser(a.teacher_id, a.org_id, Role.teacher, False, False))
         ctx = await class_view.load(scope, a.class_ids[1])
         assert s not in {x.id for x in ctx.students}
+        facts = tf.class_facts(await teacher_ai.class_input(scope, ctx, "30d"))
+        assert str(s) not in {str(v) for v in facts.pseudonyms.values()}
+        assert a.student_ids[4] in ctx.student_ids
     assert (AuditAction.erase_completed, None) in await actions(db_app)
 
     # Nowhere per-student.

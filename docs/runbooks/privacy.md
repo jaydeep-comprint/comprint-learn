@@ -24,7 +24,8 @@ Whole school (operator only, e.g. when a school leaves):
 ```
 cd backend && uv run app privacy export --org CODE --out /path/outside/the/repo/CODE-export
 ```
-The folder must be empty and outside any git checkout; files are written readable by you only. One audit event per student is written
+The folder must be empty and outside any git checkout (including a home folder that is itself a dotfiles
+repo); files are written readable by you only. One audit event per student is written
 (`source: cli`). Hand the folder over encrypted and delete it afterwards.
 
 ## Erasure request

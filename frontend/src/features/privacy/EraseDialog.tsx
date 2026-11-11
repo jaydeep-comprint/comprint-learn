@@ -49,6 +49,7 @@ export function EraseDialog({
         onSuccess: () => {
           toast.success(`Erasure of ${student.display_name} scheduled`);
           setTyped("");
+          setError(null);
           onClose();
         },
         onError: (err) => setError(errorMessage(err)),

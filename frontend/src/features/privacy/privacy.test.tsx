@@ -134,7 +134,7 @@ describe("consent bulk bar (school Students page, admin)", () => {
           "POST /api/v1/students/consent": () =>
             jsonResponse(422, {
               code: "consent_not_allowed",
-              message: "Consent can't be recorded for a student whose erasure is pending.",
+              message: "Consent can't be recorded for these students.",
             }),
         }),
       ),
@@ -149,9 +149,7 @@ describe("consent bulk bar (school Students page, admin)", () => {
       }),
     );
     await waitFor(() =>
-      expect(toasts.error).toHaveBeenCalledWith(
-        "Consent can't be recorded for a student whose erasure is pending.",
-      ),
+      expect(toasts.error).toHaveBeenCalledWith("Consent can't be recorded for these students."),
     );
     expect(screen.getByRole("region", { name: "Selected students" })).toBeInTheDocument();
   });

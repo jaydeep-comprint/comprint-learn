@@ -72,7 +72,7 @@ export function StudentsTab() {
             )}
           </div>
           <ConsentBulkBar
-            selected={(students.data ?? []).filter((s) => selection.has(s.id))}
+            selected={rows.filter((s) => selection.has(s.id))}
             onClear={selection.clear}
             confirm={setConfirm}
             printTo={formsPath}

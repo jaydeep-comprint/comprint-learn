@@ -37,7 +37,7 @@ kps:
         params:
           u: {min: 0, max: 10, step: 2}
           v: {min: 12, max: 30, step: 2}
-          t: {choices: [2, 4, 5]}
+          t: {choices: [5, 8, 10]}
         constraints: ["v > u"]
         derived: {a: "(v - u) / t"}
         answer:
@@ -80,6 +80,8 @@ kps:
           A train's velocity changes from 10 m/s to 25 m/s in 5 s. What is its acceleration?
         answer:
           numeric: {value: 3, unit: m/s^2, mode: exact}
+        explanation: |
+          a = (v − u) ÷ t = (25 − 10) ÷ 5 = 15 ÷ 5 = 3 m/s².
       - id: kp1-q5
         type: mcq
         bloom: remember
@@ -90,8 +92,10 @@ kps:
           mcq:
             options:
               - {id: a, text: m/s², correct: true}
-              - {id: b, text: m/s, misconception: velocity-same-as-speed}
-              - {id: c, text: s/m², misconception: rearranges-formula-wrongly}
+              - {id: b, text: m/s, misconception: acceleration-is-velocity}
+              - {id: c, text: s/m²}
+        explanation: |
+          Acceleration is the change in velocity (m/s) per second (s), so its unit is m/s ÷ s = m/s². m/s is the unit of velocity.
       - id: kp1-q6
         type: numeric
         bloom: apply
@@ -121,8 +125,8 @@ kps:
           A car moving at {{u}} m/s brakes and stops in {{t}} s. Taking the direction of motion as positive,
           what is its acceleration? (Include the sign.)
         params:
-          u: {min: 10, max: 30, step: 5}
-          t: {choices: [2, 4, 5, 8]}
+          u: {min: 10, max: 25, step: 5}
+          t: {choices: [4, 5, 8]}
         answer:
           numeric: {value: "-u / t", unit: m/s^2, mode: tolerance, rel_tol: 0.02}
         explanation: |
@@ -137,10 +141,12 @@ kps:
         params:
           u: {min: 20, max: 40, step: 4}
           v: {min: 0, max: 16, step: 4}
-          t: {choices: [2, 4, 5]}
+          t: {choices: [4, 5, 8]}
         constraints: ["u > v"]
         answer:
           numeric: {value: "(u - v) / t", unit: m/s^2, mode: sigfig, sigfigs: 2}
+        explanation: |
+          Retardation = how fast the velocity drops = (u − v) ÷ t = ({{u}} − {{v}}) ÷ {{t}} m/s².
       - id: kp2-q3
         type: numeric
         bloom: apply
@@ -164,6 +170,8 @@ kps:
           (Include the sign.)
         answer:
           numeric: {value: -5, unit: m/s^2, mode: exact}
+        explanation: |
+          a = (v − u) ÷ t = (5 − 20) ÷ 3 = −15 ÷ 3 = −5 m/s². Negative: it points against the motion, so the ball slows down.
       - id: kp2-q5
         type: mcq
         bloom: understand
@@ -176,6 +184,8 @@ kps:
               - {id: a, text: The acceleration points west., correct: true}
               - {id: b, text: The car is slowing down., misconception: negative-means-decreasing}
               - {id: c, text: The car is moving west.}
+        explanation: |
+          The sign of the acceleration only tells its direction: negative means west. The car could be moving east and slowing down, or moving west and speeding up.
       - id: kp2-q6
         type: numeric
         bloom: apply
@@ -231,6 +241,7 @@ kps:
         prompt: |
           A car moving at {{u}} m/s accelerates uniformly at {{a}} m/s².
           Write its velocity v (in m/s) after t seconds.
+          Enter only the expression in t (for example 4 + 2t), without "v =".
         params:
           u: {min: 0, max: 20, step: 4}
           a: {choices: [1, 2, 3, 4]}
@@ -246,6 +257,8 @@ kps:
           A car starts from rest and accelerates at 3 m/s² for 4 s. What is its velocity then?
         answer:
           numeric: {value: 12, unit: m/s, mode: exact}
+        explanation: |
+          v = u + at = 0 + 3 × 4 = 12 m/s.
       - id: kp3-q5
         type: mcq
         bloom: apply
@@ -258,6 +271,8 @@ kps:
               - {id: a, text: 6 m/s, correct: true}
               - {id: b, text: 1.5 m/s, misconception: rearranges-formula-wrongly}
               - {id: c, text: 5 m/s}
+        explanation: |
+          v = u + at = 0 + 2 × 3 = 6 m/s. (1.5 comes from dividing 3 by 2 instead of multiplying.)
       - id: kp3-q6
         type: numeric
         bloom: apply
@@ -281,9 +296,9 @@ practice:
       A train moving at {{u}} m/s accelerates uniformly at {{a}} m/s² for {{t}} s.
       The driver then brakes uniformly and the train stops {{t2}} s later.
     params:
-      u: {choices: [0, 5, 10]}
-      a: {choices: [0.5, 1, 2]}
-      t: {choices: [10, 20, 30]}
+      u: {choices: [5, 10]}
+      a: {choices: [0.5, 1]}
+      t: {choices: [10, 20]}
       t2: {choices: [10, 15, 20, 25]}
     derived:
       vmax: "u + a * t"

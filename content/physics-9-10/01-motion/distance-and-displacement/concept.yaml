@@ -76,6 +76,8 @@ kps:
           What is the size of its displacement?
         answer:
           numeric: {value: 0, unit: m, mode: exact}
+        explanation: |
+          It ends where it started (in the hand), so its displacement is 0, even though it travelled 5 m up and 5 m down (10 m of distance).
       - id: kp1-q5
         type: mcq
         bloom: understand
@@ -88,6 +90,8 @@ kps:
               - {id: a, text: The distance covered is greater than or equal to the size of the displacement., correct: true}
               - {id: b, text: The size of the displacement is greater than the distance covered., misconception: displacement-equals-distance}
               - {id: c, text: "If the displacement is zero, the object did not move.", misconception: zero-displacement-means-no-motion}
+        explanation: |
+          Displacement is the straight-line change in position, the shortest route. The actual path can only be as long or longer, so distance ≥ displacement. A zero displacement can still mean a lot of motion (a full lap).
       - id: kp1-q6
         type: numeric
         bloom: analyze
@@ -148,7 +152,7 @@ kps:
         expected_minutes: 1
         prompt: |
           Take east as positive. A cyclist starts at x = 0, rides east to x = {{p}} m, then turns back
-          and stops at x = {{q}} m. What is the cyclist's displacement?
+          and stops at x = {{q}} m. What is the cyclist's displacement? (Include a minus sign if it points west.)
         params:
           p: {min: 40, max: 90, step: 10}
           q: {min: -30, max: 30, step: 5}
@@ -166,6 +170,8 @@ kps:
           Taking up as positive, what is its displacement from the ground floor?
         answer:
           numeric: {value: 15, unit: m, mode: exact}
+        explanation: |
+          Up is +24 m and down is −9 m, so the displacement is 24 − 9 = 15 m, upwards from the ground floor.
       - id: kp2-q5
         type: mcq
         bloom: understand
@@ -178,6 +184,8 @@ kps:
               - {id: a, text: The car ended up 40 m west of where it started., correct: true}
               - {id: b, text: The car was slowing down., misconception: negative-means-decreasing}
               - {id: c, text: The car covered a negative distance., misconception: displacement-equals-distance}
+        explanation: |
+          The sign shows direction: east is positive, so −40 m means 40 m to the west of the start. It says nothing about speeding up or slowing down, and distance is never negative.
       - id: kp2-q6
         type: numeric
         bloom: apply
@@ -224,6 +232,8 @@ kps:
           b: {min: 4, max: 15, step: 1}
         answer:
           numeric: {value: "a + b", unit: m, mode: exact}
+        explanation: |
+          Distance adds up every part of the path: {{a}} + {{b}} m. (The displacement would be shorter: the straight line from start to finish.)
       - id: kp3-q3
         type: numeric
         bloom: apply
@@ -245,6 +255,8 @@ kps:
           A boy walks 6 m east and then 8 m north. What is the size of his displacement?
         answer:
           numeric: {value: 10, unit: m, mode: exact}
+        explanation: |
+          The two walks are at right angles, so the displacement is the long side of a right triangle: √(6² + 8²) = √100 = 10 m.
       - id: kp3-q5
         type: mcq
         bloom: understand
@@ -257,6 +269,8 @@ kps:
               - {id: a, text: "Distance = the track's circumference; displacement = 0", correct: true}
               - {id: b, text: "Distance = displacement = the track's circumference", misconception: displacement-equals-distance}
               - {id: c, text: "Distance = 0 because she is back at the start", misconception: zero-displacement-means-no-motion}
+        explanation: |
+          One lap covers the whole circumference, so that is the distance. She finishes where she started, so the displacement is 0.
       - id: kp3-q6
         type: numeric
         bloom: analyze

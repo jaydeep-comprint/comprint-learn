@@ -11,3 +11,6 @@ Its unit is metres per second per second, **m/s²**. Acceleration is a vector: i
   and with the direction of motion taken as positive the acceleration is negative.
 
 For uniform acceleration, rearranging gives the first equation of motion: **v = u + at**.
+
+An object falling freely near the Earth's surface (with no air resistance) has a downward acceleration of
+about **9.8 m/s²**, called g. It keeps this acceleration all the way, even at the top of an upward throw.

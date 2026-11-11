@@ -73,7 +73,7 @@ kps:
           acceleration? Give it as a decimal if needed.
         params:
           a: {choices: [0.5, 1, 2, 3, 4]}
-          t: {choices: [2, 4, 5, 10]}
+          t: {choices: [2, 4]}
         derived: {s: "a * t^2 / 2"}
         answer:
           numeric: {value: "a", unit: m/s^2, mode: exact}
@@ -125,7 +125,7 @@ kps:
           t: {choices: [1, 1.5, 2, 2.5, 3]}
         derived: {h: "5 * t^2"}
         answer:
-          numeric: {value: "h", unit: m, mode: exact}
+          numeric: {value: "h", unit: m, mode: tolerance, rel_tol: 0.01}
         explanation: |
           The stone starts from rest with a = 10 m/s², so s = ½at² = ½ × 10 × {{t}}² = {{h}} m.
       - id: kp1-q7
@@ -409,7 +409,7 @@ kps:
           u: {choices: [10, 15, 20, 25, 30]}
         derived: {h: "u^2 / 20"}
         answer:
-          numeric: {value: "h", unit: m, mode: exact}
+          numeric: {value: "h", unit: m, mode: tolerance, rel_tol: 0.01}
         explanation: |
           Take upwards as positive. Knowns: u = {{u}} m/s, v = 0 at the top, a = −10 m/s². Want: s.
           v² = u² + 2as gives 0 = {{u}}² − 20s, so s = {{u}}² ÷ 20 = {{h}} m.
@@ -453,7 +453,7 @@ kps:
         bloom: apply
         expected_minutes: 1.5
         prompt: |
-          A car moving at {{u}} m/s must stop within {{s}} m. What steady retardation do its brakes need to give?
+          A car moving at {{u}} m/s must stop in {{s}} m. What is the smallest steady retardation its brakes must give?
           Give it as a decimal if needed.
         params:
           u: {choices: [10, 20, 30]}
@@ -479,7 +479,7 @@ kps:
           d1: "u * tr"
           d2: "u^2 / (2 * r)"
         answer:
-          numeric: {value: "d1 + d2", unit: m, mode: exact}
+          numeric: {value: "d1 + d2", unit: m, mode: tolerance, rel_tol: 0.01}
         explanation: |
           Reaction distance (still at full speed): {{u}} × {{tr}} = {{d1}} m.
           Braking distance: {{u}}² ÷ (2 × {{r}}) = {{d2}} m. Add them for the total.

@@ -39,6 +39,8 @@ kps:
           t: {choices: [2, 3, 4, 5]}
         answer:
           numeric: {value: "d / t", unit: km/h, mode: sigfig, sigfigs: 3}
+        explanation: |
+          Average speed = total distance ÷ total time = {{d}} ÷ {{t}} km/h.
       - id: kp1-q2
         type: numeric
         bloom: apply
@@ -82,6 +84,8 @@ kps:
           A sprinter runs 100 m in 12.5 s. What is her average speed?
         answer:
           numeric: {value: 8, unit: m/s, mode: exact}
+        explanation: |
+          Average speed = distance ÷ time = 100 ÷ 12.5 = 8 m/s.
       - id: kp1-q5
         type: mcq
         bloom: analyze
@@ -109,7 +113,7 @@ kps:
           t1: {choices: [1, 1.5, 2]}
           s: {choices: [15, 30]}
           d2: {choices: [40, 80]}
-          t2: {choices: [0.5, 1]}
+          t2: {choices: [1, 1.5]}
         derived:
           d: "d1 + d2"
           tt: "t1 + s / 60 + t2"
@@ -146,6 +150,8 @@ kps:
           v: {min: 5, max: 40, step: 5}
         answer:
           numeric: {value: "v * 3.6", unit: km/h, mode: exact}
+        explanation: |
+          1 m/s = 3.6 km/h (3600 s in an hour, 1000 m in a km), so multiply: {{v}} × 3.6.
       - id: kp2-q3
         type: numeric
         bloom: apply
@@ -156,7 +162,7 @@ kps:
         params:
           x1: {min: -100, max: 100, step: 20}
           x2: {min: -100, max: 100, step: 20}
-          t: {choices: [4, 5, 8, 10]}
+          t: {choices: [10, 20, 25, 40]}
         constraints: ["x1 != x2"]
         answer:
           numeric: {value: "(x2 - x1) / t", unit: m/s, mode: tolerance, rel_tol: 0.02}
@@ -171,6 +177,8 @@ kps:
           What is her average velocity for the lap?
         answer:
           numeric: {value: 0, unit: m/s, mode: exact}
+        explanation: |
+          She ends at the starting line, so her displacement is 0, and average velocity = displacement ÷ time = 0. (Her average speed is 400 ÷ 80 = 5 m/s.)
       - id: kp2-q5
         type: mcq
         bloom: remember
@@ -183,6 +191,8 @@ kps:
               - {id: a, text: 15 m/s, correct: true}
               - {id: b, text: 194.4 m/s, misconception: kmh-to-ms-multiply}
               - {id: c, text: 54 m/s}
+        explanation: |
+          To go from km/h to m/s, divide by 3.6: 54 ÷ 3.6 = 15 m/s. Multiplying (194.4) goes the wrong way.
       - id: kp2-q6
         type: numeric
         bloom: apply
@@ -220,6 +230,8 @@ kps:
           d: {min: 300, max: 1500, step: 300}
         answer:
           numeric: {value: "d / v", unit: s, mode: sigfig, sigfigs: 3}
+        explanation: |
+          t = s ÷ v = {{d}} ÷ {{v}} s.
       - id: kp3-q2
         type: numeric
         bloom: apply
@@ -231,6 +243,8 @@ kps:
           t: {choices: [0.5, 1.5, 2, 2.5, 3]}
         answer:
           numeric: {value: "v * t", unit: km, mode: exact}
+        explanation: |
+          s = v × t = {{v}} × {{t}} km.
       - id: kp3-q3
         type: expression
         bloom: apply
@@ -238,6 +252,7 @@ kps:
         prompt: |
           A car starts {{d0}} m from a pole and moves directly away from it at a steady {{v}} m/s.
           Write its distance from the pole, s (in metres), after t seconds.
+          Enter only the expression in t (for example 10 + 5t), without "s =".
         params:
           d0: {min: 10, max: 50, step: 10}
           v: {min: 5, max: 20, step: 5}
@@ -268,6 +283,8 @@ kps:
               - {id: a, text: t = s ÷ v, correct: true}
               - {id: b, text: t = v ÷ s, misconception: rearranges-formula-wrongly}
               - {id: c, text: t = s × v}
+        explanation: |
+          Divide both sides of s = vt by v: t = s ÷ v. Check with numbers: 100 m at 20 m/s takes 100 ÷ 20 = 5 s.
       - id: kp3-q6
         type: numeric
         bloom: apply

@@ -1,0 +1,575 @@
+id: quadratic-equations-solving
+title: Solving quadratic equations
+summary: Recognising a quadratic equation and its roots; solving by factorisation and by the quadratic formula; word problems.
+prereqs:
+  - {concept: factorisation-of-polynomials, weight: 0.6}
+  - {concept: linear-equations-two-variables, weight: 0.2}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    Solve $x^2 = 5x$.
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "$x = 0$ or $x = 5$", correct: true}
+        - {id: b, text: "$x = 5$ only", misconception: divides-by-variable}
+        - {id: c, text: "$x = 0$ or $x = -5$", misconception: sign-error}
+        - {id: d, text: "$x = \\sqrt{5}$ or $x = -\\sqrt{5}$"}
+  explanation: |
+    Bring everything to one side and factorise: $x^2 - 5x = 0$, so $x(x - 5) = 0$. Then $x = 0$ or $x = 5$.
+    Dividing both sides by $x$ gives only $x = 5$: it loses the root $x = 0$, because you can't divide by $x$ when $x$ might be 0.
+
+kps:
+  - id: kp1
+    title: Recognising a quadratic equation and checking roots
+    worked_example: kp-1-worked.md
+    key_prereqs: []
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Write ${{a}}x^2 + {{r}} = {{q}}x$ in the form $ax^2 + bx + c = 0$ with $a = {{a}}$. What is $b$?
+        params:
+          a: {min: 2, max: 9, step: 1}
+          q: {min: 2, max: 12, step: 1}
+          r: {min: 1, max: 15, step: 1}
+        answer:
+          numeric: {value: "-q", mode: exact}
+        explanation: |
+          Move ${{q}}x$ to the left: it changes sign. ${{a}}x^2 - {{q}}x + {{r}} = 0$, so $b = -{{q}}$ (and $c = {{r}}$).
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Write $(x + {{p}})^2 = {{q}}x + {{r}}$ in the form $x^2 + bx + c = 0$. What is $c$?
+        params:
+          p: {min: 1, max: 6, step: 1}
+          q: {min: 2, max: 9, step: 1}
+          r: {min: 1, max: 20, step: 1}
+        derived:
+          tp: "2*p"
+          pp: "p^2"
+          b: "2*p - q"
+          c: "p^2 - r"
+        answer:
+          numeric: {value: "c", mode: exact}
+        explanation: |
+          Expand: $x^2 + {{tp}}x + {{pp}} = {{q}}x + {{r}}$. Move everything to the left (the signs change):
+          $x^2 + ({{b}})x + ({{c}}) = 0$. So $c = {{pp}} - {{r}} = {{c}}$.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $x = {{r}}$ is a root of ${{a}}x^2 + kx - {{c}} = 0$. Find $k$.
+        params:
+          a: {choices: [2, 3]}
+          r: {min: 1, max: 5, step: 1}
+          s: {min: 1, max: 5, step: 1}
+        derived:
+          c: "a * r * s"
+          k: "a * (s - r)"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          A root makes the equation true. Put $x = {{r}}$: ${{a}}({{r}})^2 + {{r}}k - {{c}} = 0$,
+          so ${{r}}k = {{c}} - {{a}} \times {{r}}^2$ and $k = {{k}}$.
+      - id: kp1-q4
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          For which value of $k$ is $(k - {{p}})x^2 + {{q}}x - {{r}} = 0$ **not** a quadratic equation?
+        params:
+          p: {min: 2, max: 12, step: 1}
+          q: {min: 2, max: 9, step: 1}
+          r: {min: 1, max: 9, step: 1}
+        answer:
+          numeric: {value: "p", mode: exact}
+        explanation: |
+          A quadratic equation needs $a \neq 0$. Here $a = k - {{p}}$, which is 0 when $k = {{p}}$.
+          Then the equation is ${{q}}x - {{r}} = 0$, which is linear.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1.5
+        prompt: |
+          Which of these is a quadratic equation?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$(x - 2)^2 + 1 = 2x - 3$", correct: true}
+              - {id: b, text: "$x(x + 1) + 8 = (x + 2)(x - 2)$", misconception: not-standard-form}
+              - {id: c, text: "$x^3 - 2x = 5$"}
+              - {id: d, text: "$3x - 7 = 2x + 1$"}
+        explanation: |
+          Rearrange before deciding. (a) becomes $x^2 - 6x + 8 = 0$: quadratic. (b) becomes $x^2 + x + 8 = x^2 - 4$;
+          the $x^2$ terms cancel, leaving $x + 12 = 0$, which is linear. (c) has degree 3 and (d) degree 1.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          To check whether $x = -\dfrac{1}{2}$ is a root of $2x^2 - 3x - 2 = 0$, find the value of $2x^2 - 3x - 2$ at $x = -\dfrac{1}{2}$.
+        answer:
+          numeric: {value: 0, mode: exact}
+        explanation: |
+          $2\left(-\dfrac{1}{2}\right)^2 - 3\left(-\dfrac{1}{2}\right) - 2 = \dfrac{1}{2} + \dfrac{3}{2} - 2 = 0$.
+          The value is 0, so $x = -\dfrac{1}{2}$ is a root.
+
+  - id: kp2
+    title: Solving by factorisation
+    worked_example: kp-2-worked.md
+    key_prereqs: [factorisation-of-polynomials]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Solve $x^2 - {{s}}x + {{p}} = 0$ by factorisation. Give the **larger** root.
+        params:
+          r: {min: 1, max: 7, step: 1}
+          d: {min: 1, max: 6, step: 1}
+        derived:
+          t: "r + d"
+          s: "2*r + d"
+          p: "r * (r + d)"
+        answer:
+          numeric: {value: "t", mode: exact}
+        explanation: |
+          Find two numbers with product {{p}} and sum $-{{s}}$: $-{{r}}$ and $-{{t}}$.
+          So $(x - {{r}})(x - {{t}}) = 0$, giving $x = {{r}}$ or $x = {{t}}$. The larger root is {{t}}.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Solve $x^2 + {{d}}x - {{c}} = 0$ by factorisation. Give the **smaller** root.
+        params:
+          r: {min: 1, max: 8, step: 1}
+          d: {min: 2, max: 7, step: 1}
+        derived:
+          t: "r + d"
+          c: "r * (r + d)"
+          m: "-(r + d)"
+        answer:
+          numeric: {value: "m", mode: exact}
+        explanation: |
+          Find two numbers with product $-{{c}}$ and sum ${{d}}$: ${{t}}$ and $-{{r}}$.
+          So $(x + {{t}})(x - {{r}}) = 0$, giving $x = -{{t}}$ or $x = {{r}}$. The smaller root is $-{{t}}$.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Solve ${{p}}x^2 - {{b}}x + {{c}} = 0$ by splitting the middle term. Give the **smaller** root as a decimal.
+        params:
+          p: {choices: [2, 4, 5]}
+          q: {choices: [1, 3, 7, 9]}
+          r: {min: 1, max: 6, step: 1}
+        derived:
+          b: "p * r + q"
+          c: "q * r"
+          ac: "p * q * r"
+          pr: "p * r"
+          f: "q / p"
+          m: "Min(q / p, r)"
+        answer:
+          numeric: {value: "m", mode: exact}
+        explanation: |
+          Split the middle coefficient $-{{b}}$ into two numbers with product $a \times c = {{ac}}$: $-{{pr}}$ and $-{{q}}$.
+          Grouping gives $({{p}}x - {{q}})(x - {{r}}) = 0$, so $x = \dfrac{ {{q}} }{ {{p}} } = {{f}}$ or $x = {{r}}$.
+          The smaller root is {{m}}.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Solve ${{a}}x^2 = {{b}}x$. One root is 0. What is the other root?
+        params:
+          a: {choices: [2, 4, 5]}
+          b: {min: 2, max: 20, step: 1}
+        derived:
+          v: "b / a"
+        answer:
+          numeric: {value: "v", mode: exact}
+        explanation: |
+          ${{a}}x^2 - {{b}}x = 0$, so $x({{a}}x - {{b}}) = 0$. Then $x = 0$ or ${{a}}x = {{b}}$, that is $x = {{v}}$.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What are the roots of $(x - 3)(x + 4) = 0$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$3$ and $-4$", correct: true}
+              - {id: b, text: "$-3$ and $4$", misconception: sign-error}
+              - {id: c, text: "$3$ only"}
+              - {id: d, text: "$12$"}
+        explanation: |
+          A product is 0 when one of its factors is 0: $x - 3 = 0$ gives $x = 3$, and $x + 4 = 0$ gives $x = -4$.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Solve $2x^2 - x - 6 = 0$ by factorisation. Give the **smaller** root as a decimal.
+        answer:
+          numeric: {value: -1.5, mode: exact}
+        explanation: |
+          $a \times c = -12$; two numbers with product $-12$ and sum $-1$ are $-4$ and $3$.
+          $2x^2 - 4x + 3x - 6 = 2x(x - 2) + 3(x - 2) = (2x + 3)(x - 2) = 0$, so $x = -1.5$ or $x = 2$.
+
+  - id: kp3
+    title: The quadratic formula
+    worked_example: kp-3-worked.md
+    key_prereqs: []
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          To solve ${{a}}x^2 + {{b}}x - {{c}} = 0$ with the quadratic formula, first find the value of $b^2 - 4ac$.
+        params:
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        derived:
+          D: "b^2 + 4*a*c"
+        answer:
+          numeric: {value: "D", mode: exact}
+        explanation: |
+          Here $a = {{a}}$, $b = {{b}}$ and $c = -{{c}}$ (the sign belongs to $c$).
+          $b^2 - 4ac = {{b}}^2 - 4({{a}})(-{{c}}) = {{D}}$.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Use the quadratic formula to solve ${{a}}x^2 - {{b}}x - {{c}} = 0$. Give the **larger** root to 2 decimal places.
+        params:
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        derived:
+          D: "b^2 + 4*a*c"
+          den: "2*a"
+          x1: "(b + sqrt(D)) / (2*a)"
+        answer:
+          numeric: {value: "x1", mode: tolerance, abs_tol: 0.005}
+        explanation: |
+          $a = {{a}}$, $b = -{{b}}$, $c = -{{c}}$, so $b^2 - 4ac = {{D}}$ and $-b = {{b}}$.
+          $x = \dfrac{ {{b}} \pm \sqrt{ {{D}} } }{ {{den}} }$. The larger root uses $+$: $x \approx {{x1}}$.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Use the quadratic formula to solve $x^2 + {{b}}x - {{c}} = 0$. Give the **smaller** root to 2 decimal places.
+        params:
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 12, step: 1}
+        derived:
+          D: "b^2 + 4*c"
+          x2: "(-b - sqrt(D)) / 2"
+        answer:
+          numeric: {value: "x2", mode: tolerance, abs_tol: 0.005}
+        explanation: |
+          $a = 1$, $b = {{b}}$, $c = -{{c}}$, so $b^2 - 4ac = {{D}}$.
+          $x = \dfrac{-{{b}} \pm \sqrt{ {{D}} } }{2}$. The smaller root uses $-$: $x \approx {{x2}}$.
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Use the quadratic formula to solve ${{a}}x^2 = {{b}}x + {{c}}$. Give the **positive** root.
+        params:
+          a: {choices: [2, 3]}
+          s: {min: 1, max: 4, step: 1}
+          d: {min: 1, max: 5, step: 1}
+        derived:
+          r: "s + d"
+          b: "a * d"
+          c: "a * r * s"
+          D: "b^2 + 4*a*c"
+          sq: "a * (r + s)"
+          den: "2*a"
+        answer:
+          numeric: {value: "r", mode: exact}
+        explanation: |
+          Standard form first: ${{a}}x^2 - {{b}}x - {{c}} = 0$, so $a = {{a}}$, $b = -{{b}}$, $c = -{{c}}$.
+          $b^2 - 4ac = {{D}} = {{sq}}^2$, so $x = \dfrac{ {{b}} \pm {{sq}} }{ {{den}} }$. The positive root is $x = {{r}}$
+          (the other is $-{{s}}$).
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Which is the quadratic formula correctly used for $x^2 - 5x + 3 = 0$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$x = \\dfrac{5 \\pm \\sqrt{25 - 12}}{2}$", correct: true}
+              - {id: b, text: "$x = \\dfrac{-5 \\pm \\sqrt{25 - 12}}{2}$", misconception: formula-sign}
+              - {id: c, text: "$x = \\dfrac{5 \\pm \\sqrt{25 + 12}}{2}$", misconception: discriminant-sign}
+              - {id: d, text: "$x = 5 \\pm \\dfrac{\\sqrt{25 - 12}}{2}$"}
+        explanation: |
+          $a = 1$, $b = -5$, $c = 3$. Then $-b = +5$, $b^2 - 4ac = 25 - 12 = 13$ and $2a = 2$, and the whole of
+          $-b \pm \sqrt{b^2 - 4ac}$ is divided by $2a$: $x = \dfrac{5 \pm \sqrt{13}}{2}$.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Use the quadratic formula to solve $x^2 + 4 = 6x$. Give the **smaller** root to 2 decimal places.
+        answer:
+          numeric: {value: "3 - sqrt(5)", mode: tolerance, abs_tol: 0.005}
+        explanation: |
+          Standard form: $x^2 - 6x + 4 = 0$, so $a = 1$, $b = -6$, $c = 4$ and $b^2 - 4ac = 36 - 16 = 20$.
+          $x = \dfrac{6 \pm \sqrt{20}}{2} = 3 \pm \sqrt{5}$. The smaller root is $3 - \sqrt{5} \approx 3 - 2.236 = 0.76$.
+
+  - id: kp4
+    title: Word problems
+    worked_example: kp-4-worked.md
+    key_prereqs: [linear-equations-two-variables]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          The product of two consecutive positive integers is {{P}}. Find the smaller integer.
+        params:
+          n: {min: 5, max: 25, step: 1}
+        derived:
+          P: "n * (n + 1)"
+          o: "n + 1"
+        answer:
+          numeric: {value: "n", mode: exact}
+        explanation: |
+          Let the integers be $x$ and $x + 1$: $x(x + 1) = {{P}}$, so $x^2 + x - {{P}} = 0$ and
+          $(x - {{n}})(x + {{o}}) = 0$. The integers are positive, so reject $x = -{{o}}$: the smaller integer is {{n}}.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A rectangular plot has an area of {{A}} m². Its length is {{d}} m more than its breadth. Find its breadth.
+        params:
+          w: {min: 4, max: 20, step: 1}
+          d: {min: 2, max: 9, step: 1}
+        derived:
+          A: "w * (w + d)"
+          L: "w + d"
+        answer:
+          numeric: {value: "w", unit: "m", mode: exact}
+        explanation: |
+          Let the breadth be $x$ m, so the length is $(x + {{d}})$ m: $x(x + {{d}}) = {{A}}$, that is
+          $x^2 + {{d}}x - {{A}} = 0$, and $(x - {{w}})(x + {{L}}) = 0$. A breadth can't be negative, so it is {{w}} m.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A bus travels {{D}} km at a uniform speed. If its speed had been {{k}} km/h more, the journey would have
+          taken 1 hour less. Find the usual speed of the bus.
+        params:
+          k: {choices: [5, 10]}
+          m: {min: 4, max: 10, step: 1}
+        derived:
+          D: "k * m * (m + 1)"
+          v: "k * m"
+          w: "k * (m + 1)"
+          Dk: "k * k * m * (m + 1)"
+        answer:
+          numeric: {value: "v", unit: "km/h", mode: exact}
+        explanation: |
+          Let the speed be $x$ km/h: $\dfrac{ {{D}} }{x} - \dfrac{ {{D}} }{x + {{k}}} = 1$. Multiply by $x(x + {{k}})$:
+          ${{D}} \times {{k}} = x^2 + {{k}}x$, so $x^2 + {{k}}x - {{Dk}} = 0$ and $(x - {{v}})(x + {{w}}) = 0$.
+          A speed can't be negative, so the speed is {{v}} km/h.
+      - id: kp4-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          A school spends ₹{{C}} on pens, all at the same price. If each pen had cost ₹{{k}} less, the school
+          could have bought {{n}} more pens for the same money. Find the price of one pen, in ₹.
+        params:
+          p: {choices: [6, 8, 10, 12, 16, 20]}
+          k: {choices: [1, 2]}
+          n: {min: 2, max: 5, step: 1}
+        derived:
+          C: "n * p * (p - k) / k"
+          N: "C / p"
+          o: "p - k"
+        answer:
+          numeric: {value: "p", mode: exact}
+        explanation: |
+          Let the price be ₹$x$. The school buys $\dfrac{ {{C}} }{x}$ pens, or $\dfrac{ {{C}} }{x - {{k}}}$ at the lower price:
+          $\dfrac{ {{C}} }{x - {{k}}} - \dfrac{ {{C}} }{x} = {{n}}$. Multiplying by $x(x - {{k}})$ gives a quadratic
+          equation with roots $x = {{p}}$ and $x = -{{o}}$. A price can't be negative, so one pen costs ₹{{p}}
+          (the school buys {{N}} pens).
+      - id: kp4-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          The length of a rectangle is 4 m more than its breadth, and its area is 60 m². Taking the breadth as $x$ m,
+          which equation is correct?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$x^2 + 4x - 60 = 0$", correct: true}
+              - {id: b, text: "$x^2 - 4x - 60 = 0$", misconception: reverse-translation}
+              - {id: c, text: "$2(x + x + 4) = 60$"}
+              - {id: d, text: "$x^2 + 4 = 60$"}
+        explanation: |
+          The length is $x + 4$ (4 more than the breadth), so the area is $x(x + 4) = 60$, that is $x^2 + 4x - 60 = 0$.
+          $2(x + x + 4)$ is the perimeter, not the area.
+      - id: kp4-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          The sum of the squares of two consecutive odd positive integers is 290. Find the smaller integer.
+        answer:
+          numeric: {value: 11, mode: exact}
+        explanation: |
+          Let the integers be $x$ and $x + 2$: $x^2 + (x + 2)^2 = 290$, so $2x^2 + 4x - 286 = 0$, that is
+          $x^2 + 2x - 143 = 0$. Then $(x - 11)(x + 13) = 0$. Reject $-13$ (not positive): the integers are 11 and 13.
+
+practice:
+  - id: practice-hall
+    type: multistep
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      The floor of a rectangular hall has an area of {{A}} m². Its length is {{d}} m more than its breadth.
+      Let the breadth be $x$ m.
+    params:
+      w: {min: 5, max: 20, step: 1}
+      d: {min: 2, max: 9, step: 1}
+    derived:
+      A: "w * (w + d)"
+      L: "w + d"
+      P: "2 * (2*w + d)"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write the area equation in the form $x^2 + bx + c = 0$. Enter its left side, $x^2 + bx + c$.
+            answer:
+              expression: {value: "x^2 + d*x - A", variables: [x], sympy_mode: equivalent}
+          - prompt: |
+              Solve the equation. What is its negative root?
+            answer:
+              numeric: {value: "-L", mode: exact}
+          - prompt: |
+              What is the breadth of the floor?
+            answer:
+              numeric: {value: "w", unit: "m", mode: exact}
+          - prompt: |
+              What is the perimeter of the floor?
+            answer:
+              numeric: {value: "P", unit: "m", mode: exact}
+    explanation: |
+      $x(x + {{d}}) = {{A}}$ gives $x^2 + {{d}}x - {{A}} = 0$, so $(x - {{w}})(x + {{L}}) = 0$ and $x = {{w}}$ or $x = -{{L}}$.
+      A breadth can't be negative, so the hall is {{w}} m by {{L}} m, and its perimeter is $2({{w}} + {{L}}) = {{P}}$ m.
+
+  - id: practice-train
+    type: multistep
+    bloom: analyze
+    expected_minutes: 7
+    prompt: |
+      A train travels {{D}} km at a uniform speed. If its speed had been {{k}} km/h more, the journey would have
+      taken 1 hour less. Let the usual speed be $x$ km/h.
+    params:
+      k: {choices: [5, 10]}
+      m: {min: 4, max: 10, step: 1}
+    derived:
+      D: "k * m * (m + 1)"
+      v: "k * m"
+      w: "k * (m + 1)"
+      c: "-k * k * m * (m + 1)"
+      Dsc: "k^2 + 4 * k * k * m * (m + 1)"
+      sq: "k * (2*m + 1)"
+      T: "m + 1"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              The equation $\dfrac{ {{D}} }{x} - \dfrac{ {{D}} }{x + {{k}}} = 1$ simplifies to $x^2 + {{k}}x + c = 0$. What is $c$?
+            answer:
+              numeric: {value: "c", mode: exact}
+          - prompt: |
+              Find $b^2 - 4ac$ for this equation.
+            answer:
+              numeric: {value: "Dsc", mode: exact}
+          - prompt: |
+              Find the usual speed of the train.
+            answer:
+              numeric: {value: "v", unit: "km/h", mode: exact}
+          - prompt: |
+              How many hours does the journey take at the usual speed?
+            answer:
+              numeric: {value: "T", unit: "h", mode: exact}
+    explanation: |
+      Multiplying by $x(x + {{k}})$: ${{D}}(x + {{k}}) - {{D}}x = x(x + {{k}})$, so $x^2 + {{k}}x + ({{c}}) = 0$.
+      $b^2 - 4ac = {{Dsc}} = {{sq}}^2$, so $x = \dfrac{-{{k}} \pm {{sq}}}{2}$: $x = {{v}}$ or $x = -{{w}}$.
+      A speed can't be negative, so it is {{v}} km/h, and the journey takes $\dfrac{ {{D}} }{ {{v}} } = {{T}}$ hours.
+
+  - id: practice-formula
+    type: multistep
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      Solve the equation ${{p}}x^2 = {{B}}x + {{C}}$.
+    params:
+      p: {choices: [2, 4, 5]}
+      q: {choices: [1, 3]}
+      r: {min: 3, max: 7, step: 1}
+    derived:
+      B: "p * r - q"
+      C: "q * r"
+      D: "B^2 + 4 * p * C"
+      sq: "p * r + q"
+      den: "2 * p"
+      s: "-q / p"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write it in the form $ax^2 + bx + c = 0$ with $a = {{p}}$. What is $b$?
+            answer:
+              numeric: {value: "-B", mode: exact}
+          - prompt: |
+              What is $c$?
+            answer:
+              numeric: {value: "-C", mode: exact}
+          - prompt: |
+              Find $b^2 - 4ac$.
+            answer:
+              numeric: {value: "D", mode: exact}
+          - prompt: |
+              Find the larger root.
+            answer:
+              numeric: {value: "r", mode: exact}
+          - prompt: |
+              Find the smaller root, as a decimal.
+            answer:
+              numeric: {value: "s", mode: exact}
+    explanation: |
+      ${{p}}x^2 - {{B}}x - {{C}} = 0$, so $a = {{p}}$, $b = -{{B}}$, $c = -{{C}}$ and $b^2 - 4ac = {{D}} = {{sq}}^2$.
+      $x = \dfrac{ {{B}} \pm {{sq}} }{ {{den}} }$, so $x = {{r}}$ or $x = {{s}}$.

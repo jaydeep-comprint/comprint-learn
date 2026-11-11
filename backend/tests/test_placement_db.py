@@ -162,7 +162,9 @@ async def test_send_needs_chapters_and_skips_existing(db_app: DbApp) -> None:
 
     ch2 = await chapter_id(db_app, MATHS, "pair-of-linear-equations")
     data = await put_chapters(db_app, w, [ch2])
-    assert [c["covered"] for c in data["chapters"]] == [False, True]
+    covered = {c["slug"]: c["covered"] for c in data["chapters"]}
+    assert covered.pop("pair-of-linear-equations") is True
+    assert covered and not any(covered.values())
     assert data["range"] == {"concepts": 3, "prereqs": 1, "askable": 3}
     assert {s["status"] for s in data["students"]} == {"not_sent"}
 
@@ -243,7 +245,8 @@ async def test_all_correct_places_concepts_without_xp(db_app: DbApp) -> None:
         ref for ref, cid in ids.items() if rows[cid].conditional
     }
     outline = await get(db_app, s, f"/api/v1/learn/courses/{MATHS}/outline")
-    concepts = [c for ch in outline["chapters"] for c in ch["concepts"]]
+    concepts = [c for ch in outline["chapters"] for c in ch["concepts"] if c["id"] in placed]
+    assert len(concepts) == 3
     assert all(c["placed"] and c["parts_passed"] == c["parts_total"] for c in concepts)
 
     teacher = await get(db_app, w.a.teacher_id, tab(w.a.class_ids[0], f"/students/{s}"))

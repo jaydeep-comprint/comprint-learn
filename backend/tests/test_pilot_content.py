@@ -14,7 +14,7 @@ from app.content.loader import ContentBundle, LoadedConcept, load
 from app.content.schema import Item, ItemType, McqAnswer, MultistepAnswer
 
 # Course id -> active concept count once its subject PR lands.
-PILOT_COURSES = {"maths-9-10": 8}
+PILOT_COURSES = {"maths-9-10": 8, "physics-9-10": 8}
 
 # The 9 spec-003 concepts, with their prerequisites then (never changed: a new prereq would change
 # frontiers of students who started them) and their one practice item then.

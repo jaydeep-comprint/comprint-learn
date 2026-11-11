@@ -1,0 +1,837 @@
+id: list-algorithms
+title: List algorithms
+summary: Search a list, find the biggest and smallest by hand, filter and count matches, and use nested loops for pairs and grids.
+prereqs:
+  - {concept: lists, weight: 0.6}
+  - {concept: functions, weight: 0.5}
+  - {concept: conditionals, weight: 0.3}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    ```python
+    def find_index(items, target):
+        for i in range(len(items)):
+            if items[i] == target:
+                return i
+        return -1
+
+    print(find_index(["Pune", "Agra", "Kochi"], "Kochi"))
+    ```
+
+    What does this program print?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "2", correct: true}
+        - {id: b, text: "3", misconception: index-starts-at-one}
+        - {id: c, text: Kochi}
+        - {id: d, text: "-1"}
+  explanation: |
+    The function returns the **index** where the item was found, not the item. "Kochi" is the third item,
+    and indexes start at 0, so it is at index 2.
+
+kps:
+  - id: kp1
+    title: Linear search (return the index or −1)
+    worked_example: kp-1-worked.md
+    key_prereqs: [lists, functions]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def find_index(items, target):
+              for i in range(len(items)):
+                  if items[i] == target:
+                      return i
+              return -1
+
+          nums = [7, 14, 21, 28, 35, 42, 49]
+          print(find_index(nums, {{t}}))
+          ```
+        params:
+          t: {choices: [7, 14, 21, 28, 35, 42, 49, 10, 30, 50]}
+        derived: {found: "1 - Min(t % 7, 1)"}
+        answer:
+          numeric: {value: "found * (floor(t / 7) - 1) - (1 - found)", mode: exact}
+        explanation: |
+          The loop checks index 0, 1, 2, … and returns the first index whose item is {{t}}. The item at
+          index `i` is 7 × (i + 1), so a multiple of 7 up to 49 is found at index (value ÷ 7) − 1. Any other
+          number is never matched, so the loop ends and the function returns −1.
+      - id: kp1-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def find_last(items, target):
+              pos = -1
+              for i in range(len(items)):
+                  if items[i] == target:
+                      pos = i
+              return pos
+
+          nums = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]
+          print(find_last(nums, {{t}}))
+          ```
+        params:
+          t: {choices: [0, 1, 2, 3, 4, 6]}
+        derived: {found: "1 - Min(floor(t / 4), 1)"}
+        answer:
+          numeric: {value: "found * (8 + t) - (1 - found)", mode: exact}
+        explanation: |
+          There is no `return` inside the loop, so it never stops early: `pos` is overwritten at every match
+          and ends as the **last** index where {{t}} appears. The last group `0, 1, 2, 3` starts at index 8.
+          If {{t}} is not in the list, `pos` keeps its starting value −1.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+          checks = 0
+          for x in nums:
+              checks = checks + 1
+              if x == {{t}}:
+                  break
+          print(checks)
+          ```
+        params:
+          t: {min: 5, max: 60, step: 5}
+        answer:
+          numeric: {value: "Min(t / 5, 10)", mode: exact}
+        explanation: |
+          `checks` counts the items looked at. The search stops (`break`) as soon as it finds {{t}}; if
+          {{t}} is not in the list, it looks at all 10 items. A search can stop early, but a missing value
+          always costs a check of every item.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def first_above(items, limit):
+              for i in range(len(items)):
+                  if items[i] > limit:
+                      return i
+              return -1
+
+          temps = [21, 24, 27, 30, 33, 36, 39]
+          print(first_above(temps, {{lim}}))
+          ```
+        params:
+          lim: {min: 18, max: 42, step: 1}
+        derived:
+          idx: "Max(0, floor((lim - 21) / 3) + 1)"
+          found: "1 - Min(floor(idx / 7), 1)"
+        answer:
+          numeric: {value: "found * idx - (1 - found)", mode: exact}
+        explanation: |
+          The function returns the index of the **first** temperature greater than {{lim}} (strictly
+          greater: a value equal to {{lim}} doesn't count). If no temperature is above {{lim}}, the loop
+          finishes and it returns −1.
+      - id: kp1-q5
+        type: mcq
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def find_index(items, target):
+              for i in range(len(items)):
+                  if items[i] == target:
+                      return i
+                  else:
+                      return -1
+
+          print(find_index([4, 9, 2], 9))
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "-1", correct: true}
+              - {id: b, text: "1", misconception: early-return-in-loop}
+              - {id: c, text: "2", misconception: index-starts-at-one}
+        explanation: |
+          On the first pass `items[0]` is 4, not 9, so the `else` runs `return -1` and the function ends
+          before it ever looks at 9. Put `return -1` **after** the loop, so it runs only when every item
+          has been checked.
+      - id: kp1-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `find_index(items, target)` that returns the index of the **first** item equal to `target`,
+          or −1 if `target` is not in `items`. Use a loop (don't use `.index()`).
+        answer:
+          code:
+            entry: find_index
+            starter: |
+              def find_index(items, target):
+                  return -1
+            solution: |
+              def find_index(items, target):
+                  for i in range(len(items)):
+                      if items[i] == target:
+                          return i
+                  return -1
+            tests:
+              - {args: [[12, 45, 30], 45], expected: 1, visible: true}
+              - {args: [[12, 45, 30], 99], expected: -1, visible: true}
+              - {args: [[8, 3, 5], 8], expected: 0}
+              - {args: [[8, 3, 5], 5], expected: 2}
+              - {args: [[], 4], expected: -1}
+              - {args: [["Asha", "Ravi", "Asha"], "Asha"], expected: 0}
+
+  - id: kp2
+    title: Max / min by hand
+    worked_example: kp-2-worked.md
+    key_prereqs: [lists]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          runs = [{{a}}, {{b}}, {{c}}, {{d}}, {{e}}]
+          best = runs[0]
+          for r in runs:
+              if r > best:
+                  best = r
+          print(best)
+          ```
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 10, max: 99, step: 1}
+          c: {min: 10, max: 99, step: 1}
+          d: {min: 10, max: 99, step: 1}
+          e: {min: 10, max: 99, step: 1}
+        derived: {top: "Max(a, b, c, d, e)"}
+        answer:
+          numeric: {value: "top", mode: exact}
+        explanation: |
+          `best` starts as the first score and is replaced whenever a bigger one comes along, so it ends as
+          the biggest: {{top}}.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          temps = [{{a}}, {{b}}, {{c}}, {{d}}, {{e}}]
+          low = temps[0]
+          for t in temps:
+              if t < low:
+                  low = t
+          print(low)
+          ```
+        params:
+          a: {min: -15, max: 20, step: 1}
+          b: {min: -15, max: 20, step: 1}
+          c: {min: -15, max: 20, step: 1}
+          d: {min: -15, max: 20, step: 1}
+          e: {min: -15, max: 20, step: 1}
+        derived: {bottom: "Min(a, b, c, d, e)"}
+        answer:
+          numeric: {value: "bottom", mode: exact}
+        explanation: |
+          With `t < low`, `low` is replaced by every smaller value, so it ends as the smallest: {{bottom}}.
+          Remember that −10 is smaller than −2.
+      - id: kp2-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          sales = [{{v0}}, {{v1}}, {{v2}}, {{v3}}, {{v4}}, {{v5}}]
+          best_i = 0
+          for i in range(len(sales)):
+              if sales[i] > sales[best_i]:
+                  best_i = i
+          print(best_i)
+          ```
+        params:
+          p: {min: 0, max: 5, step: 1}
+          s: {min: 60, max: 95, step: 1}
+        derived:
+          v0: "s - 7 * abs(0 - p)"
+          v1: "s - 7 * abs(1 - p)"
+          v2: "s - 7 * abs(2 - p)"
+          v3: "s - 7 * abs(3 - p)"
+          v4: "s - 7 * abs(4 - p)"
+          v5: "s - 7 * abs(5 - p)"
+        answer:
+          numeric: {value: "p", mode: exact}
+        explanation: |
+          `best_i` keeps the **index** of the biggest value so far, not the value. The biggest sale is
+          {{s}}, at index {{p}} (counting from 0).
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          marks = [{{a}}, {{b}}, {{c}}, {{d}}]
+          high = marks[0]
+          low = marks[0]
+          for m in marks:
+              if m > high:
+                  high = m
+              if m < low:
+                  low = m
+          print(high - low)
+          ```
+        params:
+          a: {min: 20, max: 100, step: 1}
+          b: {min: 20, max: 100, step: 1}
+          c: {min: 20, max: 100, step: 1}
+          d: {min: 20, max: 100, step: 1}
+        derived: {high: "Max(a, b, c, d)", low: "Min(a, b, c, d)", gap: "high - low"}
+        answer:
+          numeric: {value: "gap", mode: exact}
+        explanation: |
+          One loop can track both: `high` ends as {{high}} and `low` as {{low}}, so it prints
+          {{high}} − {{low}} = {{gap}}.
+      - id: kp2-q5
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          This program has a bug. What does it print?
+
+          ```python
+          nums = [{{a}}, {{b}}, {{c}}, {{d}}]
+          best = 0
+          for x in nums:
+              if x > best:
+                  best = x
+          print(best)
+          ```
+        params:
+          a: {min: -30, max: 12, step: 1}
+          b: {min: -30, max: 12, step: 1}
+          c: {min: -30, max: 12, step: 1}
+          d: {min: -30, max: 12, step: 1}
+        derived: {out: "Max(0, a, b, c, d)"}
+        answer:
+          numeric: {value: "out", mode: exact}
+        explanation: |
+          `best` starts at 0 instead of `nums[0]`. It only changes when a number is bigger than 0, so if
+          every number is 0 or below it stays 0 even though 0 isn't in the list. Here it prints {{out}}.
+          Start with `best = nums[0]` to fix it.
+      - id: kp2-q6
+        type: mcq
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [6, 2, 9, 4]
+          for x in nums:
+              smallest = nums[0]
+              if x < smallest:
+                  smallest = x
+          print(smallest)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "4", correct: true}
+              - {id: b, text: "2", misconception: reset-inside-loop}
+              - {id: c, text: "6"}
+        explanation: |
+          `smallest = nums[0]` is inside the loop, so on every pass it goes back to 6 and forgets the 2 it
+          found. On the last pass, 4 < 6, so it ends as 4. Set `smallest = nums[0]` once, before the loop.
+      - id: kp2-q7
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `smallest(nums)` that returns the smallest number in `nums`, **without** using `min()` or
+          `sorted()`. If `nums` is empty, return `None`.
+        answer:
+          code:
+            entry: smallest
+            starter: |
+              def smallest(nums):
+                  return None
+            solution: |
+              def smallest(nums):
+                  if len(nums) == 0:
+                      return None
+                  low = nums[0]
+                  for x in nums:
+                      if x < low:
+                          low = x
+                  return low
+            tests:
+              - {args: [[5, 3, 8]], expected: 3, visible: true}
+              - {args: [[-2, -9, -4]], expected: -9}
+              - {args: [[7]], expected: 7}
+              - {args: [[]], expected: null}
+              - {args: [[4, 1, 1, 6]], expected: 1}
+              - {args: [[2, 5, 0]], expected: 0}
+
+  - id: kp3
+    title: Filtering and counting matches
+    worked_example: kp-3-worked.md
+    key_prereqs: [conditionals]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          The pass mark is 33. What does this program print?
+
+          ```python
+          marks = [{{a}}, {{b}}, {{c}}, {{d}}, {{e}}]
+          count = 0
+          for m in marks:
+              if m >= 33:
+                  count = count + 1
+          print(count)
+          ```
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 10, max: 99, step: 1}
+          c: {min: 10, max: 99, step: 1}
+          d: {min: 10, max: 99, step: 1}
+          e: {min: 10, max: 99, step: 1}
+        derived:
+          passed: "Min(floor(a / 33), 1) + Min(floor(b / 33), 1) + Min(floor(c / 33), 1) + Min(floor(d / 33), 1) + Min(floor(e / 33), 1)"
+        answer:
+          numeric: {value: "passed", mode: exact}
+        explanation: |
+          `count` goes up by 1 for each mark that is 33 **or more** (a mark of exactly 33 passes).
+          Number of marks that pass: {{passed}}.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [{{a}}, {{b}}, {{c}}, {{d}}, {{e}}, {{f}}]
+          evens = []
+          for x in nums:
+              if x % 2 == 0:
+                  evens.append(x)
+          print(len(evens))
+          ```
+        params:
+          a: {min: 1, max: 50, step: 1}
+          b: {min: 1, max: 50, step: 1}
+          c: {min: 1, max: 50, step: 1}
+          d: {min: 1, max: 50, step: 1}
+          e: {min: 1, max: 50, step: 1}
+          f: {min: 1, max: 50, step: 1}
+        derived:
+          n: "(1 - a % 2) + (1 - b % 2) + (1 - c % 2) + (1 - d % 2) + (1 - e % 2) + (1 - f % 2)"
+        answer:
+          numeric: {value: "n", mode: exact}
+        explanation: |
+          `x % 2 == 0` is true for even numbers, so `evens` keeps only those, and `len(evens)` counts them:
+          {{n}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def total_even(nums):
+              total = 0
+              for x in nums:
+                  if x % 2 == 0:
+                      total = total + x
+              return total
+
+          print(total_even([{{a}}, {{b}}, {{c}}, {{d}}, {{e}}]))
+          ```
+        params:
+          a: {min: 1, max: 30, step: 1}
+          b: {min: 1, max: 30, step: 1}
+          c: {min: 1, max: 30, step: 1}
+          d: {min: 1, max: 30, step: 1}
+          e: {min: 1, max: 30, step: 1}
+        derived:
+          s: "a * (1 - a % 2) + b * (1 - b % 2) + c * (1 - c % 2) + d * (1 - d % 2) + e * (1 - e % 2)"
+        answer:
+          numeric: {value: "s", mode: exact}
+        explanation: |
+          Only the even numbers are added; the odd ones are skipped by the `if`. The even numbers add up to
+          {{s}} (0 if there are none).
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+          count = 0
+          for x in nums:
+              if x >= {{lo}} and x <= {{hi}}:
+                  count = count + 1
+          print(count)
+          ```
+        params:
+          lo: {min: 3, max: 30, step: 1}
+          hi: {min: 20, max: 55, step: 1}
+        constraints: ["hi > lo"]
+        derived: {n: "Max(0, Min(floor(hi / 5), 10) - Max(ceiling(lo / 5), 1) + 1)"}
+        answer:
+          numeric: {value: "n", mode: exact}
+        explanation: |
+          It counts the multiples of 5 (up to 50) from {{lo}} to {{hi}}, **both ends included**
+          (`>=` and `<=`). Count: {{n}}.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          ```python
+          def evens(nums):
+              for x in nums:
+                  if x % 2 == 0:
+                      print(x)
+
+          result = evens([3, 4, 8])
+          print(result)
+          ```
+
+          What does the **last** line, `print(result)`, print?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`None`", correct: true}
+              - {id: b, text: "`[4, 8]`", misconception: print-is-return}
+              - {id: c, text: "`8`"}
+        explanation: |
+          `evens` prints 4 and 8 on the screen, but it has no `return`, so it gives back `None`. To hand the
+          even numbers back to the caller, build a list, `append` the matches and `return` the list.
+      - id: kp3-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `count_between(nums, lo, hi)` that returns how many numbers in `nums` are between `lo` and
+          `hi`, **including** `lo` and `hi` themselves.
+        answer:
+          code:
+            entry: count_between
+            starter: |
+              def count_between(nums, lo, hi):
+                  count = 0
+                  return count
+            solution: |
+              def count_between(nums, lo, hi):
+                  count = 0
+                  for x in nums:
+                      if x >= lo and x <= hi:
+                          count = count + 1
+                  return count
+            tests:
+              - {args: [[45, 20, 33, 78, 100], 33, 80], expected: 3, visible: true}
+              - {args: [[], 1, 10], expected: 0}
+              - {args: [[5, 6, 7], 10, 20], expected: 0}
+              - {args: [[-5, 0, 5, -5], -5, 0], expected: 3}
+              - {args: [[4, 4, 4], 4, 4], expected: 3}
+
+  - id: kp4
+    title: Nested loops (pairs, 2-D lists)
+    worked_example: kp-4-worked.md
+    key_prereqs: [lists]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          count = 0
+          for i in range({{n}}):
+              for j in range({{m}}):
+                  count = count + 1
+          print(count)
+          ```
+        params:
+          n: {min: 2, max: 9, step: 1}
+          m: {min: 2, max: 9, step: 1}
+        derived: {total: "n * m"}
+        answer:
+          numeric: {value: "total", mode: exact}
+        explanation: |
+          The inner loop runs all {{m}} times on **each** of the {{n}} passes of the outer loop:
+          {{n}} × {{m}} = {{total}}.
+      - id: kp4-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          count = 0
+          for i in range({{n}}):
+              for j in range(i + 1, {{n}}):
+                  count = count + 1
+          print(count)
+          ```
+        params:
+          n: {min: 3, max: 12, step: 1}
+        derived: {last: "n - 1", pairs: "n * (n - 1) / 2"}
+        answer:
+          numeric: {value: "pairs", mode: exact}
+        explanation: |
+          When `i` is 0 the inner loop runs {{last}} times, when `i` is 1 one time fewer, and so on down to
+          0. That counts each pair `i < j` once: {{n}} × {{last}} ÷ 2 = {{pairs}}.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          grid = [[{{a}}, {{b}}, {{c}}],
+                  [{{d}}, {{e}}, {{f}}]]
+          totals = []
+          for row in grid:
+              t = 0
+              for x in row:
+                  t = t + x
+              totals.append(t)
+          print(totals[1] - totals[0])
+          ```
+        params:
+          a: {min: 1, max: 20, step: 1}
+          b: {min: 1, max: 20, step: 1}
+          c: {min: 1, max: 20, step: 1}
+          d: {min: 1, max: 20, step: 1}
+          e: {min: 1, max: 20, step: 1}
+          f: {min: 1, max: 20, step: 1}
+        derived: {r0: "a + b + c", r1: "d + e + f", diff: "r1 - r0"}
+        answer:
+          numeric: {value: "diff", mode: exact}
+        explanation: |
+          `t` is reset for each row, so `totals` is `[{{r0}}, {{r1}}]`: one total per row. It prints
+          {{r1}} − {{r0}} = {{diff}}.
+      - id: kp4-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          grid = [[{{a}}, {{b}}],
+                  [{{c}}, {{d}}],
+                  [{{e}}, {{f}}]]
+          total = 0
+          for row in grid:
+              total = total + row[1]
+          print(total)
+          ```
+        params:
+          a: {min: 1, max: 30, step: 1}
+          b: {min: 1, max: 30, step: 1}
+          c: {min: 1, max: 30, step: 1}
+          d: {min: 1, max: 30, step: 1}
+          e: {min: 1, max: 30, step: 1}
+          f: {min: 1, max: 30, step: 1}
+        derived: {col: "b + d + f"}
+        answer:
+          numeric: {value: "col", mode: exact}
+        explanation: |
+          `row[1]` is the **second** item of each row (index 1), so this adds up the second column:
+          {{b}} + {{d}} + {{f}} = {{col}}.
+      - id: kp4-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          grid = [[5, 8, 2],
+                  [7, 1, 9]]
+          print(grid[1][2])
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "9", correct: true}
+              - {id: b, text: "8", misconception: index-starts-at-one}
+              - {id: c, text: "An error, because the grid has no row 2"}
+        explanation: |
+          `grid[1]` is the second row, `[7, 1, 9]`, and index 2 in that row is its third item, 9. Rows and
+          columns both start at 0.
+      - id: kp4-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `row_totals(grid)` that takes a grid (a list of lists of numbers) and returns a new list
+          with the total of each row, in order. An empty row has total 0.
+
+          For example, `row_totals([[4, 1, 6], [2, 8, 3]])` returns `[11, 13]`.
+        answer:
+          code:
+            entry: row_totals
+            starter: |
+              def row_totals(grid):
+                  totals = []
+                  return totals
+            solution: |
+              def row_totals(grid):
+                  totals = []
+                  for row in grid:
+                      t = 0
+                      for x in row:
+                          t = t + x
+                      totals.append(t)
+                  return totals
+            tests:
+              - {args: [[[4, 1, 6], [2, 8, 3]]], expected: [11, 13], visible: true}
+              - {args: [[]], expected: []}
+              - {args: [[[5]]], expected: [5]}
+              - {args: [[[1, 2], [], [-3, 3]]], expected: [3, 0, 0]}
+              - {args: [[[10, 20, 30], [1, 1, 1], [0, 0, 7]]], expected: [60, 3, 7]}
+
+practice:
+  - id: practice-1
+    type: code
+    bloom: apply
+    expected_minutes: 8
+    prompt: |
+      Write `has_duplicate(items)` that returns `True` if any value appears **more than once** in `items`,
+      and `False` otherwise. Use nested loops to compare each pair of positions once.
+
+      For example, `has_duplicate([3, 8, 5, 8])` returns `True`.
+    answer:
+      code:
+        entry: has_duplicate
+        starter: |
+          def has_duplicate(items):
+              return False
+        solution: |
+          def has_duplicate(items):
+              for i in range(len(items)):
+                  for j in range(i + 1, len(items)):
+                      if items[i] == items[j]:
+                          return True
+              return False
+        tests:
+          - {args: [[3, 8, 5, 8]], expected: true, visible: true}
+          - {args: [[1, 2, 3]], expected: false, visible: true}
+          - {args: [[]], expected: false}
+          - {args: [[7]], expected: false}
+          - {args: [[4, 1, 2, 4]], expected: true}
+          - {args: [["Pune", "Agra", "pune"]], expected: false}
+  - id: practice-2
+    type: code
+    bloom: create
+    expected_minutes: 10
+    prompt: |
+      Write `second_largest(nums)` that returns the second biggest **different** value in `nums`, without
+      using `max()`, `min()`, `sorted()` or `.sort()`. If `nums` has fewer than 2 different values, return
+      `None`.
+
+      For example, `second_largest([40, 90, 75, 90])` returns `75`.
+    answer:
+      code:
+        entry: second_largest
+        starter: |
+          def second_largest(nums):
+              return None
+        solution: |
+          def second_largest(nums):
+              if len(nums) == 0:
+                  return None
+              biggest = nums[0]
+              for x in nums:
+                  if x > biggest:
+                      biggest = x
+              found = False
+              second = 0
+              for x in nums:
+                  if x < biggest:
+                      if not found or x > second:
+                          second = x
+                          found = True
+              if not found:
+                  return None
+              return second
+        tests:
+          - {args: [[40, 90, 75, 90]], expected: 75, visible: true}
+          - {args: [[5, 5, 5]], expected: null, visible: true}
+          - {args: [[]], expected: null}
+          - {args: [[8]], expected: null}
+          - {args: [[-3, -1, -7]], expected: -3}
+          - {args: [[2, 9]], expected: 2}
+          - {args: [[9, 2, 9, 2, 6]], expected: 6}
+  - id: practice-3
+    type: code
+    bloom: create
+    expected_minutes: 10
+    prompt: |
+      Meera wants to buy two snacks whose prices (in ₹) add up exactly to the money she has. Write
+      `pairs_with_sum(nums, target)` that returns **how many pairs** of different positions `i < j` have
+      `nums[i] + nums[j] == target`.
+
+      For example, `pairs_with_sum([20, 30, 50, 10, 40], 60)` returns `2`: 20 + 40 and 50 + 10.
+    answer:
+      code:
+        entry: pairs_with_sum
+        starter: |
+          def pairs_with_sum(nums, target):
+              count = 0
+              return count
+        solution: |
+          def pairs_with_sum(nums, target):
+              count = 0
+              for i in range(len(nums)):
+                  for j in range(i + 1, len(nums)):
+                      if nums[i] + nums[j] == target:
+                          count = count + 1
+              return count
+        tests:
+          - {args: [[20, 30, 50, 10, 40], 60], expected: 2, visible: true}
+          - {args: [[], 10], expected: 0}
+          - {args: [[5], 10], expected: 0}
+          - {args: [[5, 5, 5], 10], expected: 3}
+          - {args: [[-2, 7, 2, 3], 5], expected: 2}

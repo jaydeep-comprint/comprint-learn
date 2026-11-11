@@ -1,0 +1,667 @@
+id: strings
+title: Strings
+summary: Read characters by index, take slices, use string methods, and loop over a string to count.
+prereqs:
+  - {concept: loops, weight: 0.4}
+  - {concept: variables-and-types, weight: 0.3}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    ```python
+    name = "ravi"
+    name.upper()
+    print(name)
+    ```
+
+    What does this program print?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: ravi, correct: true}
+        - {id: b, text: RAVI, misconception: strings-are-mutable}
+        - {id: c, text: Ravi}
+  explanation: |
+    `name.upper()` gives back a **new** string, "RAVI", but nothing keeps it. Strings can't be changed, so
+    `name` is still "ravi". Write `name = name.upper()` to keep the new string.
+
+kps:
+  - id: kp1
+    title: Indexing, including negative indices
+    worked_example: kp-1-worked.md
+    key_prereqs: [variables-and-types]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          pin = "{{a}}{{b}}{{c}}{{d}}"
+          print(int(pin[1]) + int(pin[-1]))
+          ```
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+          d: {min: 1, max: 9, step: 1}
+        derived: {ans: "b + d"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `pin[1]` is the **second** character, "{{b}}", and `pin[-1]` is the last, "{{d}}".
+          `int()` turns them into numbers: {{b}} + {{d}} = {{ans}}.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          code = "{{a}}{{b}}{{c}}{{d}}{{e}}"
+          print(int(code[-2]) * int(code[0]))
+          ```
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+          d: {min: 1, max: 9, step: 1}
+          e: {min: 1, max: 9, step: 1}
+        derived: {ans: "d * a"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `code[-2]` is the second character from the end, "{{d}}", and `code[0]` is the first, "{{a}}":
+          {{d}} × {{a}} = {{ans}}.
+      - id: kp1-q3
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          `word = "PYTHONIC"` has 8 characters. `word[-{{k}}]` is the same character as `word[i]`.
+          What is `i`?
+        params:
+          k: {min: 1, max: 8, step: 1}
+        derived: {i: "8 - k"}
+        answer:
+          numeric: {value: "i", mode: exact}
+        explanation: |
+          A negative index counts back from the end: `word[-{{k}}]` is `word[len(word) - {{k}}]` =
+          `word[8 - {{k}}]` = `word[{{i}}]`.
+      - id: kp1-q4
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A string `s` has {{n}} characters. Which **negative** index gives its **first** character?
+        params:
+          n: {min: 3, max: 30, step: 1}
+        derived: {neg: "-n"}
+        answer:
+          numeric: {value: "neg", mode: exact}
+        explanation: |
+          `s[-1]` is the last character, `s[-2]` the one before it, and so on back to `s[-{{n}}]`, the first.
+          It is the same as `s[0]`.
+      - id: kp1-q5
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          city = "MUMBAI"
+          print(city[1])
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: U, correct: true}
+              - {id: b, text: M, misconception: index-starts-at-one}
+              - {id: c, text: "An IndexError"}
+        explanation: |
+          Indexes start at 0: `city[0]` is "M" and `city[1]` is "U".
+      - id: kp1-q6
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Write `ends_match(word)` that returns `True` if the first and the last character of `word` are the
+          same, and `False` otherwise. `word` always has at least one character.
+        answer:
+          code:
+            entry: ends_match
+            starter: |
+              def ends_match(word):
+                  return False
+            solution: |
+              def ends_match(word):
+                  return word[0] == word[-1]
+            tests:
+              - {args: ["MALAYALAM"], expected: true, visible: true}
+              - {args: ["PUNE"], expected: false}
+              - {args: ["a"], expected: true}
+              - {args: ["Asha"], expected: false}
+
+  - id: kp2
+    title: Slicing
+    worked_example: kp-2-worked.md
+    key_prereqs: []
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          word = "BENGALURU"
+          part = word[{{a}}:{{b}}]
+          print(len(part))
+          ```
+        params:
+          a: {min: 0, max: 7, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        constraints: ["b > a"]
+        derived: {ans: "b - a"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `word[{{a}}:{{b}}]` takes indexes {{a}} up to **but not including** {{b}}: {{b}} − {{a}} = {{ans}}
+          characters.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          digits = "0123456789"
+          part = digits[{{a}}:{{b}}]
+          print(int(part[0]) + int(part[-1]))
+          ```
+        params:
+          a: {min: 0, max: 8, step: 1}
+          b: {min: 1, max: 10, step: 1}
+        constraints: ["b > a"]
+        derived: {last: "b - 1", ans: "a + last"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          In `digits`, each character is the same as its index. The slice starts at index {{a}} and its last
+          character is at index {{last}} (index {{b}} is not included): {{a}} + {{last}} = {{ans}}.
+      - id: kp2-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          year = {{y}}
+          s = str(year)
+          print(int(s[:2]) + int(s[2:]))
+          ```
+        params:
+          y: {min: 1990, max: 2035, step: 1}
+        derived: {left: "floor(y / 100)", right: "y % 100", ans: "left + right"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `s` is "{{y}}". `s[:2]` is the first two characters and `s[2:]` the rest, so it adds
+          {{left}} + {{right}} = {{ans}}.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          word = "PYTHONIC"
+          print(len(word[:{{a}}]) + len(word[-{{b}}:]))
+          ```
+        params:
+          a: {min: 1, max: 7, step: 1}
+          b: {min: 1, max: 7, step: 1}
+        constraints: ["a != b"]
+        derived: {ans: "a + b"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `word[:{{a}}]` is the first {{a}} characters and `word[-{{b}}:]` the last {{b}}: {{a}} + {{b}} = {{ans}}.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          city = "MUMBAI"
+          print(city[1:4])
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: UMB, correct: true}
+              - {id: b, text: UMBA, misconception: slice-includes-end}
+              - {id: c, text: MUM, misconception: index-starts-at-one}
+        explanation: |
+          The slice starts at index 1 ("U") and stops **before** index 4, so it has indexes 1, 2 and 3: "UMB".
+      - id: kp2-q6
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Write `first_half(text)` that returns the first half of `text`: its first `len(text) // 2` characters.
+          For example, `first_half("PYTHON")` returns `"PYT"` and `first_half("GOA")` returns `"G"`.
+        answer:
+          code:
+            entry: first_half
+            starter: |
+              def first_half(text):
+                  return ""
+            solution: |
+              def first_half(text):
+                  return text[:len(text) // 2]
+            tests:
+              - {args: ["PYTHON"], expected: "PYT", visible: true}
+              - {args: ["GOA"], expected: "G"}
+              - {args: [""], expected: ""}
+              - {args: ["a"], expected: ""}
+
+  - id: kp3
+    title: String methods (upper, lower, strip, replace, find, split)
+    worked_example: kp-3-worked.md
+    key_prereqs: []
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          s = "ab" * {{n}} + "c"
+          print(s.find("c"))
+          ```
+        params:
+          n: {min: 1, max: 20, step: 1}
+        derived: {ans: "2 * n"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `s` has {{n}} copies of "ab" ({{ans}} characters, indexes 0 to {{ans}} − 1) and then "c", so "c" is at
+          index {{ans}}.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          s = " " * {{a}} + "Delhi" + " " * {{b}}
+          print(len(s) - len(s.strip()))
+          ```
+        params:
+          a: {min: 0, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        derived: {ans: "a + b"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `strip()` removes the spaces at **both** ends: {{a}} at the start and {{b}} at the end, so the
+          difference is {{ans}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          row = "5," * {{n}} + "5"
+          parts = row.split(",")
+          print(len(parts))
+          ```
+        params:
+          n: {min: 1, max: 15, step: 1}
+        derived: {ans: "n + 1"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `row` has {{n}} commas. Cutting at {{n}} commas gives {{n}} + 1 = {{ans}} parts.
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          s = "ha" * {{n}}
+          t = s.replace("a", "ee")
+          print(len(t))
+          ```
+        params:
+          n: {min: 1, max: 20, step: 1}
+        derived: {ans: "3 * n"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          Every "ha" becomes "hee": {{n}} pieces of 3 characters, so {{ans}}.
+      - id: kp3-q5
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          city = " " * {{a}} + "pune"
+          city.strip()
+          city.upper()
+          print(len(city))
+          ```
+        params:
+          a: {min: 1, max: 9, step: 1}
+        derived: {ans: "a + 4"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `strip()` and `upper()` give back new strings, but nothing keeps them, so `city` still has its
+          {{a}} spaces: {{a}} + 4 = {{ans}}. Write `city = city.strip()` to keep the change.
+      - id: kp3-q6
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program do?
+
+          ```python
+          name = "meera"
+          name[0] = "M"
+          print(name)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "It stops with a TypeError", correct: true}
+              - {id: b, text: "It prints Meera", misconception: strings-are-mutable}
+              - {id: c, text: "It prints Mmeera"}
+        explanation: |
+          Strings can't be changed, so `name[0] = "M"` is a TypeError. Make a new string instead:
+          `name = "M" + name[1:]`.
+      - id: kp3-q7
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `initials(name)` that takes a first name and a surname separated by one space, and returns
+          their first letters in capitals. For example, `initials("asha rao")` returns `"AR"`.
+        answer:
+          code:
+            entry: initials
+            starter: |
+              def initials(name):
+                  return ""
+            solution: |
+              def initials(name):
+                  parts = name.split()
+                  return (parts[0][0] + parts[1][0]).upper()
+            tests:
+              - {args: ["asha rao"], expected: "AR", visible: true}
+              - {args: ["Kabir Singh"], expected: "KS"}
+              - {args: ["meera Iyer"], expected: "MI"}
+              - {args: ["r k"], expected: "RK"}
+
+  - id: kp4
+    title: Looping over a string and counting
+    worked_example: kp-4-worked.md
+    key_prereqs: [loops]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          s = "abc" * {{n}}
+          count = 0
+          for ch in s:
+              if ch != "a":
+                  count = count + 1
+          print(count)
+          ```
+        params:
+          n: {min: 1, max: 20, step: 1}
+        derived: {ans: "2 * n"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `s` repeats "abc" {{n}} times, and each "abc" has 2 characters that are not "a": 2 × {{n}} = {{ans}}.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          num = "{{a}}{{b}}{{c}}{{d}}"
+          total = 0
+          for ch in num:
+              total = total + int(ch)
+          print(total)
+          ```
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 0, max: 9, step: 1}
+          c: {min: 0, max: 9, step: 1}
+          d: {min: 0, max: 9, step: 1}
+        derived: {ans: "a + b + c + d"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The loop adds each digit: {{a}} + {{b}} + {{c}} + {{d}} = {{ans}}.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          word = "BENGALURU" * {{n}}
+          count = 0
+          for ch in word:
+              if ch in "AEIOU":
+                  count = count + 1
+          print(count)
+          ```
+        params:
+          n: {min: 1, max: 8, step: 1}
+        derived: {ans: "4 * n"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          "BENGALURU" has 4 vowels (E, A, U, U), and `word` repeats it {{n}} times: 4 × {{n}} = {{ans}}.
+      - id: kp4-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          s = "{{a}}{{b}}{{c}}{{d}}{{e}}"
+          total = 0
+          for i in range(len(s)):
+              if i % 2 == 0:
+                  total = total + int(s[i])
+          print(total)
+          ```
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+          d: {min: 1, max: 9, step: 1}
+          e: {min: 1, max: 9, step: 1}
+        derived: {ans: "a + c + e"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `i` runs over the indexes 0 to 4, and only the even ones (0, 2, 4) count: {{a}} + {{c}} + {{e}} = {{ans}}.
+      - id: kp4-q5
+        type: mcq
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          s = "PUNE"
+          out = ""
+          for i in range(1, len(s)):
+              out = out + s[i]
+          print(out)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: UNE, correct: true}
+              - {id: b, text: PUN, misconception: index-starts-at-one}
+              - {id: c, text: "It stops with an IndexError", misconception: range-includes-stop}
+        explanation: |
+          `range(1, len(s))` is `range(1, 4)`: the indexes 1, 2 and 3 (not 4). They skip index 0 ("P"), so it
+          prints "UNE".
+      - id: kp4-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `count_char(text, ch)` that returns how many times the character `ch` appears in `text`.
+          Use a loop (don't use `text.count`).
+        answer:
+          code:
+            entry: count_char
+            starter: |
+              def count_char(text, ch):
+                  count = 0
+                  return count
+            solution: |
+              def count_char(text, ch):
+                  count = 0
+                  for c in text:
+                      if c == ch:
+                          count = count + 1
+                  return count
+            tests:
+              - {args: ["BENGALURU", "U"], expected: 2, visible: true}
+              - {args: ["", "a"], expected: 0}
+              - {args: ["Mumbai", "x"], expected: 0}
+              - {args: ["Aaa", "a"], expected: 2}
+
+practice:
+  - id: practice-1
+    type: code
+    bloom: apply
+    expected_minutes: 8
+    prompt: |
+      Write `is_palindrome(word)` that returns `True` if `word` reads the same backwards as forwards,
+      ignoring capital letters, and `False` otherwise. Build the reversed word with a loop.
+
+      For example, `is_palindrome("Malayalam")` returns `True` and `is_palindrome("Pune")` returns `False`.
+    answer:
+      code:
+        entry: is_palindrome
+        starter: |
+          def is_palindrome(word):
+              return False
+        solution: |
+          def is_palindrome(word):
+              word = word.lower()
+              backwards = ""
+              for ch in word:
+                  backwards = ch + backwards
+              return backwards == word
+        tests:
+          - {args: ["Malayalam"], expected: true, visible: true}
+          - {args: ["Pune"], expected: false, visible: true}
+          - {args: [""], expected: true}
+          - {args: ["a"], expected: true}
+          - {args: ["abca"], expected: false}
+  - id: practice-2
+    type: code
+    bloom: apply
+    expected_minutes: 8
+    prompt: |
+      An app shows only the last 4 digits of a phone number. Write `mask_phone(number)` that returns
+      `number` with every character except the last 4 replaced by `*`. If `number` has 4 characters or
+      fewer, return it unchanged.
+
+      For example, `mask_phone("9876543210")` returns `"******3210"`.
+    answer:
+      code:
+        entry: mask_phone
+        starter: |
+          def mask_phone(number):
+              return number
+        solution: |
+          def mask_phone(number):
+              if len(number) <= 4:
+                  return number
+              return "*" * (len(number) - 4) + number[-4:]
+        tests:
+          - {args: ["9876543210"], expected: "******3210", visible: true}
+          - {args: ["12345"], expected: "*2345"}
+          - {args: ["1234"], expected: "1234"}
+          - {args: [""], expected: ""}
+          - {args: ["044-2345678"], expected: "*******5678"}
+  - id: practice-3
+    type: code
+    bloom: create
+    expected_minutes: 10
+    prompt: |
+      Write `sentence_report()` that reads one line of text with `input()` and prints two lines:
+
+      1. the number of words (words are separated by spaces), then
+      2. the number of vowels (a, e, i, o, u, small or capital).
+
+      For example, for the input `I love Kochi` it prints `3` and then `5`.
+    answer:
+      code:
+        entry: sentence_report
+        starter: |
+          def sentence_report():
+              line = input()
+        solution: |
+          def sentence_report():
+              line = input()
+              words = line.split()
+              vowels = 0
+              for ch in line.lower():
+                  if ch in "aeiou":
+                      vowels = vowels + 1
+              print(len(words))
+              print(vowels)
+        tests:
+          - {stdin: "I love Kochi\n", expected_stdout: "3\n5\n", visible: true}
+          - {stdin: "Python\n", expected_stdout: "1\n1\n"}
+          - {stdin: "\n", expected_stdout: "0\n0\n"}
+          - {stdin: "  Asha   Rao  \n", expected_stdout: "2\n4\n"}
+          - {stdin: "rhythm\n", expected_stdout: "1\n0\n"}

@@ -1,0 +1,733 @@
+id: functions
+title: Functions
+summary: Write your own functions with def, pass in values, return results, and use default arguments.
+prereqs:
+  - {concept: variables-and-types, weight: 0.4}
+  - {concept: conditionals, weight: 0.3}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    ```python
+    def add(a, b):
+        print(a + b)
+
+    result = add(2, 3)
+    print(result)
+    ```
+
+    What does this program print?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "`5`, then `None`", correct: true}
+        - {id: b, text: "`5`, then `5`", misconception: print-is-return}
+        - {id: c, text: "Only `None`"}
+  explanation: |
+    The call runs `print(a + b)`, which shows 5. But `add` has no `return`, so it gives back `None`,
+    and `result` is `None`. To get 5 into `result`, write `return a + b`.
+
+kps:
+  - id: kp1
+    title: Defining and calling a function
+    worked_example: kp-1-worked.md
+    key_prereqs: [variables-and-types]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def triple(x):
+              return x * 3
+
+          print(triple({{a}}) + {{b}})
+          ```
+        params:
+          a: {min: 2, max: 30, step: 1}
+          b: {min: 1, max: 20, step: 1}
+        derived: {t: "3 * a", ans: "t + b"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The call `triple({{a}})` runs the body with `x = {{a}}` and gives back {{t}}. Then {{t}} + {{b}} = {{ans}}.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def add_tax(price):
+              return price + {{t}}
+
+          a = add_tax({{p}})
+          b = add_tax(a)
+          print(b)
+          ```
+        params:
+          t: {min: 5, max: 25, step: 1}
+          p: {min: 50, max: 300, step: 10}
+        derived: {first: "p + t", ans: "p + 2 * t"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The first call gives back {{first}}, which is stored in `a`. The second call starts from {{first}}
+          and adds {{t}} again: {{ans}}. Each call runs the body once.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What is the **last** number this program prints?
+
+          ```python
+          def show(x):
+              print(x * 2)
+
+          show({{a}})
+          show({{b}})
+          ```
+        params:
+          a: {min: 1, max: 40, step: 1}
+          b: {min: 1, max: 40, step: 1}
+        constraints: ["a != b"]
+        derived: {first: "2 * a", ans: "2 * b"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The body runs once per call, in the order of the calls. `show({{a}})` prints {{first}}, then
+          `show({{b}})` prints {{ans}}.
+      - id: kp1-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def bonus(x):
+              print(x + 100)
+
+          score = {{a}}
+          print(score)
+          ```
+        params:
+          a: {min: 10, max: 95, step: 1}
+        derived: {other: "a + 100"}
+        answer:
+          numeric: {value: "a", mode: exact}
+        explanation: |
+          `bonus` is defined but never called, so its body never runs and {{other}} is never printed.
+          The only print that runs is `print(score)`.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What happens when this program runs?
+
+          ```python
+          def square(n):
+              return n * n
+
+          print("Area: " + square(4))
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "An error (TypeError)", correct: true}
+              - {id: b, text: "It prints `Area: 16`", misconception: string-number-concat}
+              - {id: c, text: "It prints `Area: square(4)`"}
+        explanation: |
+          `square(4)` gives back the number 16, and a string can't be added to a number. Write
+          `"Area: " + str(square(4))`, or `print("Area:", square(4))`.
+      - id: kp1-q6
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          One rupee is 100 paise. Write `rupees_to_paise(rupees)` that returns the number of paise.
+
+          For example, `rupees_to_paise(5)` returns `500`.
+        answer:
+          code:
+            entry: rupees_to_paise
+            starter: |
+              def rupees_to_paise(rupees):
+                  return 0
+            solution: |
+              def rupees_to_paise(rupees):
+                  return rupees * 100
+            tests:
+              - {args: [5], expected: 500, visible: true}
+              - {args: [0], expected: 0}
+              - {args: [12], expected: 1200}
+              - {args: [250], expected: 25000}
+
+  - id: kp2
+    title: Parameters and return values
+    worked_example: kp-2-worked.md
+    key_prereqs: [conditionals]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def area(length, width):
+              return length * width
+
+          print(area({{a}}, {{b}}) + area({{c}}, 2))
+          ```
+        params:
+          a: {min: 2, max: 12, step: 1}
+          b: {min: 2, max: 12, step: 1}
+          c: {min: 2, max: 15, step: 1}
+        derived: {first: "a * b", second: "2 * c", ans: "first + second"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `area({{a}}, {{b}})` gives back {{first}} and `area({{c}}, 2)` gives back {{second}}:
+          {{first}} + {{second}} = {{ans}}.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def double(x):
+              return 2 * x
+
+          def add_five(x):
+              return x + 5
+
+          print(double(add_five({{a}})))
+          ```
+        params:
+          a: {min: 1, max: 40, step: 1}
+        derived: {inner: "a + 5", ans: "2 * inner"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The inner call runs first: `add_five({{a}})` gives back {{inner}}. Then `double({{inner}})` gives
+          back {{ans}}.
+      - id: kp2-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def subtract(a, b):
+              return a - b
+
+          x = {{p}}
+          y = {{q}}
+          print(subtract(y, x))
+          ```
+        params:
+          p: {min: 2, max: 30, step: 1}
+          q: {min: 31, max: 80, step: 1}
+        derived: {ans: "q - p"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          Arguments go to parameters by position, not by name: `a` gets `y` ({{q}}) and `b` gets `x` ({{p}}).
+          So it returns {{q}} − {{p}} = {{ans}}.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def bigger(a, b):
+              if a > b:
+                  return a
+              return b
+
+          print(bigger({{x}}, {{y}}) + {{z}})
+          ```
+        params:
+          x: {min: 1, max: 50, step: 1}
+          y: {min: 1, max: 50, step: 1}
+          z: {min: 1, max: 20, step: 1}
+        constraints: ["x != y"]
+        derived: {big: "Max(x, y)", ans: "big + z"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `bigger({{x}}, {{y}})` returns the larger number, {{big}}. When `a > b` is true, `return a` ends the
+          function, so `return b` is never reached. Then {{big}} + {{z}} = {{ans}}.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          `is_ten(n)` should give back `True` when `n` is 10 and `False` otherwise, so that
+          `ok = is_ten(10)` stores `True` in `ok`. Which line is the correct body?
+
+          ```python
+          def is_ten(n):
+              ...
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`return n == 10`", correct: true}
+              - {id: b, text: "`return n = 10`", misconception: assign-vs-compare}
+              - {id: c, text: "`print(n == 10)`", misconception: print-is-return}
+        explanation: |
+          `n == 10` compares and gives `True` or `False`; `return` hands that back to the caller.
+          `n = 10` is an assignment, which can't be returned (a SyntaxError). `print` only shows the value,
+          so `ok` would be `None`.
+      - id: kp2-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `average(a, b, c)` that returns the average of the three numbers.
+
+          For example, `average(60, 70, 80)` returns `70.0`.
+        answer:
+          code:
+            entry: average
+            starter: |
+              def average(a, b, c):
+                  return 0
+            solution: |
+              def average(a, b, c):
+                  return (a + b + c) / 3
+            tests:
+              - {args: [60, 70, 80], expected: 70.0, visible: true}
+              - {args: [33, 33, 34], expected: 33.333333333333336}
+              - {args: [0, 0, 0], expected: 0.0}
+              - {args: [-5, 5, 9], expected: 3.0}
+
+  - id: kp3
+    title: Return versus print
+    worked_example: kp-3-worked.md
+    key_prereqs: []
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What is the **last** number this program prints?
+
+          ```python
+          def show_double(x):
+              print(x)
+              return x * 2
+
+          y = show_double({{a}})
+          print(y + {{b}})
+          ```
+        params:
+          a: {min: 2, max: 40, step: 1}
+          b: {min: 1, max: 20, step: 1}
+        derived: {d: "2 * a", ans: "d + b"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The call first prints {{a}}, then returns {{d}}, which is stored in `y`. The last line prints
+          {{d}} + {{b}} = {{ans}}.
+      - id: kp3-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What is the **last** number this program prints?
+
+          ```python
+          def score(runs):
+              print(runs * 2)
+              return runs
+
+          total = score({{a}}) + score({{b}})
+          print(total)
+          ```
+        params:
+          a: {min: 5, max: 60, step: 1}
+          b: {min: 5, max: 60, step: 1}
+        derived: {ans: "a + b"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          Each call **prints** double the runs, but **returns** the runs themselves. Only returned values reach
+          `total`: {{a}} + {{b}} = {{ans}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def pay(hours):
+              return hours * {{r}}
+              print(hours)
+
+          print(pay({{h}}))
+          ```
+        params:
+          r: {min: 50, max: 200, step: 10}
+          h: {min: 2, max: 9, step: 1}
+        derived: {ans: "h * r"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `return` ends the function at once, so `print(hours)` never runs. The only thing printed is the
+          returned value, {{h}} × {{r}} = {{ans}}.
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What is the **last** number this program prints?
+
+          ```python
+          def double_print(x):
+              print(x * 2)
+
+          def double_return(x):
+              return x * 2
+
+          double_print({{a}})
+          print(double_return({{b}}) + 1)
+          ```
+        params:
+          a: {min: 1, max: 30, step: 1}
+          b: {min: 1, max: 30, step: 1}
+        derived: {d: "2 * b", ans: "d + 1"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `double_return({{b}})` gives back {{d}}, so the caller can add 1 to it: {{ans}}.
+          `double_print` only shows its value; writing `double_print({{a}}) + 1` would be a TypeError,
+          because it gives back `None`.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def half(n):
+              print(n / 2)
+
+          x = half(8)
+          print(x)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`4.0`, then `None`", correct: true}
+              - {id: b, text: "`4.0`, then `4.0`", misconception: print-is-return}
+              - {id: c, text: "`4`, then `None`", misconception: slash-gives-int}
+        explanation: |
+          `half(8)` prints `8 / 2`, which is `4.0` (`/` always gives a float). It has no `return`, so it gives
+          back `None`, and `print(x)` shows `None`.
+      - id: kp3-q6
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          This function shows the area of a square but gives nothing back, so `a = square_area(4)` stores
+          `None`. Change it so it **returns** the area instead.
+        answer:
+          code:
+            entry: square_area
+            starter: |
+              def square_area(side):
+                  print(side * side)
+            solution: |
+              def square_area(side):
+                  return side * side
+            tests:
+              - {args: [4], expected: 16, visible: true}
+              - {args: [0], expected: 0}
+              - {args: [7], expected: 49}
+              - {args: [2.5], expected: 6.25}
+
+  - id: kp4
+    title: Local variables and default arguments
+    worked_example: kp-4-worked.md
+    key_prereqs: []
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def with_tip(bill, tip=10):
+              return bill + tip
+
+          print(with_tip({{a}}) + with_tip({{b}}, {{t}}))
+          ```
+        params:
+          a: {min: 50, max: 300, step: 10}
+          b: {min: 50, max: 300, step: 10}
+          t: {min: 15, max: 50, step: 5}
+        derived: {first: "a + 10", second: "b + t", ans: "first + second"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The first call leaves out `tip`, so the default 10 is used: {{first}}. The second call passes
+          {{t}}, which replaces the default: {{second}}. Total {{ans}}.
+      - id: kp4-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = {{a}}
+
+          def change():
+              x = {{b}}
+              return x
+
+          y = change()
+          print(x + y)
+          ```
+        params:
+          a: {min: 1, max: 50, step: 1}
+          b: {min: 51, max: 99, step: 1}
+        derived: {ans: "a + b"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `x = {{b}}` inside `change` makes a new **local** `x`. The outside `x` is still {{a}}. The function
+          returns {{b}} into `y`, so it prints {{a}} + {{b}} = {{ans}}.
+      - id: kp4-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def add_bonus(marks):
+              marks = marks + {{k}}
+              return marks
+
+          m = {{a}}
+          new = add_bonus(m)
+          print(m + new)
+          ```
+        params:
+          k: {min: 2, max: 10, step: 1}
+          a: {min: 20, max: 85, step: 1}
+        derived: {new: "a + k", ans: "a + new"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          Inside the function, `marks` is a local copy of the value {{a}}. Changing it doesn't change `m`, which
+          stays {{a}}. The function returns {{new}}, so it prints {{a}} + {{new}} = {{ans}}.
+      - id: kp4-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          def power(base, exp=2):
+              return base ** exp
+
+          print(power({{a}}) + power({{b}}, 3))
+          ```
+        params:
+          a: {min: 2, max: 12, step: 1}
+          b: {min: 2, max: 6, step: 1}
+        derived: {sq: "a ** 2", cube: "b ** 3", ans: "sq + cube"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `power({{a}})` uses the default `exp=2`: {{sq}}. `power({{b}}, 3)` uses 3: {{cube}}.
+          Total {{sq}} + {{cube}} = {{ans}}.
+      - id: kp4-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          def share(total, people=4):
+              return total / people
+
+          print(share(10))
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`2.5`", correct: true}
+              - {id: b, text: "`2`", misconception: slash-gives-int}
+              - {id: c, text: "An error, because `people` was not given", misconception: default-must-be-passed}
+        explanation: |
+          `people` is left out, so its default 4 is used. `10 / 4` is `2.5`: `/` always gives a float.
+      - id: kp4-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `discounted(price, percent=10)` that returns the price after taking off `percent` per cent.
+          When `percent` is left out, take off 10%.
+
+          For example, `discounted(200)` returns `180.0` and `discounted(200, 25)` returns `150.0`.
+        answer:
+          code:
+            entry: discounted
+            starter: |
+              def discounted(price, percent=10):
+                  return price
+            solution: |
+              def discounted(price, percent=10):
+                  return price - price * percent / 100
+            tests:
+              - {args: [200], expected: 180.0, visible: true}
+              - {args: [200, 25], expected: 150.0, visible: true}
+              - {args: [0], expected: 0.0}
+              - {args: [999, 0], expected: 999.0}
+              - {args: [50, 100], expected: 0.0}
+
+practice:
+  - id: practice-1
+    type: code
+    bloom: apply
+    expected_minutes: 8
+    prompt: |
+      An electricity board charges by **slabs**:
+
+      | Units used | Rate |
+      |---|---|
+      | first 100 units | ₹5 per unit |
+      | next 100 units (101 to 200) | ₹7 per unit |
+      | every unit above 200 | ₹10 per unit |
+
+      Write `electricity_bill(units)` that returns the bill in rupees.
+
+      For example, `electricity_bill(150)` returns `850`: 100 × 5 + 50 × 7.
+    answer:
+      code:
+        entry: electricity_bill
+        starter: |
+          def electricity_bill(units):
+              return 0
+        solution: |
+          def electricity_bill(units):
+              if units <= 100:
+                  return units * 5
+              elif units <= 200:
+                  return 500 + (units - 100) * 7
+              else:
+                  return 500 + 700 + (units - 200) * 10
+        tests:
+          - {args: [150], expected: 850, visible: true}
+          - {args: [80], expected: 400, visible: true}
+          - {args: [0], expected: 0}
+          - {args: [100], expected: 500}
+          - {args: [200], expected: 1200}
+          - {args: [250], expected: 1700}
+  - id: practice-2
+    type: code
+    bloom: create
+    expected_minutes: 10
+    prompt: |
+      Write `report()` that reads the marks of **three** students, one per line, with `int(input())`.
+      For each mark it prints `Pass` (33 or more) or `Fail`. At the end it prints how many of the three passed.
+
+      Use a helper function `result(marks)` that **returns** `"Pass"` or `"Fail"`, and call it for each mark.
+
+      For example, with the input `45`, `20`, `33` it prints `Pass`, `Fail`, `Pass` and then `2`.
+    answer:
+      code:
+        entry: report
+        starter: |
+          def result(marks):
+              return "Fail"
+
+          def report():
+              a = int(input())
+              b = int(input())
+              c = int(input())
+        solution: |
+          def result(marks):
+              if marks >= 33:
+                  return "Pass"
+              return "Fail"
+
+          def passed(marks):
+              if result(marks) == "Pass":
+                  return 1
+              return 0
+
+          def report():
+              a = int(input())
+              b = int(input())
+              c = int(input())
+              print(result(a))
+              print(result(b))
+              print(result(c))
+              print(passed(a) + passed(b) + passed(c))
+        tests:
+          - {stdin: "45\n20\n33\n", expected_stdout: "Pass\nFail\nPass\n2\n", visible: true}
+          - {stdin: "32\n0\n10\n", expected_stdout: "Fail\nFail\nFail\n0\n"}
+          - {stdin: "100\n33\n99\n", expected_stdout: "Pass\nPass\nPass\n3\n"}
+          - {stdin: "33\n32\n34\n", expected_stdout: "Pass\nFail\nPass\n2\n"}
+  - id: practice-3
+    type: code
+    bloom: apply
+    expected_minutes: 8
+    prompt: |
+      Write `bigger(a, b)` that returns the larger of two numbers. Then write `best_of_three(a, b, c)` that
+      returns the largest of three numbers by **calling** `bigger`. Don't use the built-in `max`.
+
+      For example, `best_of_three(45, 78, 62)` returns `78`.
+    answer:
+      code:
+        entry: best_of_three
+        starter: |
+          def bigger(a, b):
+              return a
+
+          def best_of_three(a, b, c):
+              return 0
+        solution: |
+          def bigger(a, b):
+              if a > b:
+                  return a
+              return b
+
+          def best_of_three(a, b, c):
+              return bigger(bigger(a, b), c)
+        tests:
+          - {args: [45, 78, 62], expected: 78, visible: true}
+          - {args: [9, 3, 1], expected: 9}
+          - {args: [1, 3, 9], expected: 9}
+          - {args: [5, 5, 5], expected: 5}
+          - {args: [-4, -2, -7], expected: -2}

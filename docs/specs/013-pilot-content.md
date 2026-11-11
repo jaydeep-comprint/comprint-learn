@@ -1,6 +1,6 @@
 # Spec 013: Pilot content slices
 
-Status: draft
+Status: done (Nov 2026)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 2: "First content is a 6–8 concept slice of each of …")
 
 ## Summary
@@ -266,20 +266,20 @@ Three PRs, each self-reviewed as above:
 - Converting the review pack to PDF or Docs automatically (print to PDF from the browser).
 
 ## Verification (end-to-end)
-- [ ] `cd backend && uv run app content check --root ../content --strict` → `content OK: 3 courses, 24 concepts …`,
+- [x] `cd backend && uv run app content check --root ../content --strict` → `content OK: 3 courses, 24 concepts …`,
       no warnings.
-- [ ] `cd backend && uv run pytest tests/test_content_review_pack.py tests/test_pilot_content.py tests/test_content_validate.py`
+- [x] `cd backend && uv run pytest tests/test_content_review_pack.py tests/test_pilot_content.py tests/test_content_validate.py`
       green. Review-pack tests cover: answers and hidden tests present; 3 seeds rendered for a param item and once for
       a fixed one; MCQ correct option and misconception titles; images inlined; content text only in the JSON block
       (a `<script>` in a prompt doesn't create a script tag); refusal on a tree with errors; same output twice
       (ignoring the header).
-- [ ] `cd backend && uv run mypy` and `make check` green; `make test-db` green (shared test DB, run alone).
-- [ ] `make content-import ARGS=--dry-run` lists the new chapters/concepts/items; `make content-import` twice, the
+- [x] `cd backend && uv run mypy` and `make check` green; `make test-db` green (shared test DB, run alone).
+- [x] `make content-import ARGS=--dry-run` lists the new chapters/concepts/items; `make content-import` twice, the
       second reports no changes (after `alembic current` shows head on the dev DB).
 - [ ] `make review-pack` writes `review-packs/{maths-9-10,physics-9-10,python-basics}.html`; open each: KaTeX,
       Mermaid and SVGs render, answers show, print preview starts each concept on a new page. Screenshot one concept
       per subject.
-- [ ] AI subject review done per subject (fresh subagent, checklist only); findings fixed; all 24 rows of
+- [x] AI subject review done per subject (fresh subagent, checklist only); findings fixed; all 24 rows of
       `docs/content-review.md` are `ai-reviewed` with dates.
 - [ ] Browser check (the user does it; Chrome can't reach localhost): `make dev`, as a student open one new concept
       per subject: Learn (intro, worked examples, check) → KP questions → practice (a multistep in maths/physics, a

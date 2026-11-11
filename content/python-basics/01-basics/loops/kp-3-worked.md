@@ -20,3 +20,6 @@ print(steps)
 | −2 > 0 ✗ | stop | |
 
 It prints **4**. The loop must change `n`; without `n = n - 3` the condition stays True forever.
+
+To start from a number the user types, read it with `input()` and turn the text into a number:
+`n = int(input())`.

@@ -1,0 +1,644 @@
+id: lists
+title: Lists
+summary: Keep many values in one list, read them by index, change the list, loop over it, and take slices.
+prereqs:
+  - {concept: loops, weight: 0.5}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: remember
+  expected_minutes: 0.5
+  prompt: |
+    ```python
+    cities = ["Pune", "Agra", "Kochi"]
+    print(cities[1])
+    ```
+
+    What does this program print?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: Agra, correct: true}
+        - {id: b, text: Pune, misconception: index-starts-at-one}
+        - {id: c, text: "An error, because there is no item 1"}
+  explanation: |
+    Indexes start at 0: `cities[0]` is "Pune", `cities[1]` is "Agra" and `cities[2]` is "Kochi".
+
+kps:
+  - id: kp1
+    title: Creating a list and reading items by index
+    worked_example: kp-1-worked.md
+    key_prereqs: []
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          marks = [{{a}}, {{b}}, {{c}}, {{d}}]
+          print(marks[1] + marks[3])
+          ```
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 10, max: 99, step: 1}
+          c: {min: 10, max: 99, step: 1}
+          d: {min: 10, max: 99, step: 1}
+        derived: {ans: "b + d"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          Index 1 is the second item ({{b}}) and index 3 is the fourth ({{d}}): {{b}} + {{d}} = {{ans}}.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          runs = [{{a}}, {{b}}, {{c}}, {{d}}, {{e}}]
+          print(runs[-1] - runs[0])
+          ```
+        params:
+          a: {min: 5, max: 60, step: 1}
+          b: {min: 5, max: 60, step: 1}
+          c: {min: 5, max: 60, step: 1}
+          d: {min: 5, max: 60, step: 1}
+          e: {min: 5, max: 60, step: 1}
+        answer:
+          numeric: {value: "e - a", mode: exact}
+        explanation: |
+          `runs[-1]` is the last item ({{e}}) and `runs[0]` the first ({{a}}).
+      - id: kp1-q3
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A list has {{n}} items. What is the index of its **last** item?
+        params:
+          n: {min: 3, max: 40, step: 1}
+        derived: {last: "n - 1"}
+        answer:
+          numeric: {value: "last", mode: exact}
+        explanation: |
+          Indexes run from 0 to {{n}} − 1, so the last item is at index {{last}} (or −1).
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          steps = [5, 10, 15, 20, 25, 30]
+          print(steps[{{k}}])
+          ```
+        params:
+          k: {min: 0, max: 5, step: 1}
+        derived: {pos: "k + 1"}
+        answer:
+          numeric: {value: "5 * pos", mode: exact}
+        explanation: |
+          Counting from index 0, the item at index {{k}} is item number {{pos}} in the list.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          `nums = [7, 3, 9]`. Which line prints `9`?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`print(nums[2])`", correct: true}
+              - {id: b, text: "`print(nums[3])`", misconception: index-starts-at-one}
+              - {id: c, text: "`print(nums[9])`"}
+        explanation: |
+          `9` is the third item, at index 2. `nums[3]` is an IndexError: a list of 3 items has indexes 0, 1, 2.
+      - id: kp1-q6
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Write `first_and_last(items)` that returns a new list with two values: the first item of `items`
+          and its last item. `items` always has at least one item.
+        answer:
+          code:
+            entry: first_and_last
+            starter: |
+              def first_and_last(items):
+                  return []
+            solution: |
+              def first_and_last(items):
+                  return [items[0], items[-1]]
+            tests:
+              - {args: [[4, 8, 15, 16]], expected: [4, 16], visible: true}
+              - {args: [["Pune", "Agra", "Kochi"]], expected: ["Pune", "Kochi"]}
+              - {args: [[42]], expected: [42, 42]}
+
+  - id: kp2
+    title: Changing a list (append, insert, remove, pop, len)
+    worked_example: kp-2-worked.md
+    key_prereqs: []
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [3, 8, 1]
+          nums.append({{a}})
+          nums.insert(0, {{b}})
+          print(nums[0] + nums[-1])
+          ```
+        params:
+          a: {min: 2, max: 50, step: 1}
+          b: {min: 2, max: 50, step: 1}
+        answer:
+          numeric: {value: "a + b", mode: exact}
+        explanation: |
+          `append` adds {{a}} at the end and `insert(0, ...)` puts {{b}} at the front:
+          `[{{b}}, 3, 8, 1, {{a}}]`.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [{{a}}, {{b}}, {{c}}, {{d}}]
+          x = nums.pop()
+          y = nums.pop(0)
+          print(x - y + len(nums))
+          ```
+        params:
+          a: {min: 1, max: 30, step: 1}
+          b: {min: 1, max: 30, step: 1}
+          c: {min: 1, max: 30, step: 1}
+          d: {min: 1, max: 30, step: 1}
+        answer:
+          numeric: {value: "d - a + 2", mode: exact}
+        explanation: |
+          `pop()` removes and gives back the last item ({{d}}); `pop(0)` the first ({{a}}). Two items are
+          left, so it prints {{d}} − {{a}} + 2.
+      - id: kp2-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [{{a}}, {{b}}, {{a}}, {{c}}]
+          nums.remove({{a}})
+          print(nums[0] + len(nums))
+          ```
+        params:
+          a: {min: 1, max: 20, step: 1}
+          b: {min: 1, max: 20, step: 1}
+          c: {min: 1, max: 20, step: 1}
+        constraints: ["a != b", "a != c"]
+        answer:
+          numeric: {value: "b + 3", mode: exact}
+        explanation: |
+          `remove` deletes only the **first** {{a}}, leaving `[{{b}}, {{a}}, {{c}}]`: 3 items, starting with {{b}}.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = []
+          for i in range({{n}}):
+              nums.append(i)
+          nums.pop()
+          print(len(nums))
+          ```
+        params:
+          n: {min: 3, max: 25, step: 1}
+        answer:
+          numeric: {value: "n - 1", mode: exact}
+        explanation: |
+          The loop appends {{n}} numbers, and `pop()` removes one.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [4, 7]
+          nums = nums.append(9)
+          print(nums)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`None`", correct: true}
+              - {id: b, text: "`[4, 7, 9]`", misconception: append-returns-list}
+              - {id: c, text: "`[9, 4, 7]`"}
+        explanation: |
+          `append` changes the list in place and gives back `None`. Assigning that to `nums` loses the list.
+          Write just `nums.append(9)`.
+      - id: kp2-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `move_first_to_end(items)` that removes the first item of `items`, adds it at the end, and
+          returns the list. If `items` is empty, return it unchanged.
+        answer:
+          code:
+            entry: move_first_to_end
+            starter: |
+              def move_first_to_end(items):
+                  return items
+            solution: |
+              def move_first_to_end(items):
+                  if len(items) > 0:
+                      first = items.pop(0)
+                      items.append(first)
+                  return items
+            tests:
+              - {args: [[1, 2, 3]], expected: [2, 3, 1], visible: true}
+              - {args: [[]], expected: []}
+              - {args: [["a"]], expected: ["a"]}
+              - {args: [[5, 5, 6]], expected: [5, 6, 5]}
+
+  - id: kp3
+    title: Looping over a list to add up or build a new list
+    worked_example: kp-3-worked.md
+    key_prereqs: [loops]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          prices = [{{a}}, {{b}}, {{c}}, {{d}}]
+          total = 0
+          for p in prices:
+              total = total + p
+          print(total)
+          ```
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 10, max: 99, step: 1}
+          c: {min: 10, max: 99, step: 1}
+          d: {min: 10, max: 99, step: 1}
+        answer:
+          numeric: {value: "a + b + c + d", mode: exact}
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [3, 5, {{a}}, 2]
+          bigger = []
+          for x in nums:
+              bigger.append(x * {{k}})
+          print(bigger[2] + bigger[3])
+          ```
+        params:
+          a: {min: 4, max: 12, step: 1}
+          k: {min: 2, max: 9, step: 1}
+        derived: {x0: "3 * k", x1: "5 * k", x2: "a * k", x3: "2 * k"}
+        answer:
+          numeric: {value: "x2 + x3", mode: exact}
+        explanation: |
+          `bigger` is `[{{x0}}, {{x1}}, {{x2}}, {{x3}}]`, so it prints {{x2}} + {{x3}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print? Give your answer as a decimal if needed.
+
+          ```python
+          marks = [{{a}}, {{b}}, {{c}}, {{d}}]
+          total = 0
+          for m in marks:
+              total += m
+          print(total / len(marks))
+          ```
+        params:
+          a: {min: 30, max: 100, step: 1}
+          b: {min: 30, max: 100, step: 1}
+          c: {min: 30, max: 100, step: 1}
+          d: {min: 30, max: 100, step: 1}
+        derived: {total: "a + b + c + d", avg: "total / 4"}
+        answer:
+          numeric: {value: "avg", mode: exact}
+        explanation: |
+          The total is {{total}} and there are 4 marks, so it prints {{total}} / 4 = {{avg}}.
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          squares = []
+          for i in range(1, {{n}} + 1):
+              squares.append(i * i)
+          print(squares[-1] - squares[0])
+          ```
+        params:
+          n: {min: 3, max: 15, step: 1}
+        derived: {sq: "n * n"}
+        answer:
+          numeric: {value: "sq - 1", mode: exact}
+        explanation: |
+          `squares` is `[1, 4, ..., {{sq}}]`, so it prints {{sq}} − 1.
+      - id: kp3-q5
+        type: mcq
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [4, 6, 5]
+          for x in nums:
+              total = 0
+              total = total + x
+          print(total)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "5", correct: true}
+              - {id: b, text: "15", misconception: reset-inside-loop}
+              - {id: c, text: "4"}
+        explanation: |
+          `total = 0` is inside the loop, so it is reset on every pass. After the last pass it holds only the
+          last item, 5. Put `total = 0` before the loop.
+      - id: kp3-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `above(nums, limit)` that returns a **new** list of the numbers in `nums` that are greater than
+          `limit`, in the same order.
+        answer:
+          code:
+            entry: above
+            starter: |
+              def above(nums, limit):
+                  result = []
+                  return result
+            solution: |
+              def above(nums, limit):
+                  result = []
+                  for x in nums:
+                      if x > limit:
+                          result.append(x)
+                  return result
+            tests:
+              - {args: [[35, 72, 18, 90, 33], 33], expected: [35, 72, 90], visible: true}
+              - {args: [[], 10], expected: []}
+              - {args: [[1, 2, 3], 5], expected: []}
+              - {args: [[-4, 0, 4], -1], expected: [0, 4]}
+
+  - id: kp4
+    title: Slicing a list and checking with in
+    worked_example: kp-4-worked.md
+    key_prereqs: []
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [10, 20, 30, 40, 50, 60, 70]
+          part = nums[{{a}}:{{b}}]
+          print(len(part))
+          ```
+        params:
+          a: {min: 0, max: 5, step: 1}
+          b: {min: 1, max: 7, step: 1}
+        constraints: ["b > a"]
+        answer:
+          numeric: {value: "b - a", mode: exact}
+        explanation: |
+          `nums[{{a}}:{{b}}]` takes indexes {{a}} up to **but not including** {{b}}: {{b}} − {{a}} items.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [10, 20, 30, 40, 50, 60, 70]
+          part = nums[{{a}}:{{b}}]
+          print(part[0] + part[-1])
+          ```
+        params:
+          a: {min: 0, max: 5, step: 1}
+          b: {min: 1, max: 7, step: 1}
+        constraints: ["b > a"]
+        derived: {first: "10 * (a + 1)", end: "b - 1", last: "10 * b"}
+        answer:
+          numeric: {value: "first + last", mode: exact}
+        explanation: |
+          The slice starts with `nums[{{a}}]` = {{first}} and ends with `nums[{{end}}]` = {{last}}
+          (the item at index {{b}} is not included).
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          nums = [10, 20, 30, 40, 50, 60, 70]
+          first = nums[:{{k}}]
+          rest = nums[{{k}}:]
+          print(first[-1] + rest[0])
+          ```
+        params:
+          k: {min: 1, max: 6, step: 1}
+        derived: {left: "10 * k", right: "10 * (k + 1)"}
+        answer:
+          numeric: {value: "left + right", mode: exact}
+        explanation: |
+          `nums[:{{k}}]` stops just before index {{k}}, and `nums[{{k}}:]` starts at it, so the two slices
+          meet there: {{left}} + {{right}}.
+      - id: kp4-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          evens = [2, 4, 6, 8, 10]
+          count = 0
+          for x in [{{a}}, {{b}}, {{c}}]:
+              if x in evens:
+                  count += 1
+          print(count)
+          ```
+        params:
+          a: {min: 1, max: 10, step: 1}
+          b: {min: 1, max: 10, step: 1}
+          c: {min: 1, max: 10, step: 1}
+        answer:
+          numeric: {value: "(1 - a % 2) + (1 - b % 2) + (1 - c % 2)", mode: exact}
+        explanation: |
+          `x in evens` is `True` when `x` is one of 2, 4, 6, 8, 10, so it counts the even numbers among
+          {{a}}, {{b}} and {{c}}.
+      - id: kp4-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          letters = ["a", "b", "c", "d", "e"]
+          print(letters[1:3])
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`['b', 'c']`", correct: true}
+              - {id: b, text: "`['b', 'c', 'd']`", misconception: slice-includes-end}
+              - {id: c, text: "`['a', 'b', 'c']`", misconception: index-starts-at-one}
+        explanation: |
+          The slice starts at index 1 ("b") and stops **before** index 3, so it has "b" and "c".
+      - id: kp4-q6
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Write `middle(items)` that returns a new list of every item except the first and the last.
+          If `items` has fewer than 3 items, return an empty list.
+        answer:
+          code:
+            entry: middle
+            starter: |
+              def middle(items):
+                  return []
+            solution: |
+              def middle(items):
+                  return items[1:-1]
+            tests:
+              - {args: [[1, 2, 3, 4]], expected: [2, 3], visible: true}
+              - {args: [[1, 2]], expected: []}
+              - {args: [[]], expected: []}
+              - {args: [["x", "y", "z"]], expected: ["y"]}
+
+practice:
+  - id: practice-1
+    type: code
+    bloom: create
+    expected_minutes: 8
+    prompt: |
+      A shop writes down its sales for each day. Write `running_totals(sales)` that returns a new list where
+      each item is the total of all sales **up to and including** that day.
+
+      For example, `running_totals([300, 150, 450])` returns `[300, 450, 900]`.
+    answer:
+      code:
+        entry: running_totals
+        starter: |
+          def running_totals(sales):
+              totals = []
+              return totals
+        solution: |
+          def running_totals(sales):
+              totals = []
+              total = 0
+              for s in sales:
+                  total = total + s
+                  totals.append(total)
+              return totals
+        tests:
+          - {args: [[300, 150, 450]], expected: [300, 450, 900], visible: true}
+          - {args: [[]], expected: [], visible: true}
+          - {args: [[7]], expected: [7]}
+          - {args: [[5, -2, 0, 4]], expected: [5, 3, 3, 7]}
+  - id: practice-2
+    type: code
+    bloom: apply
+    expected_minutes: 8
+    prompt: |
+      Write `remove_all(items, value)` that returns a **new** list with every copy of `value` taken out,
+      keeping the other items in order. Don't change `items` itself.
+
+      For example, `remove_all([2, 5, 2, 7], 2)` returns `[5, 7]`.
+    answer:
+      code:
+        entry: remove_all
+        starter: |
+          def remove_all(items, value):
+              result = []
+              return result
+        solution: |
+          def remove_all(items, value):
+              result = []
+              for x in items:
+                  if x != value:
+                      result.append(x)
+              return result
+        tests:
+          - {args: [[2, 5, 2, 7], 2], expected: [5, 7], visible: true}
+          - {args: [[1, 2, 3], 9], expected: [1, 2, 3]}
+          - {args: [[4, 4, 4], 4], expected: []}
+          - {args: [[], 1], expected: []}
+          - {args: [["a", "b", "a"], "a"], expected: ["b"]}
+  - id: practice-3
+    type: code
+    bloom: create
+    expected_minutes: 10
+    prompt: |
+      Write `split_pass_fail(marks)` that returns a list of two lists: first the marks that are **33 or more**
+      (pass), then the marks below 33 (fail), each in their original order.
+
+      For example, `split_pass_fail([45, 20, 33, 12])` returns `[[45, 33], [20, 12]]`.
+    answer:
+      code:
+        entry: split_pass_fail
+        starter: |
+          def split_pass_fail(marks):
+              passed = []
+              failed = []
+              return [passed, failed]
+        solution: |
+          def split_pass_fail(marks):
+              passed = []
+              failed = []
+              for m in marks:
+                  if m >= 33:
+                      passed.append(m)
+                  else:
+                      failed.append(m)
+              return [passed, failed]
+        tests:
+          - {args: [[45, 20, 33, 12]], expected: [[45, 33], [20, 12]], visible: true}
+          - {args: [[]], expected: [[], []]}
+          - {args: [[90, 80]], expected: [[90, 80], []]}
+          - {args: [[32, 0]], expected: [[], [32, 0]]}

@@ -119,6 +119,27 @@ kps:
                 misconception: range-includes-stop
               - id: c
                 text: "6"
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          count = 0
+          for i in range({{a}}, {{b}}, {{s}}):
+              count = count + 1
+          print(count)
+          ```
+        params:
+          a: {min: 0, max: 10, step: 1}
+          b: {min: 12, max: 40, step: 1}
+          s: {min: 2, max: 5, step: 1}
+        answer:
+          numeric: {value: "ceiling((b - a) / s)", mode: exact}
+        explanation: |
+          `i` takes {{a}}, {{a}} + {{s}}, … while it is less than {{b}}: that is ({{b}} − {{a}}) ÷ {{s}} values, rounded up.
   - id: kp2
     title: Adding up and counting in a loop
     worked_example: kp-2-worked.md
@@ -204,6 +225,7 @@ kps:
               - {args: ["banana"], expected: 3, visible: true}
               - {args: ["sky"], expected: 0}
               - {args: ["education"], expected: 5}
+              - {args: [""], expected: 0}
       - id: kp2-q5
         type: mcq
         bloom: understand
@@ -221,6 +243,27 @@ kps:
                 misconception: reset-inside-loop
               - id: c
                 text: After the loop ends.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          total = 0
+          for i in range({{n}}):
+              total = total + i * {{k}}
+          print(total)
+          ```
+        params:
+          n: {min: 3, max: 12, step: 1}
+          k: {min: 2, max: 5, step: 1}
+        derived: {last: "n - 1"}
+        answer:
+          numeric: {value: "k * n * (n - 1) / 2", mode: exact}
+        explanation: |
+          `i` goes 0, 1, …, {{last}} (not {{n}}), so the total is {{k}} × (0 + 1 + … + {{last}}).
   - id: kp3
     title: while loops
     worked_example: kp-3-worked.md
@@ -332,6 +375,27 @@ kps:
                 misconception: while-updates-itself
               - id: c
                 text: It prints nothing.
+      - id: kp3-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = {{a}}
+          while x < {{b}}:
+              x = x + {{s}}
+          print(x)
+          ```
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 20, max: 50, step: 1}
+          s: {min: 3, max: 7, step: 1}
+        answer:
+          numeric: {value: "a + s * ceiling((b - a) / s)", mode: exact}
+        explanation: |
+          The loop stops at the first value of x that is **not** less than {{b}}, so the printed value is at least {{b}}.
 practice:
   - id: practice-1
     type: code
@@ -366,3 +430,35 @@ practice:
           - {args: [1], expected: [], visible: true}
           - {args: [2], expected: [2]}
           - {args: [30], expected: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]}
+  - id: practice-2
+    type: code
+    bloom: create
+    expected_minutes: 8
+    prompt: |
+      Start with a whole number `n`. If it is even, halve it; if it is odd, make it `3 * n + 1`. Repeat until
+      you reach 1. Write `steps_to_one(n)` that returns how many steps this takes. For `n = 1` it is 0.
+
+      For example, 6 → 3 → 10 → 5 → 16 → 8 → 4 → 2 → 1 takes 8 steps.
+    answer:
+      code:
+        entry: steps_to_one
+        starter: |
+          def steps_to_one(n):
+              steps = 0
+              return steps
+        solution: |
+          def steps_to_one(n):
+              steps = 0
+              while n != 1:
+                  if n % 2 == 0:
+                      n = n // 2
+                  else:
+                      n = 3 * n + 1
+                  steps += 1
+              return steps
+        tests:
+          - {args: [6], expected: 8, visible: true}
+          - {args: [1], expected: 0, visible: true}
+          - {args: [2], expected: 1}
+          - {args: [7], expected: 16}
+          - {args: [27], expected: 111}

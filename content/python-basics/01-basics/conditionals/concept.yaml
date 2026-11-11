@@ -137,14 +137,18 @@ kps:
           print(int(x < {{lo}} or x > {{hi}}) + {{c}})
           ```
         params:
-          a: {min: 50, max: 90, step: 1}
+          a: {min: 5, max: 60, step: 1}
           lo: {min: 10, max: 20, step: 1}
           hi: {min: 30, max: 45, step: 1}
           c: {min: 2, max: 9, step: 1}
+        derived:
+          outside: "Min(1, Max(0, lo - a)) + Min(1, Max(0, a - hi))"
+          ans: "outside + c"
         answer:
-          numeric: {value: "1 + c", mode: exact}
+          numeric: {value: "ans", mode: exact}
         explanation: |
-          {{a}} > {{hi}} is True, so the `or` is True (only one side needs to be). `int(True)` is 1.
+          `or` is True when **either** side is True: when {{a}} is below {{lo}} or above {{hi}}.
+          `int(True)` is 1 and `int(False)` is 0, so it prints {{outside}} + {{c}} = {{ans}}.
   - id: kp2
     title: if and else
     worked_example: kp-2-worked.md
@@ -365,6 +369,9 @@ kps:
               - {args: [75], expected: "B"}
               - {args: [74], expected: "C"}
               - {args: [12], expected: "D"}
+              - {args: [90], expected: "A"}
+              - {args: [50], expected: "C"}
+              - {args: [49], expected: "D"}
       - id: kp3-q5
         type: mcq
         bloom: understand
@@ -477,3 +484,6 @@ practice:
           - {args: [5, 5, 8], expected: "isosceles"}
           - {args: [8, 5, 5], expected: "isosceles"}
           - {args: [2, 2, 9], expected: "none"}
+          - {args: [5, 8, 5], expected: "isosceles"}
+          - {args: [9, 2, 2], expected: "none"}
+          - {args: [2, 9, 3], expected: "none"}

@@ -388,24 +388,26 @@ practice:
     bloom: apply
     expected_minutes: 8
     prompt: |
-      Some friends share a restaurant bill equally, in whole rupees. Write `share(total, people)` that
-      returns `[each, left]`: how many whole rupees each person pays, and how many rupees are left over.
-      For example `share(1000, 3)` returns `[333, 1]`.
+      Some friends share a restaurant bill in whole rupees. Everyone pays the same whole number of rupees,
+      except the first friend, who also pays whatever is left over. Write `share(total, people)` that
+      returns `[first, others]`: what the first friend pays and what each of the others pays.
+      For example `share(1000, 3)` returns `[334, 333]`: 334 + 333 + 333 = 1000.
     answer:
       code:
         entry: share
         starter: |
           def share(total, people):
-              each = 0
-              left = 0
-              return [each, left]
+              first = 0
+              others = 0
+              return [first, others]
         solution: |
           def share(total, people):
-              each = total // people
-              left = total % people
-              return [each, left]
+              others = total // people
+              first = others + total % people
+              return [first, others]
         tests:
-          - {args: [1000, 3], expected: [333, 1], visible: true}
-          - {args: [900, 4], expected: [225, 0]}
-          - {args: [5, 8], expected: [0, 5]}
-          - {args: [1, 1], expected: [1, 0]}
+          - {args: [1000, 3], expected: [334, 333], visible: true}
+          - {args: [900, 4], expected: [225, 225]}
+          - {args: [5, 8], expected: [5, 0]}
+          - {args: [1, 1], expected: [1, 1]}
+          - {args: [1003, 5], expected: [203, 200]}

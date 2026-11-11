@@ -225,6 +225,7 @@ kps:
               - {args: ["banana"], expected: 3, visible: true}
               - {args: ["sky"], expected: 0}
               - {args: ["education"], expected: 5}
+              - {args: [""], expected: 0}
       - id: kp2-q5
         type: mcq
         bloom: understand

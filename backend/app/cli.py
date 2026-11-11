@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+import os
 import re
 import subprocess
 from datetime import UTC, datetime
@@ -576,10 +577,13 @@ def privacy_export(
     out: Annotated[Path, typer.Option("--out", help="An empty folder outside the repo")],
 ) -> None:
     """Export a whole school: school.json and one students/{username}.json per student."""
+    old_umask = os.umask(0o077)  # personal data: folders 0700, files 0600
     try:
         path = check_out_dir(out)
         n = asyncio.run(_export(normalize_code(org), path))
     except CliError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
+    finally:
+        os.umask(old_umask)
     typer.echo(f"Exported {n} students to {path}.")

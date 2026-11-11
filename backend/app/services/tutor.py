@@ -487,7 +487,18 @@ async def _store(
     `question_answered`); otherwise store and charge the reply."""
     now = datetime.now(UTC)
     await lock_students(scope.session, [scope.user.id])
-    if not await has_consent(scope, scope.user.id):
+    consent_at = await scope.session.scalar(
+        select(AppUser.tutor_consent_at).where(
+            AppUser.org_id == scope.org_id, AppUser.id == scope.user.id
+        )
+    )
+    reserved_at = await scope.session.scalar(
+        select(TutorMessage.created_at).where(
+            TutorMessage.org_id == scope.org_id, TutorMessage.id == r.student_row_id
+        )
+    )
+    # Withdrawn meanwhile, or withdrawn and recorded again after this request was reserved.
+    if consent_at is None or (reserved_at is not None and consent_at > reserved_at):
         await _store_withdrawn(scope, r, req, turn, now)
         raise consent_required()
     thread = await scope.get(TutorSession, r.thread_id, for_update=True)

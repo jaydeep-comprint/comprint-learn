@@ -18,6 +18,9 @@ permissions:
 jobs:
   run-due:
     runs-on: ubuntu-latest
+    # The secrets live in the `production` environment (deployments limited to `main`), never at
+    # repository level: a branch's workflow must not be able to read them.
+    environment: production
     steps:
       # Secrets can't be used in `if`, and a step's own `env` isn't visible to its `if`,
       # so a gate step records whether the secrets exist (without exposing them to other steps).
@@ -34,6 +37,8 @@ jobs:
 
       - uses: actions/checkout@v7
         if: steps.prod.outputs.present == 'true'
+        with:
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v7
         if: steps.prod.outputs.present == 'true'

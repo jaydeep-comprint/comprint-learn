@@ -24,7 +24,7 @@ Whole school (operator only, e.g. when a school leaves):
 ```
 cd backend && uv run app privacy export --org CODE --out /path/outside/the/repo/CODE-export
 ```
-The folder must be empty and outside any git checkout. One audit event per student is written
+The folder must be empty and outside any git checkout; files are written readable by you only. One audit event per student is written
 (`source: cli`). Hand the folder over encrypted and delete it afterwards.
 
 ## Erasure request
@@ -40,9 +40,12 @@ The folder must be empty and outside any git checkout. One audit event per stude
 `app privacy run-due` completes due erasures and then purges tutor chat text older than 180 days.
 It is idempotent and safe to run twice at once.
 
-- **Scheduled**: `.github/workflows/privacy-jobs.yml` runs it daily at 02:00 IST once the repository
-  secrets `PROD_DATABASE_URL`, `PROD_SUPABASE_URL` and `PROD_SUPABASE_SERVICE_ROLE_KEY` exist. Without
-  them it ends green with "skipped: no production secrets".
+- **Scheduled**: `.github/workflows/privacy-jobs.yml` runs it daily at 02:00 IST once the secrets
+  `PROD_DATABASE_URL`, `PROD_SUPABASE_URL` and `PROD_SUPABASE_SERVICE_ROLE_KEY` exist. Without them it
+  ends green with "skipped: no production secrets". Store them as **environment secrets** of a GitHub
+  Environment named `production` whose deployment branches are limited to `main` (add a required
+  reviewer for manual runs), never as repository secrets: those can be read by a workflow on any branch.
+  Pinning the workflow's actions to commit SHAs is part of spec 015's CI hardening.
 - **Until production is deployed, run it by hand** (at least daily while an erasure is pending):
   ```
   cd backend && uv run app privacy run-due

@@ -1,0 +1,565 @@
+id: motion-graphs
+title: Graphs of motion
+summary: "Reading distance–time and velocity–time graphs: slope gives speed or acceleration, area gives displacement."
+prereqs:
+  - {concept: speed-and-velocity, weight: 0.6}
+  - {concept: acceleration, weight: 0.5}
+  - {concept: maths-9-10/linear-equations-two-variables, weight: 0.2}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    A cyclist's distance–time graph is a straight line that rises steeply. What does it tell you?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: The cyclist is moving fast at a constant speed., correct: true}
+        - {id: b, text: The cyclist is riding up a steep hill., misconception: graph-is-path}
+        - {id: c, text: The cyclist is speeding up.}
+  explanation: |
+    A distance–time graph shows how far the cyclist has gone at each moment, not the shape of the road.
+    A straight line means equal distances in equal times (constant speed); the steeper it is, the faster.
+
+kps:
+  - id: kp1
+    title: Distance–time graphs (slope = speed)
+    worked_example: kp-1-worked.md
+    key_prereqs: [speed-and-velocity]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The distance–time graph of a car is a straight line through the origin. It passes through the point
+          ({{t}} s, {{d}} m). What is the car's speed?
+        params:
+          v: {choices: [2, 3, 5, 6, 8]}
+          t: {choices: [4, 5, 8, 10]}
+        derived: {d: "v * t"}
+        answer:
+          numeric: {value: "v", unit: m/s, mode: exact}
+        explanation: |
+          Speed = slope = distance ÷ time = {{d}} ÷ {{t}} = {{v}} m/s.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          On a distance–time graph, a bus's straight line goes from the point ({{t1}} s, {{d1}} m)
+          to the point ({{t2}} s, {{d2}} m). What is the bus's speed?
+        params:
+          t1: {choices: [2, 4, 6]}
+          dt: {choices: [2, 4, 5]}
+          v: {choices: [3, 4, 5, 6]}
+          d1: {min: 10, max: 40, step: 10}
+        derived:
+          t2: "t1 + dt"
+          d2: "d1 + v * dt"
+        answer:
+          numeric: {value: "v", unit: m/s, mode: exact}
+        explanation: |
+          Slope = rise ÷ run = ({{d2}} − {{d1}}) ÷ ({{t2}} − {{t1}}) = {{v}} m/s.
+          Use the change in distance and the change in time, not the coordinates themselves.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The graph shows the motion of two cars, A and B.
+
+          ![Distance–time graph of cars A and B](img/dt-graph.svg)
+
+          What is the speed of car A?
+        answer:
+          numeric: {value: 5, unit: m/s, mode: exact}
+        explanation: |
+          Car A goes 50 m in 10 s, so its speed is 50 ÷ 10 = 5 m/s.
+      - id: kp1-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          The graph shows the motion of two cars, A and B, that start together.
+
+          ![Distance–time graph of cars A and B](img/dt-graph.svg)
+
+          How far ahead of car B is car A after 6 s?
+        answer:
+          numeric: {value: 18, unit: m, mode: exact}
+        explanation: |
+          At 6 s, A has gone 5 × 6 = 30 m and B has gone 2 × 6 = 12 m, so A is 30 − 12 = 18 m ahead.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          The distance–time graph of a scooter is a horizontal line. What is the scooter doing?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: It is standing still., correct: true}
+              - {id: b, text: It is moving at a steady speed along a flat road., misconception: graph-is-path}
+              - {id: c, text: It is moving at a steady speed.}
+        explanation: |
+          A horizontal line means the distance is not changing as time passes, so the scooter is at rest.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A runner starts from the start line at t = 0 and her distance–time graph is a straight line.
+          At t = {{t1}} s she has run {{d1}} m, and at t = {{t2}} s she has run {{d2}} m.
+          How far will she have run at t = {{t3}} s if she keeps the same speed?
+        params:
+          v: {choices: [2, 3, 4, 5]}
+          t1: {choices: [2, 3, 4]}
+          t3: {choices: [10, 12, 15]}
+        derived:
+          t2: "t1 + 4"
+          d1: "v * t1"
+          d2: "v * t2"
+          d3: "v * t3"
+        answer:
+          numeric: {value: "d3", unit: m, mode: exact}
+        explanation: |
+          Slope = ({{d2}} − {{d1}}) ÷ ({{t2}} − {{t1}}) = {{v}} m/s, so at {{t3}} s she has run {{v}} × {{t3}} = {{d3}} m.
+      - id: kp1-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A train's distance–time graph is a straight line through (0 h, 0 km) and ({{t}} h, {{d}} km).
+          What is its speed in km/h?
+        params:
+          v: {choices: [40, 50, 60, 80]}
+          t: {choices: [2, 3, 4]}
+        derived: {d: "v * t"}
+        answer:
+          numeric: {value: "v", unit: km/h, mode: exact}
+        explanation: |
+          Slope = {{d}} km ÷ {{t}} h = {{v}} km/h.
+
+  - id: kp2
+    title: Velocity–time graphs (slope = acceleration)
+    worked_example: kp-2-worked.md
+    key_prereqs: [acceleration]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The velocity–time graph of a car is a straight line from (0 s, {{u}} m/s) to ({{t}} s, {{v}} m/s).
+          What is the car's acceleration?
+        params:
+          u: {min: 0, max: 10, step: 2}
+          a: {choices: [1, 2, 3]}
+          t: {choices: [2, 4, 5]}
+        derived: {v: "u + a * t"}
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: exact}
+        explanation: |
+          Slope = (v − u) ÷ t = ({{v}} − {{u}}) ÷ {{t}} = {{a}} m/s².
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The velocity–time graph of a bus is a straight line from (0 s, {{u}} m/s) down to ({{t}} s, 0 m/s).
+          What is its acceleration? (Include the sign.)
+        params:
+          u: {choices: [10, 15, 20, 25, 30]}
+          t: {choices: [5, 10]}
+        answer:
+          numeric: {value: "-u / t", unit: m/s^2, mode: exact}
+        explanation: |
+          Slope = (0 − {{u}}) ÷ {{t}}. The line slopes down, so the acceleration is negative: the bus is slowing down.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The graph shows a car's velocity during a short trip.
+
+          ![Velocity–time graph of a car's trip](img/vt-graph.svg)
+
+          What is the car's acceleration during the first 4 s?
+        answer:
+          numeric: {value: 3, unit: m/s^2, mode: exact}
+        explanation: |
+          The velocity rises from 0 to 12 m/s in 4 s: slope = 12 ÷ 4 = 3 m/s².
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The graph shows a car's velocity during a short trip.
+
+          ![Velocity–time graph of a car's trip](img/vt-graph.svg)
+
+          What is the car's acceleration between t = 10 s and t = 16 s? (Include the sign.)
+        answer:
+          numeric: {value: -2, unit: m/s^2, mode: exact}
+        explanation: |
+          The velocity falls from 12 m/s to 0 in 6 s: slope = (0 − 12) ÷ 6 = −2 m/s².
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A velocity–time graph is a horizontal line above the time axis. What does it show?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Constant velocity: the acceleration is zero.", correct: true}
+              - {id: b, text: The object is moving along a level road., misconception: graph-is-path}
+              - {id: c, text: The object is at rest.}
+        explanation: |
+          The velocity stays the same, so the slope (the acceleration) is zero. The object is moving: at rest
+          would be a line along the time axis (v = 0).
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A cyclist's velocity–time graph is a straight line. At t = 0 her velocity is {{u}} m/s and at
+          t = {{t}} s it is {{v}} m/s. If the line keeps the same slope, what will her velocity be at t = {{t2}} s?
+        params:
+          u: {choices: [2, 4]}
+          a: {choices: [0.5, 1]}
+          t: {choices: [4, 6]}
+          t2: {choices: [8, 10, 12]}
+        derived:
+          v: "u + a * t"
+          v2: "u + a * t2"
+        answer:
+          numeric: {value: "v2", unit: m/s, mode: exact}
+        explanation: |
+          Slope = ({{v}} − {{u}}) ÷ {{t}} = {{a}} m/s², so at {{t2}} s: v = {{u}} + {{a}} × {{t2}} = {{v2}} m/s.
+      - id: kp2-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A velocity–time graph is a straight line that starts at (0 s, {{u}} m/s) and has a slope of {{a}} m/s².
+          At what time does the velocity reach {{v}} m/s?
+        params:
+          u: {choices: [0, 2, 4]}
+          a: {choices: [1, 2]}
+          k: {choices: [3, 4, 5, 6]}
+        derived: {v: "u + a * k"}
+        answer:
+          numeric: {value: "k", unit: s, mode: exact}
+        explanation: |
+          The velocity rises by {{a}} m/s each second, so it takes ({{v}} − {{u}}) ÷ {{a}} = {{k}} s.
+
+  - id: kp3
+    title: Area under a velocity–time graph = displacement
+    worked_example: kp-3-worked.md
+    key_prereqs: [speed-and-velocity]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A velocity–time graph is a horizontal line at {{v}} m/s from t = 0 to t = {{t}} s.
+          What is the displacement in that time?
+        params:
+          v: {choices: [4, 5, 6, 8, 12]}
+          t: {choices: [5, 10, 15, 20]}
+        answer:
+          numeric: {value: "v * t", unit: m, mode: exact}
+        explanation: |
+          The area is a rectangle: {{v}} m/s × {{t}} s.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A car starts from rest. Its velocity–time graph is a straight line from (0 s, 0 m/s) to ({{t}} s, {{v}} m/s).
+          How far does it travel in that time?
+        params:
+          v: {choices: [4, 6, 8, 10, 12]}
+          t: {choices: [4, 5, 6, 10]}
+        answer:
+          numeric: {value: "v * t / 2", unit: m, mode: exact}
+        explanation: |
+          The area is a triangle: ½ × base × height = ½ × {{t}} × {{v}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A scooter's velocity–time graph is a straight line from (0 s, {{u}} m/s) to ({{t}} s, {{v}} m/s).
+          How far does it travel in that time?
+        params:
+          u: {choices: [2, 4, 6]}
+          v: {choices: [10, 12, 14, 16]}
+          t: {choices: [4, 5, 6, 8, 10]}
+        answer:
+          numeric: {value: "(u + v) * t / 2", unit: m, mode: exact}
+        explanation: |
+          The area is a trapezium: ½ × (sum of the parallel sides) × width = ½ × ({{u}} + {{v}}) × {{t}}.
+          (Or a rectangle {{u}} × {{t}} plus a triangle ½ × {{t}} × ({{v}} − {{u}}).)
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          The graph shows a car's velocity during a short trip.
+
+          ![Velocity–time graph of a car's trip](img/vt-graph.svg)
+
+          How far does the car travel in the whole 16 s?
+        answer:
+          numeric: {value: 132, unit: m, mode: exact}
+        explanation: |
+          Split the shaded area: triangle ½ × 4 × 12 = 24 m, rectangle 6 × 12 = 72 m, triangle ½ × 6 × 12 = 36 m.
+          Total 24 + 72 + 36 = 132 m.
+      - id: kp3-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The graph shows a car's velocity during a short trip.
+
+          ![Velocity–time graph of a car's trip](img/vt-graph.svg)
+
+          How far does the car travel while it is braking, from t = 10 s to t = 16 s?
+        answer:
+          numeric: {value: 36, unit: m, mode: exact}
+        explanation: |
+          The area of the last triangle is ½ × 6 × 12 = 36 m.
+      - id: kp3-q6
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What does the area under a velocity–time graph give?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: The displacement, correct: true}
+              - {id: b, text: The acceleration, misconception: slope-vs-area}
+              - {id: c, text: The final velocity}
+        explanation: |
+          Velocity × time = displacement, so the area gives the displacement. The slope gives the acceleration.
+      - id: kp3-q7
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          A driver moving at {{v}} m/s sees a cow on the road. Her car's velocity–time graph stays at {{v}} m/s for
+          {{tr}} s (her reaction time), then falls in a straight line to 0 at t = {{tt}} s.
+          How far does the car travel from the moment she sees the cow until it stops? Give it as a decimal if needed.
+        params:
+          v: {choices: [10, 15, 20, 25]}
+          tr: {choices: [0.5, 1]}
+          tb: {choices: [2, 4, 5]}
+        derived:
+          tt: "tr + tb"
+          d1: "v * tr"
+          d2: "v * tb / 2"
+        answer:
+          numeric: {value: "d1 + d2", unit: m, mode: exact}
+        explanation: |
+          Rectangle (reaction): {{v}} × {{tr}} = {{d1}} m. Triangle (braking): ½ × {{tb}} × {{v}} = {{d2}} m.
+          Add them for the total.
+
+  - id: kp4
+    title: Reading and comparing graphs of non-uniform motion
+    worked_example: kp-4-worked.md
+    key_prereqs: [speed-and-velocity]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          The graph shows a toy car's distance over 10 s.
+
+          ![Distance–time graph of a toy car](img/dt-trip.svg)
+
+          For how long is the toy car at rest?
+        answer:
+          numeric: {value: 4, unit: s, mode: exact}
+        explanation: |
+          The line is flat from 4 s to 8 s: the distance doesn't change for 4 s.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The graph shows a toy car's distance over 10 s.
+
+          ![Distance–time graph of a toy car](img/dt-trip.svg)
+
+          What is its speed between t = 8 s and t = 10 s?
+        answer:
+          numeric: {value: 10, unit: m/s, mode: exact}
+        explanation: |
+          It goes from 20 m to 40 m in 2 s: (40 − 20) ÷ 2 = 10 m/s. This is the steepest part of the graph.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          The graph shows a toy car's distance over 10 s.
+
+          ![Distance–time graph of a toy car](img/dt-trip.svg)
+
+          What is its average speed over the whole 10 s?
+        answer:
+          numeric: {value: 4, unit: m/s, mode: exact}
+        explanation: |
+          Average speed = total distance ÷ total time = 40 ÷ 10 = 4 m/s. The time at rest counts too.
+      - id: kp4-q4
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A distance–time graph is a curve that gets steeper and steeper. What is the object doing?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: Speeding up, correct: true}
+              - {id: b, text: Slowing down}
+              - {id: c, text: Moving up a slope that gets steeper, misconception: graph-is-path}
+        explanation: |
+          The slope of a distance–time graph is the speed. A steeper and steeper curve means the speed keeps rising.
+      - id: kp4-q5
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          A bus moves at {{v1}} m/s for {{t1}} s, stops at a bus stop for {{t2}} s, then moves at {{v2}} m/s
+          for {{t3}} s. Its distance–time graph has three straight pieces.
+          What is its average speed for the whole trip? Give 2 significant figures.
+        params:
+          v1: {choices: [5, 10]}
+          t1: {choices: [20, 30, 40]}
+          t2: {choices: [10, 20]}
+          v2: {choices: [5, 10, 15]}
+          t3: {choices: [10, 20]}
+        derived:
+          d: "v1 * t1 + v2 * t3"
+          tt: "t1 + t2 + t3"
+        answer:
+          numeric: {value: "d / tt", unit: m/s, mode: tolerance, rel_tol: 0.05}
+        explanation: |
+          Total distance = {{v1}} × {{t1}} + {{v2}} × {{t3}} = {{d}} m; total time = {{tt}} s (the stop counts).
+          Average speed = {{d}} ÷ {{tt}}.
+      - id: kp4-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          Car A's velocity–time graph is a horizontal line at {{va}} m/s. Car B starts from rest at t = 0 and its
+          velocity–time graph is a straight line with a slope of {{a}} m/s².
+          At what time do the two lines cross (the cars have the same velocity)? Give it as a decimal if needed.
+        params:
+          va: {choices: [10, 12, 15, 20]}
+          a: {choices: [1, 2, 2.5, 5]}
+        answer:
+          numeric: {value: "va / a", unit: s, mode: exact}
+        explanation: |
+          B's velocity is {{a}} × t. It equals {{va}} when t = {{va}} ÷ {{a}}.
+          The cars have the same velocity there; they are not necessarily side by side.
+      - id: kp4-q7
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          Two cars start side by side at t = 0. Car P's velocity–time graph is a horizontal line at {{vp}} m/s.
+          Car Q starts from rest and its graph is a straight line up to {{vq}} m/s at t = {{t}} s.
+          After {{t}} s, how much farther has car P travelled than car Q?
+        params:
+          vp: {choices: [10, 12]}
+          vq: {choices: [12, 16]}
+          t: {choices: [4, 5, 6, 8]}
+        derived:
+          dp: "vp * t"
+          dq: "vq * t / 2"
+        answer:
+          numeric: {value: "dp - dq", unit: m, mode: exact}
+        explanation: |
+          P: rectangle {{vp}} × {{t}} = {{dp}} m. Q: triangle ½ × {{t}} × {{vq}} = {{dq}} m.
+          P is ahead by the difference, even though Q is faster at the end.
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      A car starts from rest and accelerates uniformly to {{v}} m/s in {{t1}} s. It keeps that velocity for
+      {{t2}} s, then brakes uniformly and stops {{t3}} s later. Sketch its velocity–time graph, then answer.
+    params:
+      v: {choices: [10, 12, 15, 20]}
+      t1: {choices: [4, 5, 10]}
+      t2: {choices: [10, 20, 30]}
+      t3: {choices: [4, 5, 8]}
+    derived:
+      d: "v * t1 / 2 + v * t2 + v * t3 / 2"
+      tt: "t1 + t2 + t3"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the car's acceleration in the first part? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "v / t1", unit: m/s^2, mode: tolerance, rel_tol: 0.02}
+          - prompt: What is its acceleration while braking? Include the sign and give it as a decimal if needed.
+            answer:
+              numeric: {value: "-v / t3", unit: m/s^2, mode: tolerance, rel_tol: 0.02}
+          - prompt: Use the area under the graph. How far does the car travel in total?
+            answer:
+              numeric: {value: "d", unit: m, mode: tolerance, rel_tol: 0.02}
+          - prompt: What is its average speed for the whole trip? Give 3 significant figures.
+            answer:
+              numeric: {value: "d / tt", unit: m/s, mode: tolerance, rel_tol: 0.01}
+    explanation: |
+      Slopes: {{v}} ÷ {{t1}} speeding up, −{{v}} ÷ {{t3}} braking.
+      Area: ½ × {{t1}} × {{v}} + {{t2}} × {{v}} + ½ × {{t3}} × {{v}} = {{d}} m.
+      Average speed = {{d}} ÷ {{tt}}.
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A delivery rider moves along a straight road. She rides at a steady speed and covers {{d1}} m in {{t1}} s,
+      stops at a shop for {{t2}} s, then rides on in the same direction and covers {{d2}} m in {{t3}} s.
+      Sketch her distance–time graph, then answer.
+    params:
+      v1: {choices: [4, 5, 6, 8]}
+      t1: {choices: [30, 40, 60]}
+      t2: {choices: [30, 60, 90]}
+      v2: {choices: [5, 8, 10]}
+      t3: {choices: [20, 30]}
+    derived:
+      d1: "v1 * t1"
+      d2: "v2 * t3"
+      tt: "t1 + t2 + t3"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the slope of the first part of the graph (her speed)?
+            answer:
+              numeric: {value: "v1", unit: m/s, mode: exact}
+          - prompt: What is the slope of the last part of the graph?
+            answer:
+              numeric: {value: "v2", unit: m/s, mode: exact}
+          - prompt: How far does she ride in total?
+            answer:
+              numeric: {value: "d1 + d2", unit: m, mode: exact}
+          - prompt: What is her average speed for the whole trip, including the stop? Give 2 significant figures.
+            answer:
+              numeric: {value: "(d1 + d2) / tt", unit: m/s, mode: tolerance, rel_tol: 0.05}
+    explanation: |
+      Slopes: {{d1}} ÷ {{t1}} = {{v1}} m/s, then 0 while stopped, then {{d2}} ÷ {{t3}} = {{v2}} m/s.
+      Average speed = ({{d1}} + {{d2}}) ÷ {{tt}}: the stop is part of the trip time.

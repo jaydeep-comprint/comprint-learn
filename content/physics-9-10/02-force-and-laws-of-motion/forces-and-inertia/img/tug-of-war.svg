@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" width="360" height="140" font-family="sans-serif" font-size="12">
+  <title>Tug of war: team A pulls the rope left with 450 N, team B pulls right with 500 N; net force 50 N to the right</title>
+  <line x1="60" y1="60" x2="300" y2="60" stroke="#92400e" stroke-width="4"/>
+  <rect x="172" y="50" width="16" height="20" fill="#dc2626"/>
+  <g fill="#111827" text-anchor="middle">
+    <text x="30" y="64">Team A</text><text x="330" y="64">Team B</text>
+  </g>
+  <g stroke="#2563eb" stroke-width="3" fill="#2563eb">
+    <line x1="170" y1="95" x2="75" y2="95"/><polygon points="65,95 77,89 77,101"/>
+    <line x1="190" y1="95" x2="295" y2="95"/><polygon points="305,95 293,89 293,101"/>
+  </g>
+  <g fill="#1e3a8a" text-anchor="middle">
+    <text x="120" y="88">450 N</text><text x="245" y="88">500 N</text>
+  </g>
+  <g stroke="#16a34a" stroke-width="3" fill="#16a34a">
+    <line x1="180" y1="122" x2="214" y2="122"/><polygon points="224,122 212,116 212,128"/>
+  </g>
+  <text x="232" y="126" fill="#166534">net force 50 N</text>
+</svg>

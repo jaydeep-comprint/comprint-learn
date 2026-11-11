@@ -76,6 +76,8 @@ kps:
           What is the size of its displacement?
         answer:
           numeric: {value: 0, unit: m, mode: exact}
+        explanation: |
+          It ends where it started (in the hand), so its displacement is 0, even though it travelled 5 m up and 5 m down (10 m of distance).
       - id: kp1-q5
         type: mcq
         bloom: understand
@@ -88,6 +90,27 @@ kps:
               - {id: a, text: The distance covered is greater than or equal to the size of the displacement., correct: true}
               - {id: b, text: The size of the displacement is greater than the distance covered., misconception: displacement-equals-distance}
               - {id: c, text: "If the displacement is zero, the object did not move.", misconception: zero-displacement-means-no-motion}
+        explanation: |
+          Displacement is the straight-line change in position, the shortest route. The actual path can only be as long or longer, so distance ≥ displacement. A zero displacement can still mean a lot of motion (a full lap).
+      - id: kp1-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A delivery rider goes {{a}} m along a straight road to a shop, then {{b}} m back the same way towards home.
+          How much greater is the distance she covers than the size of her displacement?
+        params:
+          a: {min: 300, max: 900, step: 100}
+          b: {min: 100, max: 500, step: 100}
+        constraints: ["b < a"]
+        derived:
+          dist: "a + b"
+          disp: "a - b"
+        answer:
+          numeric: {value: "dist - disp", unit: m, mode: exact}
+        explanation: |
+          Distance = {{a}} + {{b}} = {{dist}} m. Displacement = {{a}} − {{b}} = {{disp}} m.
+          The difference is {{dist}} − {{disp}}: the part she rode back counts in the distance but undoes the displacement.
 
   - id: kp2
     title: Displacement with a sign (direction)
@@ -129,7 +152,7 @@ kps:
         expected_minutes: 1
         prompt: |
           Take east as positive. A cyclist starts at x = 0, rides east to x = {{p}} m, then turns back
-          and stops at x = {{q}} m. What is the cyclist's displacement?
+          and stops at x = {{q}} m. What is the cyclist's displacement? (Include a minus sign if it points west.)
         params:
           p: {min: 40, max: 90, step: 10}
           q: {min: -30, max: 30, step: 5}
@@ -147,6 +170,8 @@ kps:
           Taking up as positive, what is its displacement from the ground floor?
         answer:
           numeric: {value: 15, unit: m, mode: exact}
+        explanation: |
+          Up is +24 m and down is −9 m, so the displacement is 24 − 9 = 15 m, upwards from the ground floor.
       - id: kp2-q5
         type: mcq
         bloom: understand
@@ -159,6 +184,24 @@ kps:
               - {id: a, text: The car ended up 40 m west of where it started., correct: true}
               - {id: b, text: The car was slowing down., misconception: negative-means-decreasing}
               - {id: c, text: The car covered a negative distance., misconception: displacement-equals-distance}
+        explanation: |
+          The sign shows direction: east is positive, so −40 m means 40 m to the west of the start. It says nothing about speeding up or slowing down, and distance is never negative.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Take east as positive. A bus on a straight road goes from x = {{x1}} m to x = {{x2}} m, and then to
+          x = {{x3}} m. What is its displacement for the whole trip? (Include a minus sign if it points west.)
+        params:
+          x1: {min: -200, max: 200, step: 100}
+          x2: {min: 300, max: 600, step: 100}
+          x3: {min: -300, max: 200, step: 100}
+        constraints: ["x3 != x1"]
+        answer:
+          numeric: {value: "x3 - x1", unit: m, mode: exact}
+        explanation: |
+          Displacement = final position − initial position = {{x3}} − ({{x1}}). The stop at x = {{x2}} m doesn't matter.
 
   - id: kp3
     title: Paths at right angles and around circles
@@ -175,7 +218,7 @@ kps:
           a: {min: 3, max: 12, step: 1}
           b: {min: 4, max: 15, step: 1}
         answer:
-          numeric: {value: "sqrt(a^2 + b^2)", unit: m, mode: sigfig, sigfigs: 3}
+          numeric: {value: "sqrt(a^2 + b^2)", unit: m, mode: tolerance, rel_tol: 0.01}
         explanation: |
           The two legs are at right angles, so displacement = √({{a}}² + {{b}}²) m.
       - id: kp3-q2
@@ -189,6 +232,8 @@ kps:
           b: {min: 4, max: 15, step: 1}
         answer:
           numeric: {value: "a + b", unit: m, mode: exact}
+        explanation: |
+          Distance adds up every part of the path: {{a}} + {{b}} m. (The displacement would be shorter: the straight line from start to finish.)
       - id: kp3-q3
         type: numeric
         bloom: apply
@@ -210,6 +255,8 @@ kps:
           A boy walks 6 m east and then 8 m north. What is the size of his displacement?
         answer:
           numeric: {value: 10, unit: m, mode: exact}
+        explanation: |
+          The two walks are at right angles, so the displacement is the long side of a right triangle: √(6² + 8²) = √100 = 10 m.
       - id: kp3-q5
         type: mcq
         bloom: understand
@@ -222,6 +269,22 @@ kps:
               - {id: a, text: "Distance = the track's circumference; displacement = 0", correct: true}
               - {id: b, text: "Distance = displacement = the track's circumference", misconception: displacement-equals-distance}
               - {id: c, text: "Distance = 0 because she is back at the start", misconception: zero-displacement-means-no-motion}
+        explanation: |
+          One lap covers the whole circumference, so that is the distance. She finishes where she started, so the displacement is 0.
+      - id: kp3-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          A boy walks {{a}} m east, then {{b}} m north, then {{a}} m west. What is the size of his displacement?
+        params:
+          a: {min: 30, max: 90, step: 15}
+          b: {min: 20, max: 80, step: 10}
+        answer:
+          numeric: {value: "b", unit: m, mode: exact}
+        explanation: |
+          The east and west parts cancel, so he ends up {{b}} m north of where he started.
+          (The distance he walked is {{a}} + {{b}} + {{a}} m.)
 
 practice:
   - id: practice-1
@@ -241,9 +304,39 @@ practice:
               numeric: {value: "a + b", unit: km, mode: exact}
           - prompt: What is the size of the rider's displacement? Give 3 significant figures.
             answer:
-              numeric: {value: "sqrt(a^2 + b^2)", unit: km, mode: sigfig, sigfigs: 3}
+              numeric: {value: "sqrt(a^2 + b^2)", unit: km, mode: tolerance, rel_tol: 0.01}
           - prompt: The rider returns home along the same roads. What is the size of the displacement for the whole round trip?
             answer:
               numeric: {value: 0, unit: km, mode: exact}
     explanation: |
       Distance {{a}} + {{b}} km; displacement √({{a}}² + {{b}}²) km; a round trip ends at the start, so 0 km.
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A cyclist rides around a circular track of radius {{r}} m. She completes one full lap and then rides
+      halfway round again before stopping. (Use π ≈ 3.14 or your calculator's π.)
+    params:
+      r: {choices: [35, 40, 50, 70, 100]}
+    derived:
+      lap: "2 * pi * r"
+    answer:
+      multistep:
+        steps:
+          - prompt: What distance does she cover in one full lap?
+            answer:
+              numeric: {value: "lap", unit: m, mode: tolerance, rel_tol: 0.01}
+          - prompt: What is the size of her displacement at the end of the first full lap?
+            answer:
+              numeric: {value: 0, unit: m, mode: exact}
+          - prompt: What total distance does she cover before stopping?
+            answer:
+              numeric: {value: "1.5 * lap", unit: m, mode: tolerance, rel_tol: 0.01}
+          - prompt: What is the size of her displacement when she stops?
+            answer:
+              numeric: {value: "2 * r", unit: m, mode: exact}
+    explanation: |
+      One lap = 2πr ≈ {{lap}} m, and she is back at the start, so the displacement is 0.
+      Another half lap brings the distance to 1.5 × {{lap}} m. She stops on the opposite side of the circle,
+      a diameter (2 × {{r}} m) from the start.

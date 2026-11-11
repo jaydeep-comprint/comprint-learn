@@ -227,8 +227,17 @@ async def test_failed_multistep_try_again_draws_new_numbers(db_app: DbApp) -> No
             )
         ).all()
     assert [p.status.value for p in sessions] == ["failed", "active"]
-    assert sessions[0].current_item_id == sessions[1].current_item_id  # only one practice item
-    assert sessions[0].current_seed != sessions[1].current_seed  # new numbers
+    # The least recently answered practice item comes next (the concept has two), or the only
+    # one with new numbers (content/README.md).
+    first, second = sessions
+    async with db_app.sessions() as session:
+        served = await session.get(Item, first.current_item_id)
+        assert served is not None
+        pool = await count(db_app, Item, concept_id=served.concept_id, kind=ItemKind.practice)
+    if pool > 1:
+        assert second.current_item_id != first.current_item_id
+    else:
+        assert second.current_seed != first.current_seed
 
 
 async def test_code_practice_retry_prefill_then_pass(db_app: DbApp) -> None:
@@ -540,25 +549,25 @@ async def test_a_retired_practice_item_is_replaced_and_its_steps_discarded(db_ap
     session_id = uuid.UUID(q["session_id"])
     assert await count(db_app, Attempt, session_id=session_id) == 1
     async with db_app.sessions() as session:
-        replacement = Item(
-            **{
-                c.name: getattr(await session.get(Item, uuid.UUID(q["item_id"])), c.name)
-                for c in Item.__table__.columns
-                if c.name not in ("id", "slug", "position")
-            },
-            id=uuid.uuid4(),
-            slug="practice-2",
-            position=99,
+        served = await session.get(Item, uuid.UUID(q["item_id"]))
+        assert served is not None
+        others = set(
+            await session.scalars(
+                select(Item.id).where(
+                    Item.concept_id == served.concept_id,
+                    Item.kind == ItemKind.practice,
+                    Item.id != served.id,
+                    Item.retired_at.is_(None),
+                )
+            )
         )
-        session.add(replacement)
+        assert others  # the concept has another practice item to fall back on
         await session.execute(
-            update(Item)
-            .where(Item.id == uuid.UUID(q["item_id"]))
-            .values(retired_at=datetime.now(UTC))
+            update(Item).where(Item.id == served.id).values(retired_at=datetime.now(UTC))
         )
         await session.commit()
     again = await get(db_app, s, p_url(DIST, "question"))
-    assert again["session_id"] == q["session_id"] and again["item_id"] == str(replacement.id)
+    assert again["session_id"] == q["session_id"] and uuid.UUID(again["item_id"]) in others
     assert again["position"] == 1 and again["step"] == 0 and again["step_results"] == []
     assert await count(db_app, Attempt, session_id=session_id) == 0
 

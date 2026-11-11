@@ -37,11 +37,11 @@ kps:
         params:
           u: {min: 0, max: 10, step: 2}
           v: {min: 12, max: 30, step: 2}
-          t: {choices: [2, 4, 5]}
+          t: {choices: [5, 8, 10]}
         constraints: ["v > u"]
         derived: {a: "(v - u) / t"}
         answer:
-          numeric: {value: "a", unit: m/s^2, mode: sigfig, sigfigs: 2}
+          numeric: {value: "a", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
         explanation: |
           a = (v − u) / t = ({{v}} − {{u}}) / {{t}} = {{a}} m/s².
       - id: kp1-q2
@@ -69,7 +69,7 @@ kps:
           v: {choices: [72, 90, 108]}
           t: {choices: [5, 10, 20]}
         answer:
-          numeric: {value: "(v - u) / 3.6 / t", unit: m/s^2, mode: sigfig, sigfigs: 2}
+          numeric: {value: "(v - u) / 3.6 / t", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
         explanation: |
           Convert to m/s first (divide by 3.6), then a = (v − u) ÷ t.
       - id: kp1-q4
@@ -80,6 +80,8 @@ kps:
           A train's velocity changes from 10 m/s to 25 m/s in 5 s. What is its acceleration?
         answer:
           numeric: {value: 3, unit: m/s^2, mode: exact}
+        explanation: |
+          a = (v − u) ÷ t = (25 − 10) ÷ 5 = 15 ÷ 5 = 3 m/s².
       - id: kp1-q5
         type: mcq
         bloom: remember
@@ -90,8 +92,26 @@ kps:
           mcq:
             options:
               - {id: a, text: m/s², correct: true}
-              - {id: b, text: m/s, misconception: velocity-same-as-speed}
-              - {id: c, text: s/m², misconception: rearranges-formula-wrongly}
+              - {id: b, text: m/s, misconception: acceleration-is-velocity}
+              - {id: c, text: s/m²}
+        explanation: |
+          Acceleration is the change in velocity (m/s) per second (s), so its unit is m/s ÷ s = m/s². m/s is the unit of velocity.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car starts from rest and speeds up with a steady acceleration of {{a}} m/s².
+          How long does it take to reach {{v}} km/h? Give 2 significant figures.
+        params:
+          a: {choices: [1, 2, 2.5, 4]}
+          v: {choices: [36, 54, 72, 90]}
+        derived:
+          ms: "v / 3.6"
+        answer:
+          numeric: {value: "ms / a", unit: s, mode: tolerance, rel_tol: 0.05}
+        explanation: |
+          {{v}} km/h = {{ms}} m/s. The velocity rises by {{a}} m/s each second, so t = {{ms}} ÷ {{a}}.
 
   - id: kp2
     title: Slowing down (negative acceleration)
@@ -105,8 +125,8 @@ kps:
           A car moving at {{u}} m/s brakes and stops in {{t}} s. Taking the direction of motion as positive,
           what is its acceleration? (Include the sign.)
         params:
-          u: {min: 10, max: 30, step: 5}
-          t: {choices: [2, 4, 5, 8]}
+          u: {min: 10, max: 25, step: 5}
+          t: {choices: [4, 5, 8]}
         answer:
           numeric: {value: "-u / t", unit: m/s^2, mode: tolerance, rel_tol: 0.02}
         explanation: |
@@ -121,10 +141,12 @@ kps:
         params:
           u: {min: 20, max: 40, step: 4}
           v: {min: 0, max: 16, step: 4}
-          t: {choices: [2, 4, 5]}
+          t: {choices: [4, 5, 8]}
         constraints: ["u > v"]
         answer:
-          numeric: {value: "(u - v) / t", unit: m/s^2, mode: sigfig, sigfigs: 2}
+          numeric: {value: "(u - v) / t", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
+        explanation: |
+          Retardation = how fast the velocity drops = (u − v) ÷ t = ({{u}} − {{v}}) ÷ {{t}} m/s².
       - id: kp2-q3
         type: numeric
         bloom: apply
@@ -136,7 +158,7 @@ kps:
           u: {choices: [4, 6, 8, 10, 12]}
           a: {choices: [0.5, 1, 2]}
         answer:
-          numeric: {value: "u / a", unit: s, mode: sigfig, sigfigs: 2}
+          numeric: {value: "u / a", unit: s, mode: tolerance, rel_tol: 0.05}
         explanation: |
           The speed drops by {{a}} m/s each second, so t = {{u}} ÷ {{a}}.
       - id: kp2-q4
@@ -148,6 +170,8 @@ kps:
           (Include the sign.)
         answer:
           numeric: {value: -5, unit: m/s^2, mode: exact}
+        explanation: |
+          a = (v − u) ÷ t = (5 − 20) ÷ 3 = −15 ÷ 3 = −5 m/s². Negative: it points against the motion, so the ball slows down.
       - id: kp2-q5
         type: mcq
         bloom: understand
@@ -160,6 +184,22 @@ kps:
               - {id: a, text: The acceleration points west., correct: true}
               - {id: b, text: The car is slowing down., misconception: negative-means-decreasing}
               - {id: c, text: The car is moving west.}
+        explanation: |
+          The sign of the acceleration only tells its direction: negative means west. The car could be moving east and slowing down, or moving west and speeding up.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A train moving at {{u}} m/s brakes with a steady retardation of {{r}} m/s². What is its velocity {{t}} s later?
+        params:
+          u: {choices: [20, 25, 30]}
+          r: {choices: [0.5, 1, 1.5]}
+          t: {choices: [4, 6, 8, 10]}
+        answer:
+          numeric: {value: "u - r * t", unit: m/s, mode: exact}
+        explanation: |
+          Retardation means the velocity drops by {{r}} m/s every second: v = {{u}} − {{r}} × {{t}}.
 
   - id: kp3
     title: The equation v = u + at
@@ -191,7 +231,7 @@ kps:
           v: {min: 20, max: 40, step: 4}
           a: {choices: [2, 4, 5]}
         answer:
-          numeric: {value: "(v - u) / a", unit: s, mode: sigfig, sigfigs: 3}
+          numeric: {value: "(v - u) / a", unit: s, mode: tolerance, rel_tol: 0.01}
         explanation: |
           t = (v − u) ÷ a = ({{v}} − {{u}}) ÷ {{a}}.
       - id: kp3-q3
@@ -201,6 +241,7 @@ kps:
         prompt: |
           A car moving at {{u}} m/s accelerates uniformly at {{a}} m/s².
           Write its velocity v (in m/s) after t seconds.
+          Enter only the expression in t (for example 4 + 2t), without "v =".
         params:
           u: {min: 0, max: 20, step: 4}
           a: {choices: [1, 2, 3, 4]}
@@ -216,6 +257,8 @@ kps:
           A car starts from rest and accelerates at 3 m/s² for 4 s. What is its velocity then?
         answer:
           numeric: {value: 12, unit: m/s, mode: exact}
+        explanation: |
+          v = u + at = 0 + 3 × 4 = 12 m/s.
       - id: kp3-q5
         type: mcq
         bloom: apply
@@ -228,6 +271,21 @@ kps:
               - {id: a, text: 6 m/s, correct: true}
               - {id: b, text: 1.5 m/s, misconception: rearranges-formula-wrongly}
               - {id: c, text: 5 m/s}
+        explanation: |
+          v = u + at = 0 + 2 × 3 = 6 m/s. (1.5 comes from dividing 3 by 2 instead of multiplying.)
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A stone is dropped from a bridge and falls freely. Take g = 10 m/s².
+          What is its velocity {{t}} s after it is dropped?
+        params:
+          t: {choices: [0.5, 1, 1.5, 2, 2.5, 3]}
+        answer:
+          numeric: {value: "10 * t", unit: m/s, mode: exact}
+        explanation: |
+          Dropped means u = 0, and a = g = 10 m/s², so v = u + at = 0 + 10 × {{t}}.
 
 practice:
   - id: practice-1
@@ -238,9 +296,9 @@ practice:
       A train moving at {{u}} m/s accelerates uniformly at {{a}} m/s² for {{t}} s.
       The driver then brakes uniformly and the train stops {{t2}} s later.
     params:
-      u: {choices: [0, 5, 10]}
-      a: {choices: [0.5, 1, 2]}
-      t: {choices: [10, 20, 30]}
+      u: {choices: [5, 10]}
+      a: {choices: [0.5, 1]}
+      t: {choices: [10, 20]}
       t2: {choices: [10, 15, 20, 25]}
     derived:
       vmax: "u + a * t"
@@ -252,9 +310,44 @@ practice:
               numeric: {value: "vmax", unit: m/s, mode: exact}
           - prompt: What is the size of its retardation while braking? Give 3 significant figures.
             answer:
-              numeric: {value: "vmax / t2", unit: m/s^2, mode: sigfig, sigfigs: 3}
+              numeric: {value: "vmax / t2", unit: m/s^2, mode: tolerance, rel_tol: 0.01}
           - prompt: How long is the train moving in total, from the start of the acceleration until it stops?
             answer:
               numeric: {value: "t + t2", unit: s, mode: exact}
     explanation: |
       v = {{u}} + {{a}} × {{t}} = {{vmax}} m/s; retardation = {{vmax}} ÷ {{t2}}; total time = {{t}} + {{t2}} s.
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      A metro train starts from rest at a station and accelerates uniformly at {{a}} m/s² for {{t1}} s. It then runs
+      at a steady speed for {{t2}} s, and finally brakes with a steady retardation of {{r}} m/s² until it stops at the
+      next station.
+    params:
+      a: {choices: [0.5, 1]}
+      t1: {choices: [20, 30, 40]}
+      t2: {choices: [30, 60, 90]}
+      r: {choices: [0.5, 1, 2]}
+    derived:
+      vmax: "a * t1"
+      tb: "vmax / r"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the train's top speed?
+            answer:
+              numeric: {value: "vmax", unit: m/s, mode: exact}
+          - prompt: How long does it take to stop once it starts braking?
+            answer:
+              numeric: {value: "tb", unit: s, mode: exact}
+          - prompt: What is its velocity 5 s before it stops?
+            answer:
+              numeric: {value: "r * 5", unit: m/s, mode: exact}
+          - prompt: How long does the whole trip take, from station to station?
+            answer:
+              numeric: {value: "t1 + t2 + tb", unit: s, mode: exact}
+    explanation: |
+      v = u + at = 0 + {{a}} × {{t1}} = {{vmax}} m/s. Braking: t = {{vmax}} ÷ {{r}} = {{tb}} s.
+      5 s before stopping the train still has 5 s of braking left, so v = {{r}} × 5.
+      Total time = {{t1}} + {{t2}} + {{tb}} s.

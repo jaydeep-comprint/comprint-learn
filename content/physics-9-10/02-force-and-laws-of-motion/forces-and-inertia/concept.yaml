@@ -1,0 +1,613 @@
+id: forces-and-inertia
+title: Forces and inertia
+summary: "Balanced and unbalanced forces, Newton's first law, friction, and inertia: why things keep doing what they are doing."
+prereqs:
+  - {concept: acceleration, weight: 0.3}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    A hockey puck slides across very smooth ice in a straight line at a steady velocity. Which statement about
+    the forces on it is true?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "The forces on it are balanced, so the net force is zero.", correct: true}
+        - {id: b, text: "There must be a forward force on it to keep it moving.", misconception: motion-needs-force}
+        - {id: c, text: "The forward force on it is slowly running out."}
+  explanation: |
+    By Newton's first law, an object keeps moving at a constant velocity unless an unbalanced force acts on it.
+    A steady velocity means the net force is zero. No forward force is needed to keep the puck moving: a force
+    would be needed to speed it up, slow it down or turn it.
+
+kps:
+  - id: kp1
+    title: Balanced and unbalanced forces
+    worked_example: kp-1-worked.md
+    key_prereqs: []
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          Two children push a cart towards the east, one with a force of {{f1}} N and the other with {{f2}} N.
+          Ignore friction. What is the size of the net force on the cart?
+        params:
+          f1: {min: 20, max: 60, step: 5}
+          f2: {choices: [15, 25, 30, 40]}
+        derived: {s: "f1 + f2"}
+        answer:
+          numeric: {value: "s", unit: N, mode: exact}
+        explanation: |
+          Forces in the same direction add: {{f1}} + {{f2}} = {{s}} N, towards the east.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          In a tug of war, team A pulls the rope to the left with a total force of {{a}} N and team B pulls it
+          to the right with a total force of {{b}} N. What is the size of the net force on the rope?
+        params:
+          a: {min: 300, max: 500, step: 50}
+          d: {choices: [20, 40, 50, 80, 100]}
+        derived: {b: "a + d"}
+        answer:
+          numeric: {value: "d", unit: N, mode: exact}
+        explanation: |
+          Forces in opposite directions subtract: {{b}} − {{a}} = {{d}} N. The net force points the way of the
+          bigger force, to the right, so the rope moves towards team B.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Take east as the positive direction. A box has a force of {{e}} N pushing it east and a force of
+          {{w}} N pushing it west. What is the net force on the box? (Include the sign.)
+        params:
+          e: {min: 40, max: 80, step: 5}
+          d: {choices: [-30, -20, -10, 10, 15, 25]}
+        derived: {w: "e - d"}
+        answer:
+          numeric: {value: "d", unit: N, mode: exact}
+        explanation: |
+          Net force = (east force) − (west force) = {{e}} − {{w}} = {{d}} N. A positive answer means the net force
+          points east; a negative one means it points west.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Three forces act on a crate along a straight line: {{a}} N towards the east, {{b}} N towards the east and
+          {{c}} N towards the west. What extra force, pushing towards the west, would make the forces balanced?
+        params:
+          a: {min: 20, max: 50, step: 10}
+          b: {choices: [15, 25, 35]}
+          x: {choices: [5, 10, 20, 30]}
+        derived:
+          e: "a + b"
+          c: "a + b - x"
+        answer:
+          numeric: {value: "x", unit: N, mode: exact}
+        explanation: |
+          East: {{a}} + {{b}} = {{e}} N. West: {{c}} N. The net force is {{e}} − {{c}} = {{x}} N to the east,
+          so an extra {{x}} N to the west makes the net force zero: the forces are then balanced.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A trolley is already rolling along a level floor. Two horizontal forces act on it: 20 N forwards and
+          20 N backwards. What happens to its motion?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "It keeps moving at the same speed in the same direction.", correct: true}
+              - {id: b, text: "It slows down and stops, because no net force is keeping it moving.", misconception: motion-needs-force}
+              - {id: c, text: "It stops at once."}
+        explanation: |
+          20 N forwards and 20 N backwards are balanced: the net force is zero. Balanced forces cause no change in
+          motion, so the trolley keeps its speed and direction.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Two people push a handcart forwards with forces of {{p1}} N and {{p2}} N. Friction from the road acts
+          backwards with a force of {{f}} N. What is the size of the net force on the handcart?
+        params:
+          p1: {min: 40, max: 80, step: 10}
+          p2: {choices: [30, 45, 50]}
+          f: {choices: [20, 25, 35]}
+        derived:
+          s: "p1 + p2"
+          n: "p1 + p2 - f"
+        answer:
+          numeric: {value: "n", unit: N, mode: exact}
+        explanation: |
+          Forwards: {{p1}} + {{p2}} = {{s}} N. Backwards: {{f}} N.
+          Net force = {{s}} − {{f}} = {{n}} N, forwards.
+      - id: kp1-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          In a tug of war, team A has {{na}} children who each pull with {{fa}} N. Team B, pulling the other way,
+          has {{nb}} children who each pull with {{fb}} N. What is the size of the net force on the rope?
+        params:
+          na: {choices: [3, 4]}
+          fa: {choices: [100, 120, 150]}
+          nb: {choices: [4, 5]}
+          fb: {choices: [70, 80, 90]}
+        derived:
+          ta: "na * fa"
+          tb: "nb * fb"
+          n: "abs(ta - tb)"
+        answer:
+          numeric: {value: "n", unit: N, mode: exact}
+        explanation: |
+          Team A: {{na}} × {{fa}} = {{ta}} N. Team B: {{nb}} × {{fb}} = {{tb}} N.
+          They pull in opposite directions, so subtract the smaller total from the bigger one: the net force is
+          {{n}} N, towards the stronger team. (If the totals are equal, the forces are balanced and the net force is 0.)
+
+  - id: kp2
+    title: Newton's first law and friction
+    worked_example: kp-2-worked.md
+    key_prereqs: [acceleration]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          You push a heavy cupboard across the floor with a force of {{p}} N, but it does not move.
+          What is the size of the friction force from the floor on the cupboard?
+        params:
+          p: {min: 100, max: 300, step: 20}
+        answer:
+          numeric: {value: "p", unit: N, mode: exact}
+        explanation: |
+          The cupboard stays at rest, so the forces on it are balanced. Friction must be {{p}} N, opposite to your push.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Two children push a box across the floor in the same direction, one with {{p1}} N and the other with
+          {{p2}} N. The box moves at a constant velocity. What is the size of the friction force on the box?
+        params:
+          p1: {min: 20, max: 60, step: 5}
+          p2: {choices: [15, 25, 30, 40]}
+        derived: {s: "p1 + p2"}
+        answer:
+          numeric: {value: "s", unit: N, mode: exact}
+        explanation: |
+          Constant velocity means zero acceleration, so the net force is zero. Friction balances the total push:
+          {{p1}} + {{p2}} = {{s}} N, backwards.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A cart moves along a level road at a constant velocity. The friction on it is {{f}} N. One person pulls it
+          forwards with {{p1}} N and a second person pushes it forwards too. How hard does the second person push?
+        params:
+          p1: {min: 30, max: 70, step: 10}
+          x: {choices: [15, 20, 25, 35, 45]}
+        derived: {f: "p1 + x"}
+        answer:
+          numeric: {value: "x", unit: N, mode: exact}
+        explanation: |
+          At constant velocity the forwards forces balance friction: {{p1}} + push = {{f}},
+          so the push is {{f}} − {{p1}} = {{x}} N.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A trolley moves at a constant velocity when it is pushed with {{p}} N. The push is increased to {{p2}} N
+          and the friction stays the same. What is the size of the unbalanced force on the trolley now?
+        params:
+          p: {choices: [40, 50, 60, 80]}
+          d: {choices: [10, 15, 20, 25]}
+        derived: {p2: "p + d"}
+        answer:
+          numeric: {value: "d", unit: N, mode: exact}
+        explanation: |
+          At constant velocity, friction = push = {{p}} N. With the new push, the net force is {{p2}} − {{p}} = {{d}} N
+          forwards, so the trolley now speeds up.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A football is kicked along a grassy field. It rolls more and more slowly and stops. Why does it stop?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Friction from the grass acts against its motion.", correct: true}
+              - {id: b, text: "The force of the kick gets used up.", misconception: motion-needs-force}
+              - {id: c, text: "Its inertia runs out."}
+        explanation: |
+          Once the ball leaves the foot, the kick no longer acts on it. Friction from the grass (and air resistance)
+          is an unbalanced force against the motion, so the ball slows down. On smooth ice it would roll much
+          farther, because the friction is much smaller.
+      - id: kp2-q6
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A space probe far from any planet or star is moving in a straight line. Its engines are switched off.
+          There is no air and no friction. What does it do?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "It keeps moving in a straight line at the same speed.", correct: true}
+              - {id: b, text: "It slowly comes to a stop.", misconception: motion-needs-force}
+              - {id: c, text: "It starts to move in a circle."}
+        explanation: |
+          No force acts on the probe, so by Newton's first law its motion does not change: same speed, same
+          direction. Things on Earth stop only because friction or air resistance acts on them.
+      - id: kp2-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car moves along a straight road at a constant velocity. The engine gives a forward force of {{F}} N.
+          Air resistance on the car is {{a}} N. The rest of the backward force is rolling friction from the road.
+          What is the rolling friction from the road?
+        params:
+          a: {min: 200, max: 600, step: 100}
+          r: {choices: [300, 400, 500, 700]}
+        derived: {F: "a + r"}
+        answer:
+          numeric: {value: "r", unit: N, mode: exact}
+        explanation: |
+          Constant velocity means the forces are balanced: forward {{F}} N = air resistance + road friction.
+          Rolling friction = {{F}} − {{a}} = {{r}} N.
+      - id: kp2-q8
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A box slides across the floor after a push and nothing pushes it any more. Friction on it is {{f}} N.
+          Take the direction the box is moving as positive. What is the net force on the box? (Include the sign.)
+        params:
+          f: {choices: [5, 8, 12, 15, 20, 25]}
+        answer:
+          numeric: {value: "-f", unit: N, mode: exact}
+        explanation: |
+          The only horizontal force is friction, {{f}} N, acting against the motion, so the net force is −{{f}} N.
+          This unbalanced force is what slows the box down.
+
+  - id: kp3
+    title: Inertia and mass
+    worked_example: kp-3-worked.md
+    key_prereqs: []
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A cricket ball has a mass of {{m1}} g. A shot-put ball has a mass of {{m2}} kg. How many times as much
+          inertia as the cricket ball does the shot-put ball have?
+        params:
+          m1: {choices: [125, 160, 200, 250]}
+          k: {choices: [10, 20, 25, 30]}
+        derived:
+          g: "m1 * k"
+          m2: "m1 * k / 1000"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Mass is the measure of inertia, so compare the masses in the same unit: {{m2}} kg = {{g}} g.
+          {{g}} ÷ {{m1}} = {{k}} times as much inertia.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          An empty truck has a mass of {{m}} kg. It is loaded with {{l}} kg of bricks. How many times as
+          much inertia does the loaded truck have as the empty one? Give it as a decimal if needed.
+        params:
+          m: {choices: [2000, 4000, 5000]}
+          k: {choices: [1.5, 2, 3, 4]}
+        derived:
+          l: "m * (k - 1)"
+          t: "m * k"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Loaded mass = {{m}} + {{l}} = {{t}} kg. Inertia goes with mass: {{t}} ÷ {{m}} = {{k}} times.
+          That is why a loaded truck is harder to start and to stop.
+      - id: kp3-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A bag of rice has a mass of {{a}} g, a watermelon {{b}} kg and a pumpkin {{c}} kg.
+          Which of the three has the most inertia? Give its mass in kg.
+        params:
+          a: {choices: [1500, 2500, 3500, 4500]}
+          b: {choices: [1.8, 2.2, 3.2, 4.2]}
+          c: {choices: [1.2, 2.8, 3.8]}
+        derived:
+          ra: "a / 1000"
+          mx: "Max(a / 1000, Max(b, c))"
+        answer:
+          numeric: {value: "mx", unit: kg, mode: exact}
+        explanation: |
+          The object with the biggest mass has the most inertia. Put the masses in the same unit first:
+          rice {{ra}} kg, watermelon {{b}} kg, pumpkin {{c}} kg. The largest is
+          {{mx}} kg.
+      - id: kp3-q4
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A toy car has a mass of {{m}} kg on Earth. It is taken to the Moon, where things feel much lighter.
+          What is its mass on the Moon?
+        params:
+          m: {choices: [0.5, 1.2, 2, 2.5, 3, 4]}
+        answer:
+          numeric: {value: "m", unit: kg, mode: exact}
+        explanation: |
+          Mass is the amount of matter and the measure of inertia. It doesn't depend on where the object is, so it
+          is still {{m}} kg. (What changes on the Moon is the pull of gravity on it, its weight.)
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A bus moving along a road brakes suddenly. The standing passengers lurch forwards. Why?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Their bodies tend to keep moving forwards while the bus slows down.", correct: true}
+              - {id: b, text: "A forward force from the moving bus pushes them forwards.", misconception: motion-needs-force}
+              - {id: c, text: "The brakes push the passengers forwards."}
+        explanation: |
+          This is inertia of motion. The brakes slow the bus (and the passengers' feet, through friction), but the
+          upper body tends to keep moving forwards at the old speed. No forward force is needed for that.
+      - id: kp3-q6
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          An astronaut floating in a spacecraft gives a gentle push to a 50 kg box that floats beside her.
+          Compared with pushing the same box along very smooth ice on Earth, how hard is it to get moving?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "About as hard: it has the same mass, so the same inertia.", correct: true}
+              - {id: b, text: "Much easier: it weighs nothing there, so it has no inertia.", misconception: mass-is-weight}
+              - {id: c, text: "Much harder."}
+        explanation: |
+          Inertia depends on mass, and the box still has 50 kg of matter. Feeling weightless doesn't remove its
+          inertia: it resists starting and stopping just as much.
+      - id: kp3-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          An empty trolley has a mass of {{m}} kg. Boxes are loaded onto it until it has {{k}} times as much
+          inertia as when it was empty. What mass of boxes was added?
+        params:
+          m: {choices: [10, 12, 15, 20, 25]}
+          k: {choices: [2, 3, 4]}
+        derived:
+          t: "m * k"
+          x: "m * (k - 1)"
+        answer:
+          numeric: {value: "x", unit: kg, mode: exact}
+        explanation: |
+          {{k}} times the inertia means {{k}} times the mass: {{k}} × {{m}} = {{t}} kg in total.
+          Boxes added = {{t}} − {{m}} = {{x}} kg.
+
+  - id: kp4
+    title: Identifying the forces in everyday situations
+    worked_example: kp-4-worked.md
+    key_prereqs: [acceleration]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A book lies at rest on a table. The Earth pulls it downwards with a force of {{w}} N.
+          With what force does the table push up on the book?
+        params:
+          w: {choices: [2, 3, 4, 5, 6, 8]}
+        answer:
+          numeric: {value: "w", unit: N, mode: exact}
+        explanation: |
+          The book is at rest, so the forces on it are balanced: the table pushes up with {{w}} N.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A lamp hangs at rest from a string. The Earth pulls the lamp downwards with a force of {{w}} N.
+          What is the pull of the string on the lamp?
+        params:
+          w: {choices: [5, 8, 12, 15, 20]}
+        answer:
+          numeric: {value: "w", unit: N, mode: exact}
+        explanation: |
+          At rest means balanced: the string pulls up with {{w}} N, equal to the Earth's pull down.
+      - id: kp4-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          Four forces act on a box on the floor: the Earth pulls it down with {{w}} N, the floor pushes it up with
+          {{w}} N, a girl pushes it east with {{p}} N and friction acts on it towards the west with {{f}} N.
+          What is the size of the net force on the box?
+        params:
+          w: {choices: [100, 150, 200]}
+          p: {min: 40, max: 90, step: 10}
+          d: {choices: [10, 15, 20, 30]}
+        derived: {f: "p - d"}
+        answer:
+          numeric: {value: "d", unit: N, mode: exact}
+        explanation: |
+          Up and down: {{w}} N and {{w}} N are balanced. East and west: {{p}} − {{f}} = {{d}} N east.
+          So the net force is {{d}} N towards the east, and the box speeds up in that direction.
+      - id: kp4-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A shop sign hangs at rest from two vertical ropes that pull equally. The Earth pulls the sign
+          downwards with {{w}} N. How hard does each rope pull?
+        params:
+          w: {choices: [40, 60, 80, 100, 120, 150]}
+        derived: {h: "w / 2"}
+        answer:
+          numeric: {value: "h", unit: N, mode: exact}
+        explanation: |
+          At rest, the two upward pulls together balance the {{w}} N downwards: each rope pulls {{w}} ÷ 2 = {{h}} N.
+      - id: kp4-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A skydiver with an open parachute falls straight down at a steady speed. What is the net force on her?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Zero: air resistance up balances the Earth's pull down.", correct: true}
+              - {id: b, text: "Downwards, because she is moving downwards.", misconception: motion-needs-force}
+              - {id: c, text: "Upwards, because the parachute is slowing her."}
+        explanation: |
+          A steady speed in a straight line means no change in motion, so the forces are balanced and the net
+          force is zero. Moving downwards doesn't need a downward net force.
+      - id: kp4-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Take forwards as positive. A motorboat's engine pushes it forwards with {{e}} N. Water resistance pushes
+          it back with {{r}} N, and a wind from the front pushes it back with {{w}} N.
+          What is the net force on the boat? (Include the sign.)
+        params:
+          e: {min: 600, max: 1000, step: 100}
+          r: {choices: [300, 400, 500]}
+          w: {choices: [100, 200, 300, 400]}
+        derived: {n: "e - r - w"}
+        answer:
+          numeric: {value: "n", unit: N, mode: exact}
+        explanation: |
+          Net force = {{e}} − {{r}} − {{w}} = {{n}} N. Positive means the boat speeds up, negative means it slows
+          down, and zero means its velocity stays the same.
+      - id: kp4-q7
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A ball is thrown straight up. It has left the hand and is still rising. Ignoring air resistance, which
+          forces act on it?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Only the Earth's pull downwards.", correct: true}
+              - {id: b, text: "An upward force from the throw and the Earth's pull downwards.", misconception: motion-needs-force}
+              - {id: c, text: "No forces at all."}
+        explanation: |
+          The hand pushed the ball only while touching it. After that, the only force is the Earth's pull, which is
+          why the rising ball slows down. It keeps rising for a while because of its inertia, not because of a force.
+      - id: kp4-q8
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A lift moves upwards at a steady speed. Its cable pulls it up with {{t}} N. Ignoring friction and air,
+          how strongly does the Earth pull the lift down?
+        params:
+          t: {choices: [4000, 5000, 6000, 7500, 8000]}
+        answer:
+          numeric: {value: "t", unit: N, mode: exact}
+        explanation: |
+          Steady speed in a straight line means balanced forces, even while moving: the Earth's pull is also {{t}} N.
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A large box rests on the floor. Two people push it in the same direction, with {{p1}} N and {{p2}} N.
+      Friction from the floor on the box is {{f}} N while it slides, and the box starts to slide.
+      Draw the horizontal forces as arrows, then answer.
+    params:
+      p1: {min: 60, max: 120, step: 10}
+      p2: {choices: [40, 50, 70]}
+      f: {choices: [50, 60, 80, 90]}
+    derived:
+      s: "p1 + p2"
+      n: "p1 + p2 - f"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the size of the net force on the box while they both push?
+            answer:
+              numeric: {value: "n", unit: N, mode: exact}
+          - prompt: What happens to the box while they both push?
+            answer:
+              mcq:
+                options:
+                  - {id: a, text: "It starts moving and keeps speeding up.", correct: true}
+                  - {id: b, text: "It moves at a constant velocity, because a steady push gives a steady speed.", misconception: motion-needs-force}
+                  - {id: c, text: "It stays at rest."}
+          - prompt: What total push would keep the box sliding at a constant velocity?
+            answer:
+              numeric: {value: "f", unit: N, mode: exact}
+          - prompt: |
+              While the box is sliding, both people stop pushing. Take the direction of motion as positive.
+              What is the net force on the box now? (Include the sign.)
+            answer:
+              numeric: {value: "-f", unit: N, mode: exact}
+    explanation: |
+      Pushes: {{p1}} + {{p2}} = {{s}} N forwards; friction {{f}} N backwards. Net force {{n}} N forwards, an
+      unbalanced force, so the box speeds up. A push of exactly {{f}} N balances friction (constant velocity).
+      With no push, only friction acts: net force −{{f}} N, so the box slows down and stops.
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A car moves along a straight, level road. Its engine gives a forward force of {{F}} N. Air resistance on it
+      is {{a}} N and rolling friction from the road is {{r}} N. Take forwards as positive.
+    params:
+      F: {min: 1500, max: 3000, step: 250}
+      a: {choices: [300, 400, 500, 600]}
+      r: {choices: [200, 300, 400]}
+    derived:
+      b: "a + r"
+      n: "F - a - r"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the total backward force on the car?
+            answer:
+              numeric: {value: "b", unit: N, mode: exact}
+          - prompt: What is the net force on the car? (Include the sign.)
+            answer:
+              numeric: {value: "n", unit: N, mode: exact}
+          - prompt: What engine force would make the car move at a constant velocity (with the same backward forces)?
+            answer:
+              numeric: {value: "b", unit: N, mode: exact}
+          - prompt: |
+              The driver takes her foot off the accelerator, so the engine force drops to zero. The backward forces
+              stay the same for a moment. What is the net force on the car then? (Include the sign.)
+            answer:
+              numeric: {value: "-b", unit: N, mode: exact}
+    explanation: |
+      Backward forces: {{a}} + {{r}} = {{b}} N. Net force = {{F}} − {{b}} = {{n}} N forwards, so the car speeds up.
+      An engine force of {{b}} N would balance them (constant velocity). With no engine force the net force is
+      −{{b}} N, so the car slows down.

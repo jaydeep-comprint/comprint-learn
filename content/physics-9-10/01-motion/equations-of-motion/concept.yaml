@@ -1,0 +1,660 @@
+id: equations-of-motion
+title: Equations of motion
+summary: "Using v = u + at, s = ut + ½at² and v² = u² + 2as to solve problems with uniform acceleration, including braking."
+prereqs:
+  - {concept: acceleration, weight: 0.8}
+  - {concept: motion-graphs, weight: 0.3}
+  - {concept: maths-9-10/linear-equations-two-variables, weight: 0.2}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    A car moving forward slows down from 20 m/s to 10 m/s. You use $v^2 = u^2 + 2as$, taking the direction the
+    car moves as positive. Which signs are correct?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "a is negative and s is positive", correct: true}
+        - {id: b, text: "a and s are both negative, because the car is slowing down", misconception: negative-means-decreasing}
+        - {id: c, text: "a and s are both positive"}
+  explanation: |
+    The car still moves forward, so its displacement s is positive. It is slowing down, so its acceleration
+    points backwards: a is negative. A minus sign shows a direction, not that something is "getting smaller".
+
+kps:
+  - id: kp1
+    title: "Distance with uniform acceleration: s = ut + ½at²"
+    worked_example: kp-1-worked.md
+    key_prereqs: [acceleration]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A car starts from rest and accelerates uniformly at {{a}} m/s² for {{t}} s. How far does it travel?
+          Give it as a decimal if needed.
+        params:
+          a: {choices: [1, 2, 3, 4]}
+          t: {choices: [2, 3, 4, 5, 6, 8, 10]}
+        answer:
+          numeric: {value: "a * t^2 / 2", unit: m, mode: exact}
+        explanation: |
+          From rest, u = 0, so s = ½at² = ½ × {{a}} × {{t}}² = {{s}} m.
+        derived: {s: "a * t^2 / 2"}
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A bus moving at {{u}} m/s accelerates uniformly at {{a}} m/s² for {{t}} s. What distance does it cover in
+          that time?
+        params:
+          u: {choices: [2, 4, 5, 10]}
+          a: {choices: [1, 2]}
+          t: {choices: [2, 4, 5, 6]}
+        derived:
+          s1: "u * t"
+          s2: "a * t^2 / 2"
+        answer:
+          numeric: {value: "s1 + s2", unit: m, mode: exact}
+        explanation: |
+          s = ut + ½at² = {{u}} × {{t}} + ½ × {{a}} × {{t}}² = {{s1}} + {{s2}} m.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A toy car starts from rest and accelerates uniformly. It covers {{s}} m in {{t}} s. What is its
+          acceleration? Give it as a decimal if needed.
+        params:
+          a: {choices: [0.5, 1, 2, 3, 4]}
+          t: {choices: [2, 4]}
+        derived: {s: "a * t^2 / 2"}
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: exact}
+        explanation: |
+          From rest, s = ½at², so a = 2s ÷ t² = 2 × {{s}} ÷ {{t}}² = {{a}} m/s².
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car moving at {{u}} m/s brakes with a steady retardation of {{r}} m/s². How far does it travel in the
+          first {{t}} s of braking?
+        params:
+          u: {choices: [20, 30]}
+          r: {choices: [2, 4]}
+          t: {choices: [2, 3, 4]}
+        derived:
+          s1: "u * t"
+          s2: "r * t^2 / 2"
+        answer:
+          numeric: {value: "s1 - s2", unit: m, mode: exact}
+        explanation: |
+          Take the direction of motion as positive, so a = −{{r}} m/s².
+          s = ut + ½at² = {{u}} × {{t}} − ½ × {{r}} × {{t}}² = {{s1}} − {{s2}} m.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          An object speeds up uniformly from u to v in time t. The distance $s = ut + \tfrac{1}{2}at^2$ is the same
+          as which feature of its velocity–time graph?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: The area under the line from 0 to t, correct: true}
+              - {id: b, text: The slope of the line, misconception: slope-vs-area}
+              - {id: c, text: The height of the line at time t}
+        explanation: |
+          The area under a velocity–time graph is the displacement: a rectangle u × t plus a triangle
+          ½ × t × at gives ut + ½at². The slope is the acceleration, and the height at t is the velocity v.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A stone is dropped from rest from a bridge and hits the water {{t}} s later. Take g = 10 m/s² and ignore
+          air resistance. How high is the bridge above the water? Give it as a decimal if needed.
+        params:
+          t: {choices: [1, 1.5, 2, 2.5, 3]}
+        derived: {h: "5 * t^2"}
+        answer:
+          numeric: {value: "h", unit: m, mode: tolerance, rel_tol: 0.01}
+        explanation: |
+          The stone starts from rest with a = 10 m/s², so s = ½at² = ½ × 10 × {{t}}² = {{h}} m.
+      - id: kp1-q7
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          A cyclist accelerates uniformly at {{a}} m/s² and covers {{s}} m in {{t}} s. What was her velocity at the
+          start of those {{t}} s?
+        params:
+          u: {choices: [2, 4, 6, 8]}
+          a: {choices: [1, 2]}
+          t: {choices: [2, 4, 5]}
+        derived:
+          s2: "a * t^2 / 2"
+          s: "u * t + s2"
+        answer:
+          numeric: {value: "u", unit: m/s, mode: exact}
+        explanation: |
+          s = ut + ½at², so {{s}} = {{t}}u + ½ × {{a}} × {{t}}² = {{t}}u + {{s2}}.
+          Then {{t}}u = {{s}} − {{s2}}, so u = {{u}} m/s.
+      - id: kp1-q8
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A train starts from rest and accelerates uniformly at 0.5 m/s² for 2 minutes. How far does it travel?
+        answer:
+          numeric: {value: 3600, unit: m, mode: exact}
+        explanation: |
+          Convert first: 2 min = 120 s. s = ½at² = ½ × 0.5 × 120² = 0.25 × 14 400 = 3600 m (3.6 km).
+
+  - id: kp2
+    title: "Speed and distance without time: v² = u² + 2as"
+    worked_example: kp-2-worked.md
+    key_prereqs: [acceleration]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A car starts from rest and accelerates uniformly at {{a}} m/s² over a distance of {{s}} m.
+          What is its velocity at the end?
+        params:
+          v: {choices: [4, 6, 8, 10, 12, 20]}
+          a: {choices: [1, 2, 4]}
+        derived: {s: "v^2 / (2 * a)"}
+        answer:
+          numeric: {value: "v", unit: m/s, mode: exact}
+        explanation: |
+          v² = u² + 2as = 0 + 2 × {{a}} × {{s}} = {{v}}², so v = {{v}} m/s.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A scooter speeds up uniformly from {{u}} m/s to {{v}} m/s with an acceleration of {{a}} m/s².
+          How far does it travel while speeding up? Give it as a decimal if needed.
+        params:
+          u: {choices: [2, 4, 6]}
+          v: {choices: [10, 12, 14, 16]}
+          a: {choices: [1, 2, 4]}
+        derived: {s: "(v^2 - u^2) / (2 * a)"}
+        answer:
+          numeric: {value: "s", unit: m, mode: exact}
+        explanation: |
+          s = (v² − u²) ÷ 2a = ({{v}}² − {{u}}²) ÷ (2 × {{a}}) = {{s}} m.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A motorbike moving at {{u}} m/s accelerates uniformly at {{a}} m/s² over a distance of {{s}} m.
+          What is its final velocity?
+        params:
+          u: {choices: [2, 4, 5, 6]}
+          v: {choices: [8, 10, 12, 15, 20]}
+          a: {choices: [1, 2, 2.5]}
+        derived:
+          s: "(v^2 - u^2) / (2 * a)"
+          vsq: "v^2"
+        answer:
+          numeric: {value: "v", unit: m/s, mode: exact}
+        explanation: |
+          v² = u² + 2as = {{u}}² + 2 × {{a}} × {{s}} = {{vsq}}, so v = √{{vsq}} = {{v}} m/s.
+          Take the square root at the end, after adding.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car speeds up uniformly from {{u}} m/s to {{v}} m/s over a distance of {{s}} m. What is its
+          acceleration?
+        params:
+          u: {choices: [0, 4, 6]}
+          v: {choices: [10, 14, 20]}
+          a: {choices: [1, 2, 4]}
+        derived: {s: "(v^2 - u^2) / (2 * a)"}
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: exact}
+        explanation: |
+          a = (v² − u²) ÷ 2s = ({{v}}² − {{u}}²) ÷ (2 × {{s}}) = {{a}} m/s².
+      - id: kp2-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          An aircraft starts from rest and accelerates uniformly at {{a}} m/s² along a runway. It needs a speed of
+          {{v}} m/s to take off. What is the shortest runway it can use? Give it as a decimal if needed.
+        params:
+          v: {choices: [50, 60, 70, 80]}
+          a: {choices: [2, 4, 5]}
+        derived: {s: "v^2 / (2 * a)"}
+        answer:
+          numeric: {value: "s", unit: m, mode: exact}
+        explanation: |
+          From rest, s = v² ÷ 2a = {{v}}² ÷ (2 × {{a}}) = {{s}} m.
+      - id: kp2-q6
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          Which expression gives the displacement s from $v^2 = u^2 + 2as$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$s = \\dfrac{v^2 - u^2}{2a}$", correct: true}
+              - {id: b, text: "$s = \\dfrac{2a}{v^2 - u^2}$", misconception: rearranges-formula-wrongly}
+              - {id: c, text: "$s = \\dfrac{(v - u)^2}{2a}$"}
+        explanation: |
+          Subtract u² from both sides: v² − u² = 2as. Then divide both sides by 2a.
+          Note that v² − u² is not the same as (v − u)².
+      - id: kp2-q7
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          A car starts from rest and accelerates uniformly. It reaches {{v}} m/s after covering {{s1}} m.
+          With the same acceleration, how much farther does it travel while speeding up from {{v}} m/s to
+          {{v2}} m/s? Give it as a decimal if needed.
+        params:
+          v: {choices: [4, 6, 8, 10]}
+          a: {choices: [1, 2]}
+        derived:
+          s1: "v^2 / (2 * a)"
+          v2: "2 * v"
+        answer:
+          numeric: {value: "3 * s1", unit: m, mode: exact}
+        explanation: |
+          From rest, s = v² ÷ 2a, so a = {{v}}² ÷ (2 × {{s1}}) = {{a}} m/s².
+          From {{v}} to {{v2}} m/s: s = ({{v2}}² − {{v}}²) ÷ (2 × {{a}}), which is 3 × {{s1}} m.
+          Doubling the speed takes 4 times the distance from rest, so the extra part is 3 times the first.
+      - id: kp2-q8
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A train speeds up uniformly from 36 km/h to 72 km/h over a distance of 300 m. What is its acceleration?
+          Give it as a decimal if needed.
+        answer:
+          numeric: {value: 0.5, unit: m/s^2, mode: exact}
+        explanation: |
+          Convert first: 36 km/h = 10 m/s and 72 km/h = 20 m/s.
+          a = (v² − u²) ÷ 2s = (400 − 100) ÷ 600 = 0.5 m/s².
+
+  - id: kp3
+    title: Choosing the right equation
+    worked_example: kp-3-worked.md
+    key_prereqs: [acceleration, maths-9-10/linear-equations-two-variables]
+    items:
+      - id: kp3-q1
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          A ball is thrown straight up. You know its starting speed and want the greatest height it reaches.
+          Take upwards as positive. Which is the best way to find it?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Use v² = u² + 2as with v = 0 at the top and a = −g", correct: true}
+              - {id: b, text: "Use s = ut + ½at² with a = 0 at the top, because the ball stops there", misconception: zero-velocity-means-zero-acceleration}
+              - {id: c, text: "Use v = u + at with t = 0 at the top"}
+        explanation: |
+          Knowns: u, v = 0 at the top, a = −g. Wanted: s. Time is not known or wanted, so the equation with no t
+          fits. The acceleration is still −g at the top, even though the ball is momentarily at rest.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car speeds up uniformly from {{u}} m/s to {{v}} m/s while covering {{s}} m. How long does this take?
+          Give it as a decimal if needed.
+        params:
+          u: {choices: [0, 2, 4, 6]}
+          v: {choices: [10, 12, 14, 16, 20]}
+          t: {choices: [4, 5, 8, 10]}
+        derived: {s: "(u + v) * t / 2"}
+        answer:
+          numeric: {value: "t", unit: s, mode: exact}
+        explanation: |
+          Knowns: u, v, s. Want: t. Either find a = (v² − u²) ÷ 2s and then t = (v − u) ÷ a, or use the average
+          velocity: s = ½(u + v)t, so t = 2 × {{s}} ÷ ({{u}} + {{v}}) = {{t}} s.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A bus moving at {{u}} m/s accelerates uniformly and covers {{s}} m in the next {{t}} s. What is its
+          acceleration? Give it as a decimal if needed.
+        params:
+          u: {choices: [2, 4, 5, 10]}
+          a: {choices: [0.5, 1, 2, 3]}
+          t: {choices: [2, 4, 5, 6]}
+        derived:
+          s1: "u * t"
+          s: "s1 + a * t^2 / 2"
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: exact}
+        explanation: |
+          Knowns: u, s, t. Want: a. The equation with no v is s = ut + ½at²:
+          {{s}} = {{u}} × {{t}} + ½ × a × {{t}}², so ½ × a × {{t}}² = {{s}} − {{s1}} and a = {{a}} m/s².
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A cyclist speeds up uniformly from {{u}} m/s to {{v}} m/s in {{t}} s. How far does she travel in that
+          time? Give it as a decimal if needed.
+        params:
+          u: {choices: [4, 6, 8]}
+          v: {choices: [10, 12, 16, 20]}
+          t: {choices: [4, 5, 6, 10]}
+        derived: {s: "(u + v) * t / 2"}
+        answer:
+          numeric: {value: "s", unit: m, mode: exact}
+        explanation: |
+          Knowns: u, v, t. Want: s. Find a = (v − u) ÷ t and use s = ut + ½at², or use the average velocity:
+          s = ½ × ({{u}} + {{v}}) × {{t}} = {{s}} m.
+      - id: kp3-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car starts from rest and accelerates uniformly at {{a}} m/s². How long does it take to cover {{s}} m?
+        params:
+          a: {choices: [2, 4, 5]}
+          t: {choices: [3, 4, 5, 6, 8]}
+        derived: {s: "a * t^2 / 2"}
+        answer:
+          numeric: {value: "t", unit: s, mode: exact}
+        explanation: |
+          Knowns: u = 0, a, s. Want: t. Use s = ut + ½at² with u = 0: t² = 2s ÷ a = 2 × {{s}} ÷ {{a}}, so
+          t = {{t}} s.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A train slows down uniformly from {{u}} m/s to {{v}} m/s with a retardation of {{r}} m/s². How far does
+          it travel while slowing down? Give it as a decimal if needed.
+        params:
+          u: {choices: [20, 25, 30]}
+          v: {choices: [10, 15]}
+          r: {choices: [0.5, 1, 2, 2.5]}
+        derived: {s: "(u^2 - v^2) / (2 * r)"}
+        answer:
+          numeric: {value: "s", unit: m, mode: exact}
+        explanation: |
+          Knowns: u, v, a = −{{r}} m/s². Want: s. No time, so use v² = u² + 2as:
+          s = ({{v}}² − {{u}}²) ÷ (2 × −{{r}}) = {{s}} m.
+      - id: kp3-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A ball is thrown straight up at {{u}} m/s. Take g = 10 m/s² and ignore air resistance. How high does it
+          rise? Give it as a decimal if needed.
+        params:
+          u: {choices: [10, 15, 20, 25, 30]}
+        derived: {h: "u^2 / 20"}
+        answer:
+          numeric: {value: "h", unit: m, mode: tolerance, rel_tol: 0.01}
+        explanation: |
+          Take upwards as positive. Knowns: u = {{u}} m/s, v = 0 at the top, a = −10 m/s². Want: s.
+          v² = u² + 2as gives 0 = {{u}}² − 20s, so s = {{u}}² ÷ 20 = {{h}} m.
+
+  - id: kp4
+    title: Braking and stopping distance
+    worked_example: kp-4-worked.md
+    key_prereqs: [acceleration, motion-graphs]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A car moving at {{u}} m/s brakes with a steady retardation of {{r}} m/s². How far does it travel before
+          it stops? Give it as a decimal if needed.
+        params:
+          u: {choices: [10, 15, 20, 25, 30]}
+          r: {choices: [2.5, 5]}
+        derived: {s: "u^2 / (2 * r)"}
+        answer:
+          numeric: {value: "s", unit: m, mode: exact}
+        explanation: |
+          v = 0 and a = −{{r}} m/s², so 0 = {{u}}² − 2 × {{r}} × s and s = {{u}}² ÷ (2 × {{r}}) = {{s}} m.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A bus moving at {{u}} m/s brakes with a steady retardation of {{r}} m/s². How long does it take to stop?
+          Give it as a decimal if needed.
+        params:
+          u: {choices: [10, 15, 20, 30]}
+          r: {choices: [2, 2.5, 4, 5]}
+        answer:
+          numeric: {value: "u / r", unit: s, mode: exact}
+        explanation: |
+          v = u + at with v = 0 and a = −{{r}}: 0 = {{u}} − {{r}}t, so t = {{u}} ÷ {{r}} s.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car moving at {{u}} m/s must stop in {{s}} m. What is the smallest steady retardation its brakes must give?
+          Give it as a decimal if needed.
+        params:
+          u: {choices: [10, 20, 30]}
+          r: {choices: [2, 4, 5]}
+        derived: {s: "u^2 / (2 * r)"}
+        answer:
+          numeric: {value: "r", unit: m/s^2, mode: exact}
+        explanation: |
+          0 = u² − 2 × r × s, so retardation r = u² ÷ 2s = {{u}}² ÷ (2 × {{s}}) = {{r}} m/s².
+      - id: kp4-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          A driver moving at {{u}} m/s sees a child on the road. Her reaction time is {{tr}} s, and then her brakes
+          give a steady retardation of {{r}} m/s². What is the total stopping distance, from the moment she sees
+          the child? Give it as a decimal if needed.
+        params:
+          u: {choices: [10, 15, 20, 25]}
+          tr: {choices: [0.5, 0.7, 1]}
+          r: {choices: [5, 10]}
+        derived:
+          d1: "u * tr"
+          d2: "u^2 / (2 * r)"
+        answer:
+          numeric: {value: "d1 + d2", unit: m, mode: tolerance, rel_tol: 0.01}
+        explanation: |
+          Reaction distance (still at full speed): {{u}} × {{tr}} = {{d1}} m.
+          Braking distance: {{u}}² ÷ (2 × {{r}}) = {{d2}} m. Add them for the total.
+      - id: kp4-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Take east as positive. A car is moving west and slowing down. What is the sign of its acceleration?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Positive, because it points east, opposite to the velocity", correct: true}
+              - {id: b, text: "Negative, because the car is slowing down", misconception: negative-means-decreasing}
+              - {id: c, text: "Zero, because braking is not acceleration"}
+        explanation: |
+          The car's velocity is negative (west). To slow it down, the acceleration must point the other way, east,
+          so it is positive. "Slowing down" means the acceleration is opposite to the velocity, not that it is negative.
+      - id: kp4-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A car braking from a certain speed stops in {{s}} m. With the same retardation, how far would it take to
+          stop from {{k}} times that speed?
+        params:
+          s: {choices: [10, 12, 15, 20, 25]}
+          k: {choices: [2, 3]}
+        answer:
+          numeric: {value: "k^2 * s", unit: m, mode: exact}
+        explanation: |
+          Braking distance = u² ÷ 2r, so it grows with the square of the speed. {{k}} times the speed gives
+          {{k}}² times the distance: {{k}}² × {{s}} m.
+      - id: kp4-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A scooter moving at {{ukmh}} km/h brakes with a steady retardation of {{r}} m/s². How far does it travel
+          before it stops? Give it as a decimal if needed.
+        params:
+          ukmh: {choices: [36, 54, 72, 90]}
+          r: {choices: [2.5, 5]}
+        derived:
+          u: "ukmh / 3.6"
+          s: "u^2 / (2 * r)"
+        answer:
+          numeric: {value: "s", unit: m, mode: tolerance, rel_tol: 0.02}
+        explanation: |
+          Convert first: {{ukmh}} km/h ÷ 3.6 = {{u}} m/s.
+          Braking distance = {{u}}² ÷ (2 × {{r}}) = {{s}} m.
+      - id: kp4-q8
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A train moving at {{u}} m/s brakes with a steady retardation of {{r}} m/s² for {{s}} m.
+          What is its velocity at the end of that distance?
+        params:
+          u: {choices: [20, 25, 30]}
+          v: {choices: [10, 15]}
+          r: {choices: [2, 2.5, 5]}
+        derived:
+          s: "(u^2 - v^2) / (2 * r)"
+          vsq: "v^2"
+        answer:
+          numeric: {value: "v", unit: m/s, mode: exact}
+        explanation: |
+          v² = u² + 2as = {{u}}² − 2 × {{r}} × {{s}} = {{vsq}}, so v = {{v}} m/s.
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      A car moving at {{u}} m/s accelerates uniformly at {{a}} m/s² for {{t1}} s. The driver then brakes with a
+      steady retardation of {{r}} m/s² until the car stops.
+    params:
+      u: {choices: [2, 3, 4]}
+      a: {choices: [1, 2]}
+      t1: {choices: [5, 6, 8, 10]}
+      r: {choices: [2, 4, 5]}
+    derived:
+      v: "u + a * t1"
+      s1: "u * t1 + a * t1^2 / 2"
+      tb: "v / r"
+      sb: "v^2 / (2 * r)"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the car's velocity at the end of the {{t1}} s?
+            answer:
+              numeric: {value: "v", unit: m/s, mode: exact}
+          - prompt: How far does it travel while speeding up? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "s1", unit: m, mode: tolerance, rel_tol: 0.02}
+          - prompt: How long does it take to stop once braking starts? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "tb", unit: s, mode: tolerance, rel_tol: 0.02}
+          - prompt: How far does it travel while braking? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "sb", unit: m, mode: tolerance, rel_tol: 0.02}
+    explanation: |
+      Speeding up: v = {{u}} + {{a}} × {{t1}} = {{v}} m/s, and s = {{u}} × {{t1}} + ½ × {{a}} × {{t1}}² = {{s1}} m.
+      Braking: t = {{v}} ÷ {{r}} = {{tb}} s (from v = u + at), and s = {{v}}² ÷ (2 × {{r}}) = {{sb}} m (from v² = u² + 2as).
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      A driver is moving at {{ukmh}} km/h when she sees a fallen tree across the road {{D}} m ahead. Her reaction
+      time is {{tr}} s, and then her brakes give a steady retardation of {{r}} m/s².
+    params:
+      ukmh: {choices: [36, 54, 72]}
+      tr: {choices: [0.5, 0.8, 1]}
+      r: {choices: [4, 5]}
+    derived:
+      u: "ukmh / 3.6"
+      d1: "u * tr"
+      d2: "u^2 / (2 * r)"
+      total: "d1 + d2"
+      D: "10 * ceiling(total / 10) + 10"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is her speed in m/s?
+            answer:
+              numeric: {value: "u", unit: m/s, mode: tolerance, rel_tol: 0.02}
+          - prompt: How far does the car travel during her reaction time? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "d1", unit: m, mode: tolerance, rel_tol: 0.02}
+          - prompt: How far does the car travel while braking? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "d2", unit: m, mode: tolerance, rel_tol: 0.02}
+          - prompt: How far short of the tree does the car stop? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "D - total", unit: m, mode: tolerance, rel_tol: 0.02}
+    explanation: |
+      {{ukmh}} km/h ÷ 3.6 = {{u}} m/s. Reaction distance = {{u}} × {{tr}} = {{d1}} m.
+      Braking distance = {{u}}² ÷ (2 × {{r}}) = {{d2}} m. Stopping distance = {{total}} m, so the car stops
+      {{D}} − {{total}} m before the tree.
+  - id: practice-3
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      A scooter speeds up uniformly from {{u}} m/s to {{v}} m/s while covering {{s}} m. It then keeps the same
+      acceleration for another {{T}} s.
+    params:
+      u: {choices: [2, 4, 5]}
+      a: {choices: [0.5, 1, 2]}
+      t: {choices: [4, 6, 8, 10]}
+      T: {choices: [2, 4]}
+    derived:
+      v: "u + a * t"
+      s: "u * t + a * t^2 / 2"
+      v2: "v + a * T"
+      s2: "v * T + a * T^2 / 2"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is its acceleration? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "a", unit: m/s^2, mode: tolerance, rel_tol: 0.02}
+          - prompt: How long does it take to speed up from {{u}} m/s to {{v}} m/s?
+            answer:
+              numeric: {value: "t", unit: s, mode: tolerance, rel_tol: 0.02}
+          - prompt: What is its velocity at the end of the extra {{T}} s?
+            answer:
+              numeric: {value: "v2", unit: m/s, mode: tolerance, rel_tol: 0.02}
+          - prompt: How far does it travel in those extra {{T}} s? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "s2", unit: m, mode: tolerance, rel_tol: 0.02}
+    explanation: |
+      No time given at first, so a = (v² − u²) ÷ 2s = ({{v}}² − {{u}}²) ÷ (2 × {{s}}) = {{a}} m/s².
+      Then t = (v − u) ÷ a = {{t}} s. For the extra {{T}} s, the starting velocity is {{v}} m/s:
+      v = {{v}} + {{a}} × {{T}} = {{v2}} m/s and s = {{v}} × {{T}} + ½ × {{a}} × {{T}}² = {{s2}} m.

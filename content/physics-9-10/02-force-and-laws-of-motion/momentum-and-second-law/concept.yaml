@@ -1,0 +1,664 @@
+id: momentum-and-second-law
+title: Momentum and the second law
+summary: "Momentum p = mv, and the second law: force is the rate of change of momentum, F = m(v − u)/t = ma."
+prereqs:
+  - {concept: forces-and-inertia, weight: 0.5}
+  - {concept: acceleration, weight: 0.6}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    A car moves along a straight, level road at a steady 20 m/s. Using F = ma, what is the net force on it?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "Zero, because its acceleration is zero", correct: true}
+        - {id: b, text: "A forward net force, needed to keep it moving", misconception: motion-needs-force}
+        - {id: c, text: "Its mass × 20, in newtons"}
+  explanation: |
+    The velocity isn't changing, so a = 0 and F = m × 0 = 0. The engine's push and friction balance.
+    A net force changes the velocity; it isn't needed to keep the car moving. (20 m/s is a velocity, not an
+    acceleration, so mass × 20 is not a force.)
+
+kps:
+  - id: kp1
+    title: Momentum, p = mv
+    worked_example: kp-1-worked.md
+    key_prereqs: []
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A cyclist and her bicycle have a total mass of {{m}} kg and move at {{v}} m/s. What is their momentum?
+        params:
+          m: {choices: [50, 60, 70, 80]}
+          v: {choices: [3, 4, 5, 6, 8]}
+        derived: {p: "m * v"}
+        answer:
+          numeric: {value: "p", unit: kg*m/s, mode: exact}
+        explanation: |
+          p = m × v = {{m}} × {{v}} = {{p}} kg m/s.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A cricket ball of mass {{mg}} g is bowled at {{v}} m/s. What is its momentum? Give it as a decimal if needed.
+        params:
+          mg: {choices: [150, 160]}
+          v: {choices: [20, 25, 30, 35, 40]}
+        derived: {m: "mg / 1000"}
+        answer:
+          numeric: {value: "m * v", unit: kg*m/s, mode: exact}
+        explanation: |
+          Convert the mass first: {{mg}} g = {{m}} kg. Then p = {{m}} × {{v}}.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A car of mass {{m}} kg moves at {{vk}} km/h. What is its momentum?
+        params:
+          m: {choices: [800, 1000, 1200, 1500]}
+          vk: {choices: [18, 36, 54, 72, 90]}
+        derived: {v: "vk / 3.6"}
+        answer:
+          numeric: {value: "m * v", unit: kg*m/s, mode: exact}
+        explanation: |
+          Convert the speed first: {{vk}} km/h ÷ 3.6 = {{v}} m/s. Then p = {{m}} × {{v}}.
+      - id: kp1-q4
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A car of mass 1200 kg moves at 54 km/h. Which calculation gives its momentum in kg m/s?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: 1200 × 15, correct: true}
+              - {id: b, text: 1200 × 54 × 3.6, misconception: kmh-to-ms-multiply}
+              - {id: c, text: 1200 × 54}
+        explanation: |
+          Momentum in kg m/s needs the velocity in m/s: 54 km/h ÷ 3.6 = 15 m/s, so p = 1200 × 15 = 18 000 kg m/s.
+      - id: kp1-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A trolley of mass {{m}} kg has a momentum of {{p}} kg m/s. What is its velocity? Give it as a decimal if needed.
+        params:
+          m: {choices: [2, 4, 5, 10]}
+          v: {choices: [1.5, 2, 3, 4, 6]}
+        derived: {p: "m * v"}
+        answer:
+          numeric: {value: "v", unit: m/s, mode: exact}
+        explanation: |
+          p = mv, so v = p ÷ m = {{p}} ÷ {{m}} = {{v}} m/s.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Take east as positive. A scooter and its rider, of total mass {{m}} kg, move **west** at {{v}} m/s.
+          What is their momentum? (Include the sign.)
+        params:
+          m: {choices: [150, 180, 200, 250]}
+          v: {choices: [5, 8, 10, 12]}
+        answer:
+          numeric: {value: "-m * v", unit: kg*m/s, mode: exact}
+        explanation: |
+          Momentum points the same way as the velocity. West is the negative direction, so the velocity is
+          −{{v}} m/s and p = {{m}} × (−{{v}}).
+      - id: kp1-q7
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A bullet of mass {{mg}} g moves at {{v}} m/s. How fast would a {{mp}} kg student have to walk to have
+          the same momentum? Give it as a decimal if needed.
+        params:
+          mg: {choices: [20, 50]}
+          v: {choices: [200, 400]}
+          mp: {choices: [40, 50]}
+        derived:
+          p: "mg / 1000 * v"
+          vs: "p / mp"
+        answer:
+          numeric: {value: "vs", unit: m/s, mode: exact}
+        explanation: |
+          Bullet: p = {{mg}} ÷ 1000 × {{v}} = {{p}} kg m/s. The student needs the same p, so
+          v = {{p}} ÷ {{mp}} = {{vs}} m/s. A small mass at a high speed can match a large mass at a low speed.
+
+  - id: kp2
+    title: The second law as F = ma
+    worked_example: kp-2-worked.md
+    key_prereqs: [forces-and-inertia, acceleration]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          What net force gives a {{m}} kg box an acceleration of {{a}} m/s²? Give it as a decimal if needed.
+        params:
+          m: {choices: [2, 5, 10, 20, 25]}
+          a: {choices: [0.5, 1.5, 2, 3, 4]}
+        derived: {F: "m * a"}
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          F = m × a = {{m}} × {{a}} = {{F}} N.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A net force of {{F}} N acts on a car of mass {{m}} kg. What is its acceleration? Give it as a decimal if needed.
+        params:
+          m: {choices: [800, 1000, 1200, 1500]}
+          a: {choices: [0.5, 1, 1.5, 2, 2.5]}
+        derived: {F: "m * a"}
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: exact}
+        explanation: |
+          a = F ÷ m = {{F}} ÷ {{m}} = {{a}} m/s².
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A net force of {{F}} N gives a trolley an acceleration of {{a}} m/s². What is the trolley's mass?
+        params:
+          m: {choices: [2, 4, 5, 8, 10]}
+          a: {choices: [2, 3, 4, 5]}
+        derived: {F: "m * a"}
+        answer:
+          numeric: {value: "m", unit: kg, mode: exact}
+        explanation: |
+          F = ma, so m = F ÷ a = {{F}} ÷ {{a}} = {{m}} kg. (a ÷ F would not even give a mass.)
+      - id: kp2-q4
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What is 1 newton?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: The force that gives a mass of 1 kg an acceleration of 1 m/s², correct: true}
+              - {id: b, text: The weight of a mass of 1 kg, misconception: mass-is-weight}
+              - {id: c, text: The force needed to keep a 1 kg mass moving at 1 m/s, misconception: motion-needs-force}
+        explanation: |
+          From F = ma: 1 N = 1 kg × 1 m/s² = 1 kg m/s². Weight is a different idea (you will meet it in the
+          Gravitation chapter), and no net force is needed to keep something moving at a steady velocity.
+      - id: kp2-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A worker pushes a {{m}} kg crate along the floor with a horizontal force of {{P}} N. Friction on the crate
+          is {{f}} N. What is the crate's acceleration? Give it as a decimal if needed.
+        params:
+          m: {choices: [10, 20, 25, 40]}
+          a: {choices: [0.5, 1, 2]}
+          f: {choices: [20, 30, 50]}
+        derived:
+          Fn: "m * a"
+          P: "f + Fn"
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: exact}
+        explanation: |
+          Use the **net** force: {{P}} − {{f}} = {{Fn}} N forwards. Then a = {{Fn}} ÷ {{m}} = {{a}} m/s².
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What net force gives a {{mg}} g ball an acceleration of {{a}} m/s²? Give it as a decimal if needed.
+        params:
+          mg: {choices: [100, 150, 200, 250, 500]}
+          a: {choices: [2, 4, 6, 10]}
+        derived:
+          m: "mg / 1000"
+          F: "m * a"
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          Mass in kg: {{mg}} g = {{m}} kg. F = {{m}} × {{a}} = {{F}} N.
+      - id: kp2-q7
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          A {{m}} kg trolley is pushed along a level floor at a constant velocity of {{v}} m/s. Friction on it is
+          {{f}} N. How large is the push?
+        params:
+          m: {choices: [20, 30, 40]}
+          v: {choices: [0.5, 1, 1.5, 2]}
+          f: {choices: [15, 20, 25, 40]}
+        answer:
+          numeric: {value: "f", unit: N, mode: exact}
+        explanation: |
+          Constant velocity means a = 0, so the net force is m × 0 = 0. The push must exactly balance friction:
+          {{f}} N. The mass and the speed don't matter here.
+      - id: kp2-q8
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A net force gives a {{m1}} kg trolley an acceleration of {{a1}} m/s². The same net force acts on a
+          {{m2}} kg trolley. What is its acceleration? Give it as a decimal if needed.
+        params:
+          m1: {choices: [2, 3, 4, 5]}
+          k: {choices: [2, 3, 4]}
+          c: {choices: [0.5, 1, 1.5, 2]}
+        derived:
+          m2: "m1 * k"
+          a1: "c * k"
+          F: "m1 * a1"
+        answer:
+          numeric: {value: "c", unit: m/s^2, mode: exact}
+        explanation: |
+          The force is F = {{m1}} × {{a1}} = {{F}} N. For the heavier trolley a = {{F}} ÷ {{m2}} = {{c}} m/s².
+          {{k}} times the mass gives {{k}} times less acceleration.
+
+  - id: kp3
+    title: Force as the rate of change of momentum
+    worked_example: kp-3-worked.md
+    key_prereqs: [acceleration]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A net force speeds up a {{m}} kg cart from {{u}} m/s to {{v}} m/s in {{t}} s.
+          Use F = m(v − u) ÷ t to find the force. Give it as a decimal if needed.
+        params:
+          m: {choices: [2, 5, 10, 20]}
+          u: {choices: [0, 2, 4]}
+          dv: {choices: [2, 4, 6, 10]}
+          t: {choices: [2, 4, 5]}
+        derived:
+          v: "u + dv"
+          dp: "m * dv"
+        answer:
+          numeric: {value: "dp / t", unit: N, mode: exact}
+        explanation: |
+          Change in momentum = {{m}} × ({{v}} − {{u}}) = {{dp}} kg m/s. Force = {{dp}} ÷ {{t}}.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A fielder catches a {{mg}} g cricket ball moving at {{u}} m/s and stops it. Take the ball's direction of
+          motion as positive. What is the change in the ball's momentum? (Include the sign.)
+        params:
+          mg: {choices: [150, 160]}
+          u: {choices: [10, 15, 20, 25, 30]}
+        derived: {m: "mg / 1000"}
+        answer:
+          numeric: {value: "-m * u", unit: kg*m/s, mode: exact}
+        explanation: |
+          Change in momentum = m(v − u) = {{m}} × (0 − {{u}}). It is negative: the change points against the motion.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A {{mg}} g ball moving at {{u}} m/s is caught and brought to rest in {{t}} s. What is the size of the
+          average force on the ball? Give it as a decimal if needed.
+        params:
+          mg: {choices: [150, 160, 200]}
+          u: {choices: [10, 15, 20, 25]}
+          t: {choices: [0.1, 0.2, 0.5]}
+        derived:
+          m: "mg / 1000"
+          dp: "m * u"
+          F: "dp / t"
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          The momentum falls from {{m}} × {{u}} = {{dp}} kg m/s to 0. Force = change in momentum ÷ time = {{dp}} ÷ {{t}} = {{F}} N.
+      - id: kp3-q4
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          Take east as positive. A trolley is moving **west** and speeding up. What is the sign of its change in momentum?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Negative: the change points west", correct: true}
+              - {id: b, text: "Positive, because the trolley is speeding up", misconception: negative-means-decreasing}
+              - {id: c, text: "Zero, because its mass doesn't change"}
+        explanation: |
+          Its velocity goes from, say, −2 m/s to −5 m/s, so v − u = −3 m/s: negative. The sign shows the direction
+          of the change (west), not whether the trolley is speeding up or slowing down.
+      - id: kp3-q5
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A {{mg}} g ball moving at {{u}} m/s is stopped in {{t1}} s by a catcher with stiff hands. Another catcher pulls
+          her hands back and stops the same ball in {{t2}} s. The average force on the ball from the stiff hands is how
+          many times the force from the hands that pull back?
+        params:
+          mg: {choices: [150, 160]}
+          u: {choices: [15, 20, 25]}
+          t1: {choices: [0.02, 0.05]}
+          k: {choices: [2, 4, 5, 10]}
+        derived: {t2: "t1 * k"}
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          The change in momentum is the same for both (the ball goes from {{u}} m/s to rest). Force = change in
+          momentum ÷ time, so {{k}} times the time ({{t2}} ÷ {{t1}}) means {{k}} times less force.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 0.5
+        prompt: |
+          A force acts on a body for {{t}} s and changes its momentum by {{dp}} kg m/s. What is the average force?
+          Give it as a decimal if needed.
+        params:
+          t: {choices: [0.5, 2, 4, 5]}
+          F: {choices: [2, 10, 20, 50]}
+        derived: {dp: "F * t"}
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          Force = change in momentum ÷ time = {{dp}} ÷ {{t}} = {{F}} N.
+      - id: kp3-q7
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A net force of {{F}} N acts on a {{m}} kg cart that starts from rest. How long does it take the cart to
+          reach {{v}} m/s? Give it as a decimal if needed.
+        params:
+          t: {choices: [2, 4, 5, 8, 10]}
+          m: {choices: [2, 5, 10, 20]}
+          v: {choices: [2, 4, 6]}
+        derived: {F: "m * v / t"}
+        answer:
+          numeric: {value: "t", unit: s, mode: exact}
+        explanation: |
+          F × t = m(v − u), so t = {{m}} × ({{v}} − 0) ÷ {{F}} = {{t}} s.
+      - id: kp3-q8
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A {{m}} kg trolley moves at {{u}} m/s. A net force of {{F}} N then acts on it in its direction of motion
+          for {{t}} s. What is its new velocity? Give it as a decimal if needed.
+        params:
+          m: {choices: [2, 4, 5, 10]}
+          u: {choices: [1, 2, 3]}
+          F: {choices: [4, 10, 20]}
+          t: {choices: [0.5, 1, 2]}
+        derived:
+          dp: "F * t"
+          v: "u + dp / m"
+        answer:
+          numeric: {value: "v", unit: m/s, mode: exact}
+        explanation: |
+          Change in momentum = F × t = {{F}} × {{t}} = {{dp}} kg m/s, so the velocity rises by {{dp}} ÷ {{m}}:
+          v = {{u}} + {{dp}} ÷ {{m}} = {{v}} m/s.
+
+  - id: kp4
+    title: Units and two-step problems
+    worked_example: kp-4-worked.md
+    key_prereqs: [acceleration]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A car of mass {{m}} kg moving at {{vk}} km/h brakes and stops in {{t}} s. What is the size of the
+          average braking force? Give it as a decimal if needed.
+        params:
+          m: {choices: [800, 1000, 1200]}
+          vk: {choices: [36, 54, 72, 90]}
+          t: {choices: [2, 4, 5]}
+        derived:
+          v: "vk / 3.6"
+          dp: "m * v"
+          F: "dp / t"
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          {{vk}} km/h ÷ 3.6 = {{v}} m/s. The momentum falls by {{m}} × {{v}} = {{dp}} kg m/s in {{t}} s,
+          so the force is {{dp}} ÷ {{t}} = {{F}} N.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A net force of {{F}} N acts on a {{mg}} g toy car. What is its acceleration? Give it as a decimal if needed.
+        params:
+          mg: {choices: [200, 250, 400, 500]}
+          F: {choices: [1, 2, 3, 4, 5]}
+        derived:
+          m: "mg / 1000"
+          a: "F / m"
+        answer:
+          numeric: {value: "a", unit: m/s^2, mode: exact}
+        explanation: |
+          Mass in kg: {{mg}} g = {{m}} kg. a = F ÷ m = {{F}} ÷ {{m}} = {{a}} m/s².
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A {{m}} kg trolley starts from rest. It is pushed with a horizontal force of {{P}} N against {{f}} N of
+          friction. How fast is it moving after {{t}} s? Give it as a decimal if needed.
+        params:
+          m: {choices: [20, 40, 50]}
+          a: {choices: [0.5, 1, 2]}
+          f: {choices: [10, 20, 30]}
+          t: {choices: [2, 3, 4, 5]}
+        derived:
+          P: "f + m * a"
+          Fn: "m * a"
+        constraints: ["not (m == 20 and a == 2 and f == 10 and t == 4)"]
+        answer:
+          numeric: {value: "a * t", unit: m/s, mode: exact}
+        explanation: |
+          Net force = {{P}} − {{f}} = {{Fn}} N, so a = {{Fn}} ÷ {{m}} = {{a}} m/s². Then v = u + at = 0 + {{a}} × {{t}}.
+      - id: kp4-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A {{m}} kg cart moves at {{u}} m/s. A net force of {{F}} N acts on it in its direction of motion for {{t}} s.
+          What is its momentum afterwards?
+        params:
+          m: {choices: [2, 4, 5, 10]}
+          u: {choices: [1, 2, 3, 4]}
+          F: {choices: [2, 5, 10]}
+          t: {choices: [2, 3, 4]}
+        derived:
+          p1: "m * u"
+          dp: "F * t"
+        answer:
+          numeric: {value: "p1 + dp", unit: kg*m/s, mode: exact}
+        explanation: |
+          Momentum at first: {{m}} × {{u}} = {{p1}} kg m/s. The force adds F × t = {{F}} × {{t}} = {{dp}} kg m/s.
+          New momentum = {{p1}} + {{dp}}.
+      - id: kp4-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A bus of mass {{m}} kg slows down from {{uk}} km/h to {{vk}} km/h in {{t}} s. What is the size of the
+          average braking force?
+        params:
+          m: {choices: [4000, 5000, 6000]}
+          uk: {choices: [54, 72, 90]}
+          vk: {choices: [18, 36]}
+          t: {choices: [5, 10]}
+        derived:
+          u: "uk / 3.6"
+          v: "vk / 3.6"
+          dp: "m * (u - v)"
+          F: "dp / t"
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          In m/s: {{uk}} km/h = {{u}} m/s and {{vk}} km/h = {{v}} m/s. The momentum falls by
+          {{m}} × ({{u}} − {{v}}) = {{dp}} kg m/s, so the force is {{dp}} ÷ {{t}} = {{F}} N.
+      - id: kp4-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A net force of {{F}} N acts on a cart for {{t}} s, and its velocity rises from {{u}} m/s to {{v}} m/s.
+          What is the cart's mass?
+        params:
+          m: {choices: [2, 4, 5, 10, 20]}
+          dv: {choices: [2, 4, 5]}
+          t: {choices: [2, 4, 5]}
+          u: {choices: [0, 1, 2]}
+        derived:
+          v: "u + dv"
+          F: "m * dv / t"
+        answer:
+          numeric: {value: "m", unit: kg, mode: exact}
+        explanation: |
+          F × t = m(v − u), so m = F × t ÷ (v − u) = {{F}} × {{t}} ÷ {{dv}} = {{m}} kg.
+      - id: kp4-q7
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A hockey ball of mass {{mg}} g moving at {{u}} m/s is hit by a stick and moves straight back at {{v}} m/s.
+          Take the ball's first direction as positive. What is the change in its momentum? (Include the sign.)
+        params:
+          mg: {choices: [150, 160, 200]}
+          u: {choices: [10, 15, 20]}
+          v: {choices: [5, 10, 15]}
+        derived:
+          m: "mg / 1000"
+          dp: "m * (-v - u)"
+        answer:
+          numeric: {value: "dp", unit: kg*m/s, mode: exact}
+        explanation: |
+          The final velocity is −{{v}} m/s (backwards). Change = m(v − u) = {{m}} × (−{{v}} − {{u}}) = {{dp}} kg m/s.
+          Reversing needs a bigger change than just stopping.
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A car of mass {{m}} kg speeds up uniformly from {{uk}} km/h to {{vk}} km/h in {{t}} s on a straight road.
+    params:
+      m: {choices: [800, 1000, 1200, 1500]}
+      uk: {choices: [18, 36]}
+      vk: {choices: [54, 72, 90]}
+      t: {choices: [5, 10]}
+    derived:
+      u: "uk / 3.6"
+      v: "vk / 3.6"
+      p1: "m * u"
+      p2: "m * v"
+      F: "(p2 - p1) / t"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the car's momentum at the start?
+            answer:
+              numeric: {value: "p1", unit: kg*m/s, mode: exact}
+          - prompt: What is its momentum at the end?
+            answer:
+              numeric: {value: "p2", unit: kg*m/s, mode: exact}
+          - prompt: What net force acts on the car? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "F", unit: N, mode: exact}
+          - prompt: Use F = ma. What is the car's acceleration? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "F / m", unit: m/s^2, mode: exact}
+    explanation: |
+      Speeds in m/s: {{uk}} ÷ 3.6 = {{u}} and {{vk}} ÷ 3.6 = {{v}}. Momenta: {{m}} × {{u}} = {{p1}} and
+      {{m}} × {{v}} = {{p2}} kg m/s. Force = ({{p2}} − {{p1}}) ÷ {{t}} = {{F}} N, and a = {{F}} ÷ {{m}}
+      (the same as ({{v}} − {{u}}) ÷ {{t}}).
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A fielder catches a {{mg}} g cricket ball moving at {{u}} m/s. Take the ball's direction of motion as positive.
+      With stiff hands she would stop it in {{t1}} s; by pulling her hands back she stops it in {{t2}} s.
+    params:
+      mg: {choices: [150, 160]}
+      u: {choices: [15, 20, 25, 30]}
+      t1: {choices: [0.01, 0.02]}
+      k: {choices: [5, 10]}
+    derived:
+      m: "mg / 1000"
+      dp: "-m * u"
+      t2: "t1 * k"
+      F1: "m * u / t1"
+      F2: "m * u / t2"
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the change in the ball's momentum? (Include the sign.)
+            answer:
+              numeric: {value: "dp", unit: kg*m/s, mode: exact}
+          - prompt: With stiff hands, what is the size of the average force on the ball? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "F1", unit: N, mode: exact}
+          - prompt: When she pulls her hands back, what is the size of the average force? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "F2", unit: N, mode: exact}
+          - prompt: The force with stiff hands is how many times the force when she pulls her hands back?
+            answer:
+              numeric: {value: "k", mode: exact}
+    explanation: |
+      Change in momentum = {{m}} × (0 − {{u}}) = {{dp}} kg m/s either way. Force = size of the change ÷ time:
+      {{F1}} N in {{t1}} s, but only {{F2}} N in {{t2}} s: {{k}} times the time, so {{k}} times less force.
+  - id: practice-3
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A {{m}} kg trolley starts from rest on a level floor. A child pushes it with a horizontal force of {{P}} N,
+      and friction on it is {{f}} N. The push lasts {{t}} s.
+    params:
+      m: {choices: [10, 20, 25, 40]}
+      a: {choices: [0.5, 1, 2]}
+      f: {choices: [10, 20, 30]}
+      t: {choices: [2, 4, 5]}
+    derived:
+      Fn: "m * a"
+      P: "f + Fn"
+      v: "a * t"
+    constraints: ["not (m == 20 and a == 2 and f == 10 and t == 4)"]
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the net force on the trolley?
+            answer:
+              numeric: {value: "Fn", unit: N, mode: exact}
+          - prompt: What is its acceleration? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "a", unit: m/s^2, mode: exact}
+          - prompt: How fast is it moving when the push ends?
+            answer:
+              numeric: {value: "v", unit: m/s, mode: exact}
+          - prompt: What is its momentum then?
+            answer:
+              numeric: {value: "m * v", unit: kg*m/s, mode: exact}
+    explanation: |
+      Net force = {{P}} − {{f}} = {{Fn}} N. a = {{Fn}} ÷ {{m}} = {{a}} m/s². v = 0 + {{a}} × {{t}} = {{v}} m/s.
+      Momentum = {{m}} × {{v}} kg m/s, which also equals net force × time = {{Fn}} × {{t}}.

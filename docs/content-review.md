@@ -48,14 +48,14 @@ role and school code only (e.g. "maths teacher, ABC"), never by name or contact 
 | maths-9-10 | pair-of-linear-equations-algebraic | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
 | maths-9-10 | quadratic-equations-solving | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
 | maths-9-10 | nature-of-roots | ai-reviewed | 2026-11-11 | | | spec 013 PR 1 |
-| physics-9-10 | distance-and-displacement | draft | | | | |
-| physics-9-10 | speed-and-velocity | draft | | | | |
-| physics-9-10 | acceleration | draft | | | | |
-| physics-9-10 | motion-graphs | draft | | | | |
-| physics-9-10 | equations-of-motion | draft | | | | |
-| physics-9-10 | forces-and-inertia | draft | | | | |
-| physics-9-10 | momentum-and-second-law | draft | | | | |
-| physics-9-10 | third-law-and-momentum-conservation | draft | | | | |
+| physics-9-10 | distance-and-displacement | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
+| physics-9-10 | speed-and-velocity | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
+| physics-9-10 | acceleration | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
+| physics-9-10 | motion-graphs | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
+| physics-9-10 | equations-of-motion | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
+| physics-9-10 | forces-and-inertia | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
+| physics-9-10 | momentum-and-second-law | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
+| physics-9-10 | third-law-and-momentum-conservation | ai-reviewed | 2026-11-11 | | | spec 013 PR 2; titled "Newton's third law of motion": NCERT dropped §9.6 conservation of momentum |
 | python-basics | variables-and-types | draft | | | | |
 | python-basics | conditionals | draft | | | | |
 | python-basics | loops | draft | | | | |

@@ -1,0 +1,644 @@
+id: third-law-and-momentum-conservation
+title: Newton's third law of motion
+summary: Forces come in action–reaction pairs that are equal and opposite and act on different bodies, so they never cancel.
+prereqs:
+  - {concept: momentum-and-second-law, weight: 0.7}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    You push a wall with a force of 50 N, and the wall pushes you back with 50 N. Do these two forces cancel
+    each other?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "No: one acts on the wall and the other acts on you, so they can't cancel.", correct: true}
+        - {id: b, text: "Yes: they are equal and opposite, which is why nothing moves.", misconception: action-reaction-cancel}
+        - {id: c, text: "No: the wall pushes back with less force because it doesn't move."}
+  explanation: |
+    An action–reaction pair always acts on two different bodies: your push acts on the wall, the wall's push
+    acts on you. Forces can only cancel when they act on the same body. (If you stood on skates, the wall's
+    push would roll you backward.)
+
+kps:
+  - id: kp1
+    title: Action–reaction pairs
+    worked_example: kp-1-worked.md
+    key_prereqs: []
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          A student pushes a wall with a force of {{F}} N. How big is the force that the wall exerts on the student?
+        params:
+          F: {choices: [20, 30, 40, 50, 60, 80]}
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          Action and reaction are equal in size: the wall pushes the student with {{F}} N, in the opposite direction.
+      - id: kp1-q2
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Take east as positive. A girl pushes a box east with a force of {{F}} N.
+          What force does the box exert on the girl? (Include the sign.)
+        params:
+          F: {choices: [15, 25, 35, 40, 45, 60]}
+        answer:
+          numeric: {value: "-F", unit: N, mode: exact}
+        explanation: |
+          The box pushes the girl with a force of the same size in the opposite direction: west, so −{{F}} N.
+      - id: kp1-q3
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          As a mango falls from a tree, the Earth pulls it down with a force of {{W}} N.
+          How big is the force with which the mango pulls the Earth?
+        params:
+          W: {choices: [1.5, 2, 2.5, 3, 4]}
+        answer:
+          numeric: {value: "W", unit: N, mode: exact}
+        explanation: |
+          The Earth pulls the mango down and the mango pulls the Earth up with the same {{W}} N. Both are pulls of
+          gravity. The Earth has such a huge mass that this force hardly changes its motion.
+      - id: kp1-q4
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Take forward as positive. A swimmer's hands push the water backward with a force of {{F}} N.
+          What force does the water exert on the swimmer's hands? (Include the sign.)
+        params:
+          F: {choices: [40, 50, 60, 75, 90]}
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          The force on the water is −{{F}} N (backward). The reaction on the hands is the same size and opposite:
+          +{{F}} N, forward. That forward push moves the swimmer.
+      - id: kp1-q5
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Magnet A has a mass of {{ma}} g and magnet B has a mass of {{mb}} g. Magnet A pulls magnet B with a
+          force of {{F}} N. With what force does magnet B pull magnet A?
+        params:
+          ma: {choices: [50, 100, 200]}
+          mb: {choices: [150, 300, 400]}
+          F: {choices: [0.5, 1.2, 2, 3, 4.5]}
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          The masses don't matter: action and reaction are always equal in size. B pulls A with {{F}} N.
+      - id: kp1-q6
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A model rocket's engine pushes hot gases backward with a force of {{F}} N.
+          How big is the force that the gases exert on the rocket?
+        params:
+          F: {choices: [4, 6, 9, 12, 15]}
+        answer:
+          numeric: {value: "F", unit: N, mode: exact}
+        explanation: |
+          The gases push the rocket forward with {{F}} N, the same size as the rocket's push on them.
+          This forward push drives the rocket forward.
+      - id: kp1-q7
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          When you walk, your foot pushes the ground backward. What is the reaction to this force?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "The ground pushes your foot forward.", correct: true}
+              - {id: b, text: "The ground's push on your foot cancels your push on the ground, so the pair has no effect.", misconception: action-reaction-cancel}
+              - {id: c, text: "The Earth pulls your foot down."}
+              - {id: d, text: "Your foot pushes the ground forward a moment later.", misconception: reaction-comes-later}
+        explanation: |
+          Swap the two bodies: "foot pushes ground backward" becomes "ground pushes foot forward". It is the same
+          kind of force (a contact force: friction from the ground), equal in size, at the same moment. The two
+          forces act on different bodies, so they don't cancel: the forward push on your foot moves you.
+      - id: kp1-q8
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          Which statement about the two forces of an action–reaction pair is true?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "They are equal and opposite and act on two different bodies.", correct: true}
+              - {id: b, text: "They are equal and opposite and act on the same body, so they cancel.", misconception: action-reaction-cancel}
+              - {id: c, text: "The reaction starts a moment after the action.", misconception: reaction-comes-later}
+              - {id: d, text: "The heavier body exerts the larger force.", misconception: bigger-body-bigger-force}
+        explanation: |
+          The pair is equal in size, opposite in direction, of the same kind and simultaneous, and the two forces
+          act on different bodies. Mass makes no difference to their size.
+
+  - id: kp2
+    title: Why the pair doesn't cancel
+    worked_example: kp-2-worked.md
+    key_prereqs: [momentum-and-second-law]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A horse pulls a cart forward with a force of {{F}} N, and the cart pulls back on the horse with {{F}} N.
+          Friction from the road on the cart is {{f}} N. What is the net force on the cart?
+        params:
+          F: {choices: [600, 800, 1000, 1200]}
+          f: {choices: [200, 300, 400, 500]}
+        answer:
+          numeric: {value: "F - f", unit: N, mode: exact}
+        explanation: |
+          Only forces on the cart count: {{F}} N forward (from the horse) and {{f}} N backward (friction).
+          Net force = {{F}} − {{f}}. The cart's pull on the horse acts on the horse, so it isn't included.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A horse pulls a {{m}} kg cart forward with a force of {{F}} N. Friction from the road on the cart is
+          {{f}} N. What is the cart's acceleration? Give it as a decimal if needed.
+        params:
+          F: {choices: [600, 800, 1000, 1200]}
+          f: {choices: [200, 300, 400, 500]}
+          m: {choices: [200, 250, 400, 500]}
+        derived: {net: "F - f"}
+        answer:
+          numeric: {value: "net / m", unit: m/s^2, mode: exact}
+        explanation: |
+          Net force on the cart = {{F}} − {{f}} = {{net}} N. Then a = F ÷ m = {{net}} ÷ {{m}}.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A horse pulls a cart. The ground pushes the horse's hooves forward with a force of {{P}} N, and the cart
+          pulls the horse backward with a force of {{F}} N. What is the net force on the horse?
+        params:
+          P: {choices: [1000, 1200, 1500, 1800]}
+          F: {choices: [600, 700, 800, 900]}
+        answer:
+          numeric: {value: "P - F", unit: N, mode: exact}
+        explanation: |
+          Forces on the horse: {{P}} N forward from the ground and {{F}} N back from the cart.
+          Net force = {{P}} − {{F}} forward, so the horse can speed up even though the cart pulls back on it.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Riya pushes a box to the right with a force of {{F}} N, so the box pushes back on Riya with {{F}} N.
+          Friction from the floor pushes the box to the left with {{f}} N. What is the net force on the box?
+        params:
+          F: {choices: [60, 80, 100, 120]}
+          f: {choices: [20, 30, 40, 50]}
+        answer:
+          numeric: {value: "F - f", unit: N, mode: exact}
+        explanation: |
+          Forces on the box: {{F}} N right (Riya's push) and {{f}} N left (friction). Net = {{F}} − {{f}} to the right.
+          The box's push on Riya acts on Riya, not on the box.
+      - id: kp2-q5
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A book rests on a table. The Earth pulls it down with a force of {{W}} N (its weight).
+          The book is at rest. How big is the upward force that the table exerts on the book?
+        params:
+          W: {choices: [2, 4, 5, 8, 12, 15]}
+        answer:
+          numeric: {value: "W", unit: N, mode: exact}
+        explanation: |
+          The book is at rest, so the forces on it are balanced: the table pushes up with {{W}} N.
+          These two forces act on the same body (the book) and cancel. They are not a third-law pair.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A rope pulls a {{m}} kg trolley along a smooth floor with a force of {{F}} N, and the trolley pulls back
+          on the rope with {{F}} N. Ignore friction. What is the trolley's acceleration? Give it as a decimal if needed.
+        params:
+          F: {choices: [10, 12, 15, 20, 30]}
+          m: {choices: [2, 4, 5]}
+        answer:
+          numeric: {value: "F / m", unit: m/s^2, mode: exact}
+        explanation: |
+          The only horizontal force on the trolley is the rope's {{F}} N. The trolley's pull acts on the rope, so
+          it doesn't cancel anything. a = {{F}} ÷ {{m}}.
+      - id: kp2-q7
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A book rests on a table. Which force is the third-law partner of the Earth's pull on the book?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "The book's pull on the Earth", correct: true}
+              - {id: b, text: "The table's upward push on the book", misconception: action-reaction-cancel}
+              - {id: c, text: "The book's push on the table"}
+        explanation: |
+          Swap the bodies: "Earth pulls book" becomes "book pulls Earth", a pull of gravity on a different body.
+          The table's push is a different kind of force acting on the same body (the book), so it is a balancing
+          force, not the partner.
+      - id: kp2-q8
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          The cart pulls back on the horse exactly as hard as the horse pulls the cart forward. Why can the cart
+          still speed up?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "The two forces act on different bodies; the cart speeds up when the horse's pull is bigger than the friction on the cart.", correct: true}
+              - {id: b, text: "The two forces cancel, so the cart only keeps moving because it was already moving.", misconception: action-reaction-cancel}
+              - {id: c, text: "The horse pulls the cart a little harder than the cart pulls the horse."}
+        explanation: |
+          To find what the cart does, add only the forces on the cart: the horse's pull forward and friction
+          backward. The cart's pull on the horse acts on the horse, so it can't cancel the pull on the cart.
+
+  - id: kp3
+    title: Equal forces, unequal effects
+    worked_example: kp-3-worked.md
+    key_prereqs: [momentum-and-second-law]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          While a gun fires, it pushes a {{mg}} g bullet forward with an average force of {{F}} N.
+          What is the bullet's acceleration?
+        params:
+          mg: {choices: [10, 20, 25, 40]}
+          F: {choices: [400, 600, 800, 1000]}
+        derived: {mkg: "mg / 1000"}
+        answer:
+          numeric: {value: "1000 * F / mg", unit: m/s^2, mode: exact}
+        explanation: |
+          Change the mass to kilograms: {{mg}} g = {{mkg}} kg. Then a = F ÷ m = {{F}} ÷ {{mkg}}.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          While a {{M}} kg gun fires, it pushes the bullet forward with an average force of {{F}} N.
+          What is the size of the gun's acceleration backward (its recoil)?
+        params:
+          M: {choices: [2, 4, 5]}
+          F: {choices: [400, 600, 800, 1000]}
+        answer:
+          numeric: {value: "F / M", unit: m/s^2, mode: exact}
+        explanation: |
+          The bullet pushes the gun backward with the same {{F}} N. a = {{F}} ÷ {{M}}: much less than the bullet's,
+          because the gun is much heavier.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Two skaters stand still on smooth ice. Skater A ({{m1}} kg) pushes skater B ({{m2}} kg) with a force of
+          {{F}} N. What is skater A's acceleration? Give it as a decimal if needed.
+        params:
+          m1: {choices: [40, 50]}
+          m2: {choices: [60, 75, 80, 90]}
+          F: {choices: [100, 120, 150, 200, 240]}
+        answer:
+          numeric: {value: "F / m1", unit: m/s^2, mode: exact}
+        explanation: |
+          B pushes A back with {{F}} N (third law). So for A: a = {{F}} ÷ {{m1}}.
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          Two skaters push each other apart on smooth ice. One has a mass of {{m1}} kg and the other {{m2}} kg.
+          How many times bigger is the lighter skater's acceleration than the heavier skater's?
+          Give it as a decimal if needed.
+        params:
+          m1: {choices: [40, 50]}
+          m2: {choices: [60, 80, 90, 100]}
+        answer:
+          numeric: {value: "m2 / m1", mode: exact}
+        explanation: |
+          Both feel the same force F. a(light) = F ÷ {{m1}} and a(heavy) = F ÷ {{m2}}, so the ratio is
+          {{m2}} ÷ {{m1}}: the inverse ratio of the masses.
+      - id: kp3-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A {{m}} kg student on roller skates pushes a wall with a force of {{F}} N.
+          What is the student's acceleration away from the wall? Ignore friction. Give it as a decimal if needed.
+        params:
+          m: {choices: [40, 50, 60]}
+          F: {choices: [30, 60, 90, 120]}
+        answer:
+          numeric: {value: "F / m", unit: m/s^2, mode: exact}
+        explanation: |
+          The wall pushes the student back with {{F}} N. a = {{F}} ÷ {{m}}. The wall is fixed to the Earth, so it
+          doesn't move noticeably.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          As a sailor jumps from a boat to the shore, his feet push the {{M}} kg boat backward with a force of
+          {{F}} N. What is the boat's acceleration? Ignore the water's drag. Give it as a decimal if needed.
+        params:
+          M: {choices: [100, 125, 200, 250]}
+          F: {choices: [200, 300, 400, 500]}
+        answer:
+          numeric: {value: "F / M", unit: m/s^2, mode: exact}
+        explanation: |
+          The force on the boat is {{F}} N, so a = {{F}} ÷ {{M}}. (The boat pushes the sailor toward the shore with
+          the same {{F}} N.)
+      - id: kp3-q7
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          When a gun fires, why does the gun move back much more slowly than the bullet moves forward?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "The forces on the gun and the bullet are equal, but the gun has a much bigger mass.", correct: true}
+              - {id: b, text: "The forces on the gun and the bullet cancel, so the gun hardly moves.", misconception: action-reaction-cancel}
+              - {id: c, text: "The bullet pushes on the gun with a much smaller force than the gun pushes on the bullet.", misconception: bigger-body-bigger-force}
+        explanation: |
+          The gun and the bullet push each other with equal forces. a = F ÷ m, so the heavy gun gets a much
+          smaller acceleration than the light bullet.
+      - id: kp3-q8
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A fly hits the windscreen of a moving bus. Which force is bigger: the fly's push on the bus or the bus's
+          push on the fly?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "They are equal; the fly is affected far more because its mass is so small.", correct: true}
+              - {id: b, text: "The bus's push is bigger because the bus is heavier.", misconception: bigger-body-bigger-force}
+              - {id: c, text: "Neither; the two pushes cancel each other.", misconception: action-reaction-cancel}
+        explanation: |
+          Action and reaction are always equal in size. The same force gives the tiny fly an enormous
+          acceleration and the bus almost none.
+
+  - id: kp4
+    title: Third-law problems with F = ma
+    worked_example: kp-4-worked.md
+    key_prereqs: [momentum-and-second-law]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A compressed spring between two carts on a smooth track pushes them apart with a force of {{F}} N.
+          Cart A has a mass of {{ma}} kg and cart B {{mb}} kg. What is cart B's acceleration?
+          Give it as a decimal if needed.
+        params:
+          F: {choices: [6, 12, 18, 24]}
+          ma: {choices: [1, 2]}
+          mb: {choices: [3, 4, 5]}
+        answer:
+          numeric: {value: "F / mb", unit: m/s^2, mode: exact}
+        explanation: |
+          The spring pushes each cart with {{F}} N. For cart B: a = {{F}} ÷ {{mb}}.
+          (Cart A, being lighter, gets {{F}} ÷ {{ma}}.)
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Two skaters push each other apart. Skater A ({{ma}} kg) accelerates at {{aa}} m/s² during the push.
+          Skater B has a mass of {{mb}} kg. What is skater B's acceleration? Give 2 significant figures.
+        params:
+          ma: {choices: [40, 45, 60]}
+          aa: {choices: [1.5, 2, 3]}
+          mb: {choices: [50, 70, 80]}
+        derived: {F: "ma * aa"}
+        answer:
+          numeric: {value: "F / mb", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
+        explanation: |
+          Force on A: F = {{ma}} × {{aa}} = {{F}} N. By the third law B feels the same {{F}} N,
+          so a = {{F}} ÷ {{mb}}.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A {{ms}} kg sailor jumps from a boat to the shore. While pushing off, he accelerates at {{acc}} m/s².
+          With what force do his feet push the boat?
+        params:
+          ms: {choices: [45, 50, 60, 70]}
+          acc: {choices: [2, 3, 4]}
+        answer:
+          numeric: {value: "ms * acc", unit: N, mode: exact}
+        explanation: |
+          The force on the sailor is F = m × a = {{ms}} × {{acc}}. His feet push the boat with a force of the
+          same size, in the opposite direction.
+      - id: kp4-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          A {{m}} kg swimmer's hands push the water backward with a force of {{F}} N. The water's drag on her
+          body is {{f}} N. What is her forward acceleration? Give it as a decimal if needed.
+        params:
+          m: {choices: [40, 50]}
+          F: {choices: [60, 80, 100]}
+          f: {choices: [20, 30, 40]}
+        derived: {net: "F - f"}
+        answer:
+          numeric: {value: "net / m", unit: m/s^2, mode: exact}
+        explanation: |
+          The water pushes her forward with {{F}} N (third law). Net force = {{F}} − {{f}} = {{net}} N.
+          a = {{net}} ÷ {{m}}.
+      - id: kp4-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          A fire hose pushes water forward out of its nozzle with a force of {{F}} N. Two firefighters hold the
+          hose still, sharing the job equally. How hard must each of them push the hose forward?
+        params:
+          F: {choices: [300, 400, 500, 600, 700]}
+        answer:
+          numeric: {value: "F / 2", unit: N, mode: exact}
+        explanation: |
+          The water pushes the hose backward with {{F}} N (third law). To keep the hose still, the firefighters
+          must push forward with {{F}} N in total, so each pushes {{F}} ÷ 2.
+      - id: kp4-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          On roller skates, a {{m}} kg boy pushes his {{M}} kg friend, who accelerates forward at {{a}} m/s².
+          Take forward as positive. What is the boy's acceleration? (Include the sign.)
+          Give it as a decimal if needed.
+        params:
+          m: {choices: [40, 50]}
+          M: {choices: [40, 60]}
+          a: {choices: [1, 2, 2.5]}
+        derived: {F: "M * a"}
+        answer:
+          numeric: {value: "-F / m", unit: m/s^2, mode: exact}
+        explanation: |
+          Force on the friend: {{M}} × {{a}} = {{F}} N forward. The friend pushes the boy with {{F}} N backward,
+          so the boy's acceleration is −{{F}} ÷ {{m}}.
+      - id: kp4-q7
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          A spring pushes two carts apart. Cart P has a mass of {{mp}} kg and accelerates at {{ap}} m/s².
+          Cart Q accelerates at {{aq}} m/s². What is the mass of cart Q?
+        params:
+          mp: {choices: [1, 2]}
+          mq: {choices: [3, 4, 5, 6]}
+          aq: {choices: [1, 2, 3]}
+        derived:
+          F: "mq * aq"
+          ap: "F / mp"
+        answer:
+          numeric: {value: "mq", unit: kg, mode: exact}
+        explanation: |
+          Force on P: {{mp}} × {{ap}} = {{F}} N. Q feels the same {{F}} N, so its mass = {{F}} ÷ {{aq}} = {{mq}} kg.
+      - id: kp4-q8
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          A spring pushes two carts apart. Cart X has twice the mass of cart Y. Which statement is true?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "Both feel the same force; Y's acceleration is twice X's.", correct: true}
+              - {id: b, text: "X feels twice the force; both have the same acceleration.", misconception: bigger-body-bigger-force}
+              - {id: c, text: "The two forces cancel, so neither cart moves.", misconception: action-reaction-cancel}
+        explanation: |
+          The spring pushes both carts equally (third law). a = F ÷ m, so the cart with half the mass gets twice
+          the acceleration.
+
+practice:
+  - id: practice-1
+    type: multistep
+    bloom: apply
+    expected_minutes: 5
+    prompt: |
+      Two skaters stand still on smooth ice. Skater A ({{ma}} kg) pushes skater B ({{mb}} kg) with a force of
+      {{F}} N. The push lasts {{t}} s.
+    params:
+      ma: {choices: [40, 50]}
+      mb: {choices: [60, 80, 100]}
+      F: {choices: [120, 240, 300]}
+      t: {choices: [1, 2]}
+    derived:
+      aa: "F / ma"
+      ab: "F / mb"
+      vb: "ab * t"
+    answer:
+      multistep:
+        steps:
+          - prompt: How big is the force that skater B exerts on skater A?
+            answer:
+              numeric: {value: "F", unit: N, mode: exact}
+          - prompt: What is skater A's acceleration? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "aa", unit: m/s^2, mode: exact}
+          - prompt: What is skater B's acceleration? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "ab", unit: m/s^2, mode: exact}
+          - prompt: B starts from rest. How fast is B moving when the push ends? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "vb", unit: m/s, mode: exact}
+    explanation: |
+      Third law: B pushes A back with {{F}} N. a(A) = {{F}} ÷ {{ma}} = {{aa}} m/s², a(B) = {{F}} ÷ {{mb}} = {{ab}} m/s².
+      B's speed: v = u + at = 0 + {{ab}} × {{t}} = {{vb}} m/s.
+  - id: practice-2
+    type: multistep
+    bloom: analyze
+    expected_minutes: 5
+    prompt: |
+      A tractor pulls a {{m}} kg trailer along a road with a force of {{F}} N. Friction from the road on the
+      trailer is {{f}} N.
+    params:
+      F: {choices: [2000, 2400, 3000]}
+      f: {choices: [400, 600, 800]}
+      m: {choices: [500, 800, 1000]}
+    derived:
+      net: "F - f"
+    answer:
+      multistep:
+        steps:
+          - prompt: How big is the force that the trailer exerts on the tractor?
+            answer:
+              numeric: {value: "F", unit: N, mode: exact}
+          - prompt: The trailer pulls back on the tractor as hard as the tractor pulls it. Why can the tractor and trailer still speed up?
+            answer:
+              mcq:
+                options:
+                  - {id: a, text: "The two pulls act on different bodies; each body speeds up if the forces on it are unbalanced.", correct: true}
+                  - {id: b, text: "They can't: the two pulls cancel, so the trailer only moves if it was already moving.", misconception: action-reaction-cancel}
+                  - {id: c, text: "The tractor pulls a little harder than the trailer pulls back."}
+          - prompt: What is the net force on the trailer?
+            answer:
+              numeric: {value: "net", unit: N, mode: exact}
+          - prompt: What is the trailer's acceleration? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "net / m", unit: m/s^2, mode: exact}
+    explanation: |
+      The trailer pulls the tractor back with {{F}} N, but that force acts on the tractor. Forces on the trailer:
+      {{F}} N forward and {{f}} N friction, so the net force is {{net}} N and a = {{net}} ÷ {{m}}.
+  - id: practice-3
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      A {{ms}} kg sailor jumps from a {{M}} kg boat onto the shore. While his feet push off, he accelerates toward
+      the shore at {{acc}} m/s². Ignore the water's drag.
+    params:
+      ms: {choices: [60, 70, 80]}
+      acc: {choices: [2, 2.5, 3]}
+      M: {choices: [100, 125, 200, 250]}
+    derived:
+      F: "ms * acc"
+      ab: "F / M"
+    constraints: ["not (ms == 70 and acc == 2.5 and M == 200)"]
+    answer:
+      multistep:
+        steps:
+          - prompt: What is the force on the sailor?
+            answer:
+              numeric: {value: "F", unit: N, mode: exact}
+          - prompt: How big is the force that the sailor's feet exert on the boat?
+            answer:
+              numeric: {value: "F", unit: N, mode: exact}
+          - prompt: What is the size of the boat's acceleration? Give it as a decimal if needed.
+            answer:
+              numeric: {value: "ab", unit: m/s^2, mode: exact}
+          - prompt: How many times bigger is the sailor's acceleration than the boat's? Give 2 significant figures.
+            answer:
+              numeric: {value: "M / ms", mode: tolerance, rel_tol: 0.05}
+    explanation: |
+      F = {{ms}} × {{acc}} = {{F}} N on the sailor, and the same {{F}} N on the boat, away from the shore.
+      Boat: a = {{F}} ÷ {{M}} = {{ab}} m/s². Ratio = {{acc}} ÷ {{ab}} = {{M}} ÷ {{ms}}: the inverse ratio of the masses.

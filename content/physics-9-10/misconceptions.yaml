@@ -22,3 +22,27 @@
 - id: zero-velocity-means-zero-acceleration
   title: At rest means no acceleration
   description: Thinks an object momentarily at rest (like a ball at the top of its flight) has zero acceleration.
+- id: slope-vs-area
+  title: Mixing up the slope and the area of a graph
+  description: Reads displacement from the slope of a velocity–time graph, or acceleration from the area under it, instead of the other way round.
+- id: graph-is-path
+  title: The graph is a picture of the path
+  description: Reads a distance–time or velocity–time graph as the shape of the road or the route travelled (e.g. a rising line means going uphill).
+- id: motion-needs-force
+  title: A moving object needs a force to keep moving
+  description: Thinks an object stops when the force is removed, so constant velocity needs a net force; ignores that friction is what slows it.
+- id: action-reaction-cancel
+  title: Action and reaction cancel out
+  description: Thinks the third-law pair acts on the same body and cancels, so nothing can move; misses that the two forces act on different bodies.
+- id: mass-is-weight
+  title: Mass and weight are the same thing
+  description: Uses kilograms for weight or newtons for mass, or thinks an object's inertia changes with where it is.
+- id: bigger-body-bigger-force
+  title: The heavier body pushes harder
+  description: Thinks the forces in an action–reaction pair depend on mass or strength (e.g. the bus pushes the fly harder than the fly pushes the bus), instead of always being equal in size.
+- id: acceleration-is-velocity
+  title: Acceleration is the same as velocity
+  description: Mixes up acceleration (the change in velocity each second, m/s²) with velocity (m/s), e.g. gives acceleration in m/s or thinks a fast object must have a large acceleration.
+- id: reaction-comes-later
+  title: The reaction comes after the action
+  description: Thinks the reaction force starts a moment after the action (as a response), instead of both forces acting at the same instant for the same time.

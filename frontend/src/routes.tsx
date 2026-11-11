@@ -50,6 +50,13 @@ export const routes: RouteObject[] = [
         element: <AppShell />,
         children: [
           { path: "/", element: <HomePage /> },
+          // Spec 014: the privacy notice, for every signed-in role.
+          {
+            path: "/privacy",
+            lazy: async () => ({
+              Component: (await import("@/features/privacy/PrivacyPage")).PrivacyPage,
+            }),
+          },
           // Any signed-in role: students learn, staff preview (nothing is saved).
           // Lazy: these pull in react-markdown + KaTeX, which staff admin pages don't need.
           {
@@ -119,6 +126,13 @@ export const routes: RouteObject[] = [
                 ],
               },
               { path: "/classes/:id/slips", element: <SlipsView /> },
+              {
+                // Spec 014: outside ClassLayout, like slips (print view).
+                path: "/classes/:id/consent-forms",
+                lazy: async () => ({
+                  Component: (await import("@/features/privacy/ConsentFormsView")).ConsentFormsView,
+                }),
+              },
               { path: "/slips", element: <SlipsView /> },
               { path: "/students", element: <StudentsPage /> },
             ],
@@ -142,7 +156,15 @@ export const routes: RouteObject[] = [
           },
           {
             element: <RequireRole access="admin" />,
-            children: [{ path: "/teachers", element: <TeachersPage /> }],
+            children: [
+              { path: "/teachers", element: <TeachersPage /> },
+              {
+                path: "/audit",
+                lazy: async () => ({
+                  Component: (await import("@/features/privacy/AuditPage")).AuditPage,
+                }),
+              },
+            ],
           },
           { path: "*", element: <NotFoundPage /> },
         ],

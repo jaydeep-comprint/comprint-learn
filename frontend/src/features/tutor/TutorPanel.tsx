@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { conceptCourse, lessonPath } from "@/features/learn/paths";
+import { TUTOR_CONSENT_NOTE } from "@/features/tutor/TutorButton";
 import {
   MAX_DRAFT,
   MAX_MESSAGE,
@@ -72,8 +73,9 @@ function Bubble({ message }: { message: TutorMessage }) {
   );
 }
 
-function problemFrom(error: unknown): Problem | "refetch" | "busy" | "other" {
+function problemFrom(error: unknown): Problem | "refetch" | "busy" | "consent" | "other" {
   if (!(error instanceof ApiError)) return "other";
+  if (error.code === "tutor_consent_required") return "consent";
   if (error.status === 429) return "daily";
   if (error.status === 503) return "unavailable";
   if (error.code === "session_closed") return "closed";
@@ -87,11 +89,14 @@ export function TutorBody({
   sessionId,
   position,
   draft,
+  onConsentLost,
 }: {
   sessionId: string;
   position: number;
   /** The current answer draft (sent with each request; never MCQ picks). */
   draft: RefObject<string | null>;
+  /** Spec 014: consent was withdrawn meanwhile; the panel closes and the button shows the lock. */
+  onConsentLost?: () => void;
 }) {
   const id = useId();
   const queryClient = useQueryClient();
@@ -113,6 +118,9 @@ export function TutorBody({
     ) : (
       <Loader2 className="mx-auto size-5 animate-spin" aria-label="Loading" />
     );
+  }
+  if (!thread.consent) {
+    return <p className="text-sm">{TUTOR_CONSENT_NOTE}</p>;
   }
 
   const after = thread.mode === "after";
@@ -138,7 +146,10 @@ export function TutorBody({
       if (kind === "daily" || kind === "unavailable" || kind === "closed") setProblem(kind);
       else if (kind === "busy") toast.info("The tutor is still answering.");
       else if (kind === "refetch") void query.refetch();
-      else
+      else if (kind === "consent") {
+        void query.refetch();
+        onConsentLost?.();
+      } else
         toast.error(
           error instanceof ApiError && error.message ? error.message : "Couldn't send, try again",
         );
@@ -292,7 +303,9 @@ export function TutorPanel({
   draft: RefObject<string | null>;
 }) {
   const desktop = useMediaQuery("(min-width: 1024px)");
-  const body = <TutorBody sessionId={sessionId} position={position} draft={draft} />;
+  const body = (
+    <TutorBody sessionId={sessionId} position={position} draft={draft} onConsentLost={onClose} />
+  );
   if (desktop) {
     if (!open) return null;
     return (

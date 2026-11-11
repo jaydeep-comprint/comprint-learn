@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,10 @@ export function UserMenu({ me }: { me: Me }) {
           <Badge variant="secondary">{roleLabel(me)}</Badge>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navigate("/privacy")}>
+          <ShieldCheck aria-hidden />
+          Privacy
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => void signOut().then(() => navigate("/login", { replace: true }))}
         >

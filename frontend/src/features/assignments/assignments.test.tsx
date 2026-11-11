@@ -56,6 +56,9 @@ const students: ClassStudent[] = ["Asha", "Ravi", "Gone"].map((name, i) => ({
   reviews_due: 0,
   last_quiz: null,
   at_risk: [],
+  tutor_consent_at: null,
+  tutor_consent_form: null,
+  erase_due_at: null,
 }));
 
 function mockDialog(post: (init: RequestInit) => Response) {

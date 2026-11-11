@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,8 @@ import {
 } from "@/components/ui/table";
 import { useMe } from "@/features/auth/useMe";
 import { useClasses } from "@/features/classes/api";
+import { ConsentBulkBar, ConsentStatus, ErasureBadge } from "@/features/privacy/consent";
+import { useSelection } from "@/features/privacy/useSelection";
 import { slipsStore } from "@/features/slips/store";
 import { useResetPassword, useStudents, useUpdateStudent } from "@/features/students/api";
 import { errorMessage } from "@/lib/errors";
@@ -45,6 +48,11 @@ export function StudentsPage() {
   const update = useUpdateStudent();
   const navigate = useNavigate();
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
+  // Spec 014: bulk consent on this page is for admins (any teacher can use a class roster).
+  const selection = useSelection();
+  const canSelect = Boolean(me?.is_admin);
+  const listed = students.data ?? [];
+  const picked = listed.filter((s) => selection.has(s.id));
 
   const resetPassword = (s: Student) =>
     setConfirmRequest({
@@ -117,73 +125,120 @@ export function StudentsPage() {
           description={q ? undefined : "Open a class and add students to it."}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Username</TableHead>
-              <TableHead>Classes</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-10">
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.data.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="max-w-48 truncate font-medium">{s.display_name}</TableCell>
-                <TableCell className="font-mono text-sm">{s.username}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {s.class_ids.map((id) => (
-                      <Badge key={id} variant="outline" className="font-normal">
-                        {classNames.get(id) ?? "…"}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={s.status} />
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Actions for ${s.display_name}`}
-                      >
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => resetPassword(s)}>
-                        <KeyRound aria-hidden />
-                        Reset password
-                      </DropdownMenuItem>
-                      {me?.is_admin &&
-                        (s.status === "deactivated" ? (
-                          <DropdownMenuItem onSelect={() => setStatus(s, "active")}>
-                            <UserCheck aria-hidden />
-                            Reactivate
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onSelect={() => setStatus(s, "deactivated")}
-                          >
-                            <UserX aria-hidden />
-                            Deactivate
-                          </DropdownMenuItem>
+        <div className="space-y-3">
+          {canSelect && (
+            <ConsentBulkBar
+              selected={picked}
+              onClear={selection.clear}
+              confirm={setConfirmRequest}
+            />
+          )}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {canSelect && (
+                    <TableHead className="w-8">
+                      <Checkbox
+                        aria-label="Select all students"
+                        checked={
+                          picked.length === 0
+                            ? false
+                            : picked.length === listed.length
+                              ? true
+                              : "indeterminate"
+                        }
+                        onCheckedChange={(v) =>
+                          selection.set(
+                            listed.map((s) => s.id),
+                            v === true,
+                          )
+                        }
+                      />
+                    </TableHead>
+                  )}
+                  <TableHead>Name</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Classes</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tutor consent</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students.data.map((s) => (
+                  <TableRow key={s.id} data-state={selection.has(s.id) ? "selected" : undefined}>
+                    {canSelect && (
+                      <TableCell>
+                        <Checkbox
+                          aria-label={`Select ${s.display_name}`}
+                          checked={selection.has(s.id)}
+                          onCheckedChange={(v) => selection.set([s.id], v === true)}
+                        />
+                      </TableCell>
+                    )}
+                    <TableCell className="max-w-48 font-medium">
+                      <span className="truncate">{s.display_name}</span>
+                      {s.erase_due_at && <ErasureBadge dueAt={s.erase_due_at} />}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{s.username}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {s.class_ids.map((id) => (
+                          <Badge key={id} variant="outline" className="font-normal">
+                            {classNames.get(id) ?? "…"}
+                          </Badge>
                         ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={s.status} />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <ConsentStatus student={s} />
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Actions for ${s.display_name}`}
+                          >
+                            <MoreHorizontal />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => resetPassword(s)}>
+                            <KeyRound aria-hidden />
+                            Reset password
+                          </DropdownMenuItem>
+                          {me?.is_admin &&
+                            (s.status === "deactivated" ? (
+                              <DropdownMenuItem onSelect={() => setStatus(s, "active")}>
+                                <UserCheck aria-hidden />
+                                Reactivate
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onSelect={() => setStatus(s, "deactivated")}
+                              >
+                                <UserX aria-hidden />
+                                Deactivate
+                              </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       )}
       <ConfirmDialog request={confirmRequest} onClose={() => setConfirmRequest(null)} />
     </div>

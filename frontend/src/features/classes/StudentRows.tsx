@@ -6,6 +6,7 @@ import type { ConfirmRequest } from "@/components/ConfirmDialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { useUnenroll } from "@/features/classes/api";
 import { AT_RISK_LABELS } from "@/features/dashboard/atRisk";
+import { ConsentStatus } from "@/features/privacy/consent";
 import { slipsStore } from "@/features/slips/store";
 import { useResetPassword } from "@/features/students/api";
 import { shortDate } from "@/lib/dates";
@@ -53,11 +55,18 @@ export function StudentRows({
   cls,
   students,
   confirm,
+  selected,
+  onSelect,
 }: {
   cls: SchoolClass;
   students: ClassStudent[];
   confirm: (r: ConfirmRequest) => void;
+  /** Spec 014: row selection for the consent bulk bar. */
+  selected: ReadonlySet<string>;
+  onSelect: (ids: string[], on: boolean) => void;
 }) {
+  const allIds = students.map((s) => s.id);
+  const picked = allIds.filter((id) => selected.has(id)).length;
   const navigate = useNavigate();
   const reset = useResetPassword();
   const unenroll = useUnenroll(cls.id);
@@ -102,9 +111,17 @@ export function StudentRows({
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-8">
+            <Checkbox
+              aria-label="Select all students"
+              checked={picked === 0 ? false : picked === allIds.length ? true : "indeterminate"}
+              onCheckedChange={(v) => onSelect(allIds, v === true)}
+            />
+          </TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Username</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead>Tutor consent</TableHead>
           <TableHead className="text-right">XP this week</TableHead>
           <TableHead className="text-right">Streak</TableHead>
           <TableHead className="text-right">Reviews due</TableHead>
@@ -116,7 +133,14 @@ export function StudentRows({
       </TableHeader>
       <TableBody>
         {students.map((s) => (
-          <TableRow key={s.id}>
+          <TableRow key={s.id} data-state={selected.has(s.id) ? "selected" : undefined}>
+            <TableCell>
+              <Checkbox
+                aria-label={`Select ${s.display_name}`}
+                checked={selected.has(s.id)}
+                onCheckedChange={(v) => onSelect([s.id], v === true)}
+              />
+            </TableCell>
             <TableCell className="max-w-48 truncate font-medium">
               <Link to={`/classes/${cls.id}/students/${s.id}`} className="hover:underline">
                 {s.display_name}
@@ -126,6 +150,9 @@ export function StudentRows({
             <TableCell className="font-mono text-sm">{s.username}</TableCell>
             <TableCell>
               <StatusBadge status={s.status} />
+            </TableCell>
+            <TableCell className="whitespace-nowrap">
+              <ConsentStatus student={s} />
             </TableCell>
             <TableCell className="text-right tabular-nums">{s.week_xp}</TableCell>
             <TableCell className="text-right tabular-nums">{s.streak_days}</TableCell>

@@ -22,7 +22,14 @@ export type Teacher = {
   is_admin: boolean;
 };
 
-export type Student = {
+/** Spec 014: AI-tutor consent (null = not recorded) and a pending erasure. */
+export type PrivacyFields = {
+  tutor_consent_at: string | null;
+  tutor_consent_form: string | null;
+  erase_due_at: string | null;
+};
+
+export type Student = PrivacyFields & {
   id: string;
   display_name: string;
   username: string;
@@ -440,6 +447,8 @@ export type TutorMessage = {
 
 export type TutorThread = {
   enabled: boolean;
+  /** Spec 014: a parent/guardian consent form is recorded for this student. */
+  consent: boolean;
   mode: "before" | "after";
   closed: boolean;
   hints_used: number;
@@ -566,9 +575,10 @@ export type Heatmap = {
   students: { student_id: string; display_name: string; cells: HeatCell[] }[];
 };
 
-export type StudentDetail = {
+export type StudentDetail = PrivacyFields & {
   student_id: string;
   display_name: string;
+  username: string;
   status: UserStatus;
   at_risk: AtRiskReason[];
   week_xp: number;
@@ -849,3 +859,29 @@ export type DiagnosticResult = {
   conditional: ConceptRef[];
   to_learn: ConceptRef[];
 };
+
+/** Spec 014: the consent notice (`body_md` is printed on the form; `/privacy` shows both). */
+export type Notice = { version: string; title: string; body_md: string; stores_md: string };
+
+export type AuditAction =
+  | "consent_recorded"
+  | "consent_withdrawn"
+  | "export_downloaded"
+  | "erase_requested"
+  | "erase_cancelled"
+  | "erase_completed"
+  | "password_reset"
+  | "user_deactivated"
+  | "user_reactivated";
+
+export type AuditEvent = {
+  id: string;
+  action: AuditAction;
+  at: string;
+  /** null = the system (CLI or scheduled job). */
+  actor: { id: string; display_name: string } | null;
+  target: { id: string; display_name: string } | null;
+  meta: Record<string, string | number | boolean | null>;
+};
+
+export type AuditPage = { items: AuditEvent[]; next_before: string | null };

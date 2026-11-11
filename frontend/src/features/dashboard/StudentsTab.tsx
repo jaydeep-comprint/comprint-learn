@@ -1,13 +1,17 @@
-import { Users } from "lucide-react";
+import { Printer, Users } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { ConfirmDialog, type ConfirmRequest } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddStudentsDialog } from "@/features/classes/AddStudentsDialog";
 import { useClassStudents } from "@/features/classes/api";
 import { StudentRows } from "@/features/classes/StudentRows";
 import { AssignmentDialog, type AssignmentDraft } from "@/features/assignments/AssignmentDialog";
+import { ConsentBulkBar } from "@/features/privacy/consent";
+import { useSelection } from "@/features/privacy/useSelection";
 
 import { useHeatmap, useWindow } from "./api";
 import { useClassContext } from "./classContext";
@@ -24,6 +28,11 @@ export function StudentsTab() {
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   const [draft, setDraft] = useState<AssignmentDraft | null>(null);
+  const [withoutConsent, setWithoutConsent] = useState(false);
+  const selection = useSelection();
+  const rows = (students.data ?? []).filter((s) => !withoutConsent || !s.tutor_consent_at);
+  const missing = (students.data ?? []).filter((s) => !s.tutor_consent_at).length;
+  const formsPath = `/classes/${cls.id}/consent-forms`;
 
   return (
     <div className="space-y-6">
@@ -43,8 +52,40 @@ export function StudentsTab() {
           action={<AddStudentsDialog cls={cls} enrolledIds={new Set()} />}
         />
       ) : (
-        <div className="overflow-x-auto">
-          <StudentRows cls={cls} students={students.data} confirm={setConfirm} />
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant={withoutConsent ? "secondary" : "outline"}
+              aria-pressed={withoutConsent}
+              onClick={() => setWithoutConsent((v) => !v)}
+            >
+              Without consent ({missing})
+            </Button>
+            {selection.size === 0 && (
+              <Button size="sm" variant="ghost" asChild>
+                <Link to={formsPath}>
+                  <Printer aria-hidden />
+                  Print consent forms
+                </Link>
+              </Button>
+            )}
+          </div>
+          <ConsentBulkBar
+            selected={(students.data ?? []).filter((s) => selection.has(s.id))}
+            onClear={selection.clear}
+            confirm={setConfirm}
+            printTo={formsPath}
+          />
+          <div className="overflow-x-auto">
+            <StudentRows
+              cls={cls}
+              students={rows}
+              confirm={setConfirm}
+              selected={selection.ids}
+              onSelect={selection.set}
+            />
+          </div>
         </div>
       )}
       <DashCard title="Concept heatmap" query={heatmap}>

@@ -437,7 +437,7 @@ kps:
           mb: {choices: [50, 70, 80]}
         derived: {F: "ma * aa"}
         answer:
-          numeric: {value: "F / mb", unit: m/s^2, mode: sigfig, sigfigs: 2}
+          numeric: {value: "F / mb", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
         explanation: |
           Force on A: F = {{ma}} × {{aa}} = {{F}} N. By the third law B feels the same {{F}} N,
           so a = {{F}} ÷ {{mb}}.
@@ -637,7 +637,7 @@ practice:
               numeric: {value: "ab", unit: m/s^2, mode: exact}
           - prompt: How many times bigger is the sailor's acceleration than the boat's? Give 2 significant figures.
             answer:
-              numeric: {value: "M / ms", mode: sigfig, sigfigs: 2}
+              numeric: {value: "M / ms", mode: tolerance, rel_tol: 0.05}
     explanation: |
       F = {{ms}} × {{acc}} = {{F}} N on the sailor, and the same {{F}} N on the boat, away from the shore.
       Boat: a = {{F}} ÷ {{M}} = {{ab}} m/s². Ratio = {{acc}} ÷ {{ab}} = {{M}} ÷ {{ms}}: the inverse ratio of the masses.

@@ -451,7 +451,7 @@ kps:
           d: "v1 * t1 + v2 * t3"
           tt: "t1 + t2 + t3"
         answer:
-          numeric: {value: "d / tt", unit: m/s, mode: sigfig, sigfigs: 2}
+          numeric: {value: "d / tt", unit: m/s, mode: tolerance, rel_tol: 0.05}
         explanation: |
           Total distance = {{v1}} × {{t1}} + {{v2}} × {{t3}} = {{d}} m; total time = {{tt}} s (the stop counts).
           Average speed = {{d}} ÷ {{tt}}.
@@ -522,7 +522,7 @@ practice:
               numeric: {value: "d", unit: m, mode: tolerance, rel_tol: 0.02}
           - prompt: What is its average speed for the whole trip? Give 3 significant figures.
             answer:
-              numeric: {value: "d / tt", unit: m/s, mode: sigfig, sigfigs: 3}
+              numeric: {value: "d / tt", unit: m/s, mode: tolerance, rel_tol: 0.01}
     explanation: |
       Slopes: {{v}} ÷ {{t1}} speeding up, −{{v}} ÷ {{t3}} braking.
       Area: ½ × {{t1}} × {{v}} + {{t2}} × {{v}} + ½ × {{t3}} × {{v}} = {{d}} m.
@@ -559,7 +559,7 @@ practice:
               numeric: {value: "d1 + d2", unit: m, mode: exact}
           - prompt: What is her average speed for the whole trip, including the stop? Give 2 significant figures.
             answer:
-              numeric: {value: "(d1 + d2) / tt", unit: m/s, mode: sigfig, sigfigs: 2}
+              numeric: {value: "(d1 + d2) / tt", unit: m/s, mode: tolerance, rel_tol: 0.05}
     explanation: |
       Slopes: {{d1}} ÷ {{t1}} = {{v1}} m/s, then 0 while stopped, then {{d2}} ÷ {{t3}} = {{v2}} m/s.
       Average speed = ({{d1}} + {{d2}}) ÷ {{tt}}: the stop is part of the trip time.

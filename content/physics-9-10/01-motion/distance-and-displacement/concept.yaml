@@ -218,7 +218,7 @@ kps:
           a: {min: 3, max: 12, step: 1}
           b: {min: 4, max: 15, step: 1}
         answer:
-          numeric: {value: "sqrt(a^2 + b^2)", unit: m, mode: sigfig, sigfigs: 3}
+          numeric: {value: "sqrt(a^2 + b^2)", unit: m, mode: tolerance, rel_tol: 0.01}
         explanation: |
           The two legs are at right angles, so displacement = √({{a}}² + {{b}}²) m.
       - id: kp3-q2
@@ -304,7 +304,7 @@ practice:
               numeric: {value: "a + b", unit: km, mode: exact}
           - prompt: What is the size of the rider's displacement? Give 3 significant figures.
             answer:
-              numeric: {value: "sqrt(a^2 + b^2)", unit: km, mode: sigfig, sigfigs: 3}
+              numeric: {value: "sqrt(a^2 + b^2)", unit: km, mode: tolerance, rel_tol: 0.01}
           - prompt: The rider returns home along the same roads. What is the size of the displacement for the whole round trip?
             answer:
               numeric: {value: 0, unit: km, mode: exact}

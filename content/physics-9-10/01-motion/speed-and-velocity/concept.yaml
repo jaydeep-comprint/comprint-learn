@@ -38,7 +38,7 @@ kps:
           d: {min: 60, max: 240, step: 20}
           t: {choices: [2, 3, 4, 5]}
         answer:
-          numeric: {value: "d / t", unit: km/h, mode: sigfig, sigfigs: 3}
+          numeric: {value: "d / t", unit: km/h, mode: tolerance, rel_tol: 0.01}
         explanation: |
           Average speed = total distance ÷ total time = {{d}} ÷ {{t}} km/h.
       - id: kp1-q2
@@ -54,7 +54,7 @@ kps:
           d2: {min: 100, max: 500, step: 50}
           t2: {choices: [10, 20, 25, 50]}
         answer:
-          numeric: {value: "(d1 + d2) / (t1 + t2)", unit: m/s, mode: sigfig, sigfigs: 3}
+          numeric: {value: "(d1 + d2) / (t1 + t2)", unit: m/s, mode: tolerance, rel_tol: 0.01}
         explanation: |
           Total distance ÷ total time = ({{d1}} + {{d2}}) m ÷ ({{t1}} + {{t2}}) s.
       - id: kp1-q3
@@ -72,7 +72,7 @@ kps:
         derived:
           total_time: "d / v1 + d / v2"
         answer:
-          numeric: {value: "2 * d / total_time", unit: km/h, mode: sigfig, sigfigs: 3}
+          numeric: {value: "2 * d / total_time", unit: km/h, mode: tolerance, rel_tol: 0.01}
         explanation: |
           Total time = {{d}}/{{v1}} + {{d}}/{{v2}} = {{total_time}} h, so average speed = 2 × {{d}} km ÷ {{total_time}} h.
           It is not the mean of the two speeds.
@@ -118,7 +118,7 @@ kps:
           d: "d1 + d2"
           tt: "t1 + s / 60 + t2"
         answer:
-          numeric: {value: "d / tt", unit: km/h, mode: sigfig, sigfigs: 3}
+          numeric: {value: "d / tt", unit: km/h, mode: tolerance, rel_tol: 0.01}
         explanation: |
           Total distance = {{d1}} + {{d2}} = {{d}} km. Total time = {{t1}} h + {{s}} min + {{t2}} h = {{tt}} h
           (the stop counts). Average speed = {{d}} ÷ {{tt}}.
@@ -209,7 +209,7 @@ kps:
           disp: "d - e"
           tt: "t1 + t2"
         answer:
-          numeric: {value: "disp / tt", unit: m/s, mode: sigfig, sigfigs: 2}
+          numeric: {value: "disp / tt", unit: m/s, mode: tolerance, rel_tol: 0.05}
         explanation: |
           Displacement = {{d}} − {{e}} = {{disp}} m north; total time = {{tt}} s.
           Average velocity = {{disp}} ÷ {{tt}}, pointing north. (Average speed would use the full distance instead.)
@@ -229,7 +229,7 @@ kps:
           v: {choices: [10, 15, 20, 25, 30]}
           d: {min: 300, max: 1500, step: 300}
         answer:
-          numeric: {value: "d / v", unit: s, mode: sigfig, sigfigs: 3}
+          numeric: {value: "d / v", unit: s, mode: tolerance, rel_tol: 0.01}
         explanation: |
           t = s ÷ v = {{d}} ÷ {{v}} s.
       - id: kp3-q2
@@ -319,13 +319,13 @@ practice:
         steps:
           - prompt: How long does the ride to school take, in hours? Give 3 significant figures.
             answer:
-              numeric: {value: "t1", unit: h, mode: sigfig, sigfigs: 3}
+              numeric: {value: "t1", unit: h, mode: tolerance, rel_tol: 0.01}
           - prompt: What is the total time for the round trip, in hours? Give 3 significant figures.
             answer:
-              numeric: {value: "t1 + t2", unit: h, mode: sigfig, sigfigs: 3}
+              numeric: {value: "t1 + t2", unit: h, mode: tolerance, rel_tol: 0.01}
           - prompt: What is her average speed for the round trip? Give 3 significant figures.
             answer:
-              numeric: {value: "2 * d / (t1 + t2)", unit: km/h, mode: sigfig, sigfigs: 3}
+              numeric: {value: "2 * d / (t1 + t2)", unit: km/h, mode: tolerance, rel_tol: 0.01}
           - prompt: What is her average velocity for the round trip?
             answer:
               numeric: {value: 0, unit: km/h, mode: exact}

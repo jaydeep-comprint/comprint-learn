@@ -41,7 +41,7 @@ kps:
         constraints: ["v > u"]
         derived: {a: "(v - u) / t"}
         answer:
-          numeric: {value: "a", unit: m/s^2, mode: sigfig, sigfigs: 2}
+          numeric: {value: "a", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
         explanation: |
           a = (v − u) / t = ({{v}} − {{u}}) / {{t}} = {{a}} m/s².
       - id: kp1-q2
@@ -69,7 +69,7 @@ kps:
           v: {choices: [72, 90, 108]}
           t: {choices: [5, 10, 20]}
         answer:
-          numeric: {value: "(v - u) / 3.6 / t", unit: m/s^2, mode: sigfig, sigfigs: 2}
+          numeric: {value: "(v - u) / 3.6 / t", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
         explanation: |
           Convert to m/s first (divide by 3.6), then a = (v − u) ÷ t.
       - id: kp1-q4
@@ -109,7 +109,7 @@ kps:
         derived:
           ms: "v / 3.6"
         answer:
-          numeric: {value: "ms / a", unit: s, mode: sigfig, sigfigs: 2}
+          numeric: {value: "ms / a", unit: s, mode: tolerance, rel_tol: 0.05}
         explanation: |
           {{v}} km/h = {{ms}} m/s. The velocity rises by {{a}} m/s each second, so t = {{ms}} ÷ {{a}}.
 
@@ -144,7 +144,7 @@ kps:
           t: {choices: [4, 5, 8]}
         constraints: ["u > v"]
         answer:
-          numeric: {value: "(u - v) / t", unit: m/s^2, mode: sigfig, sigfigs: 2}
+          numeric: {value: "(u - v) / t", unit: m/s^2, mode: tolerance, rel_tol: 0.05}
         explanation: |
           Retardation = how fast the velocity drops = (u − v) ÷ t = ({{u}} − {{v}}) ÷ {{t}} m/s².
       - id: kp2-q3
@@ -158,7 +158,7 @@ kps:
           u: {choices: [4, 6, 8, 10, 12]}
           a: {choices: [0.5, 1, 2]}
         answer:
-          numeric: {value: "u / a", unit: s, mode: sigfig, sigfigs: 2}
+          numeric: {value: "u / a", unit: s, mode: tolerance, rel_tol: 0.05}
         explanation: |
           The speed drops by {{a}} m/s each second, so t = {{u}} ÷ {{a}}.
       - id: kp2-q4
@@ -231,7 +231,7 @@ kps:
           v: {min: 20, max: 40, step: 4}
           a: {choices: [2, 4, 5]}
         answer:
-          numeric: {value: "(v - u) / a", unit: s, mode: sigfig, sigfigs: 3}
+          numeric: {value: "(v - u) / a", unit: s, mode: tolerance, rel_tol: 0.01}
         explanation: |
           t = (v − u) ÷ a = ({{v}} − {{u}}) ÷ {{a}}.
       - id: kp3-q3
@@ -310,7 +310,7 @@ practice:
               numeric: {value: "vmax", unit: m/s, mode: exact}
           - prompt: What is the size of its retardation while braking? Give 3 significant figures.
             answer:
-              numeric: {value: "vmax / t2", unit: m/s^2, mode: sigfig, sigfigs: 3}
+              numeric: {value: "vmax / t2", unit: m/s^2, mode: tolerance, rel_tol: 0.01}
           - prompt: How long is the train moving in total, from the start of the acceleration until it stops?
             answer:
               numeric: {value: "t + t2", unit: s, mode: exact}

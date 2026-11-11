@@ -3,6 +3,7 @@ hints charged to attempts and XP, reserve/call/store races, after mode, safety a
 switch."""
 
 import asyncio
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -123,9 +124,11 @@ async def test_hints_in_order_charged_to_the_attempt_and_xp(db_app: DbApp) -> No
     item = await item_of(db_app, q)
     seen = db_app.tutor.prompt_text(0)
     assert "HINT REQUEST: rung 1" in seen and "<student_draft>\n12\n</student_draft>" in seen
-    # KP1 also has an MCQ (no "value"), and the question served first varies.
-    if (value := item.answer["spec"].get("value")) is not None:
-        assert str(value) not in seen.split("<context>", 1)[1]
+    # KP1 also has an MCQ (no "value"), and the question served first varies. Match the value as a
+    # whole token: a one-character answer such as "0" can't be told apart from ordinary text.
+    if (value := item.answer["spec"].get("value")) is not None and len(str(value)) > 1:
+        token = rf"(?<![\w.]){re.escape(str(value))}(?![\w.])"
+        assert not re.search(token, seen.split("<context>", 1)[1])
     assert (item.answer.get("explanation") or "§never§").split("{{")[0] not in seen
     async with db_app.sessions() as session:
         student = await session.get(AppUser, s)

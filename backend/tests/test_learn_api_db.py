@@ -8,6 +8,8 @@ from typing import Any
 import pytest
 from sqlalchemy import delete, select, text
 
+from app.cli import DEFAULT_CONTENT_ROOT
+from app.content.loader import load
 from app.models import (
     Attempt,
     AttemptContext,
@@ -88,7 +90,9 @@ async def test_physics_student_courses_and_outline(db_app: DbApp) -> None:
     assert [c["slug"] for c in courses] == [PHYSICS]
     card = courses[0]
     assert card["learned"] == 0
-    assert card["total"] == 4  # 3 own + the borrowed maths concept
+    physics = next(c for c in load(DEFAULT_CONTENT_ROOT).courses if c.file.id == PHYSICS)
+    own = [c.qualified_id for c in physics.concepts]
+    assert card["total"] == len(own) + 1  # its own + the borrowed maths concept
     assert "continue" not in card  # no auto-pick: the student chooses
     assert [c["id"] for c in card["ready"]] == [DIST, LIN]
     assert card["ready_count"] == 2
@@ -97,7 +101,7 @@ async def test_physics_student_courses_and_outline(db_app: DbApp) -> None:
     outline = await _get(db_app, w.physics_student, f"/api/v1/learn/courses/{PHYSICS}/outline")
     order = list(_statuses(outline))
     assert order.index(LIN) < order.index(SPEED)
-    assert order == [DIST, LIN, SPEED, f"{PHYSICS}/acceleration"]
+    assert [c for c in order if c != LIN] == own  # course order, LIN before its dependant
     assert "course" not in _keys(outline["chapters"])  # no "From Maths" label
     statuses = _statuses(outline)
     assert statuses[DIST] == "ready"

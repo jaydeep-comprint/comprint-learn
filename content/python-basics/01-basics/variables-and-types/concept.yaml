@@ -128,6 +128,26 @@ kps:
               - id: d
                 text: "`class`"
                 misconception: names-can-be-anything
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          score = {{s}}
+          score = score + {{b}}
+          score = score * 2
+          print(score)
+          ```
+        params:
+          s: {min: 10, max: 60, step: 1}
+          b: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "2 * (s + b)", mode: exact}
+        explanation: |
+          After the second line `score` is {{s}} + {{b}}; the third line doubles that new value.
   - id: kp2
     title: Types and converting between them
     worked_example: kp-2-worked.md
@@ -224,6 +244,23 @@ kps:
               - id: c
                 text: It prints 53.
                 misconception: string-number-concat
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print? Give your answer as a decimal if needed.
+
+          ```python
+          x = float("{{a}}")
+          print(x / 4)
+          ```
+        params:
+          a: {min: 5, max: 99, step: 1}
+        answer:
+          numeric: {value: "a / 4", mode: exact}
+        explanation: |
+          `float("{{a}}")` turns the text into the number {{a}}.0, and `/` always gives a float.
   - id: kp3
     title: Arithmetic operators
     worked_example: kp-3-worked.md
@@ -301,6 +338,24 @@ kps:
                 misconception: slash-gives-int
               - id: c
                 text: "4"
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          print({{a}} - {{b}} * {{c}})
+          ```
+        params:
+          a: {min: 40, max: 99, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 2, max: 5, step: 1}
+        answer:
+          numeric: {value: "a - b * c", mode: exact}
+        explanation: |
+          `*` is done before `-`: first {{b}} × {{c}}, then subtract it from {{a}}.
 practice:
   - id: practice-1
     type: code
@@ -328,3 +383,29 @@ practice:
           - {args: [59], expected: [0, 0, 59], visible: true}
           - {args: [3600], expected: [1, 0, 0]}
           - {args: [86399], expected: [23, 59, 59]}
+  - id: practice-2
+    type: code
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      Some friends share a restaurant bill equally, in whole rupees. Write `share(total, people)` that
+      returns `[each, left]`: how many whole rupees each person pays, and how many rupees are left over.
+      For example `share(1000, 3)` returns `[333, 1]`.
+    answer:
+      code:
+        entry: share
+        starter: |
+          def share(total, people):
+              each = 0
+              left = 0
+              return [each, left]
+        solution: |
+          def share(total, people):
+              each = total // people
+              left = total % people
+              return [each, left]
+        tests:
+          - {args: [1000, 3], expected: [333, 1], visible: true}
+          - {args: [900, 4], expected: [225, 0]}
+          - {args: [5, 8], expected: [0, 5]}
+          - {args: [1, 1], expected: [1, 0]}

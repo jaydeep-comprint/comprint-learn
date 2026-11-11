@@ -125,6 +125,26 @@ kps:
                 misconception: assign-vs-compare
               - id: c
                 text: "`if 100:`"
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          x = {{a}}
+          print(int(x < {{lo}} or x > {{hi}}) + {{c}})
+          ```
+        params:
+          a: {min: 50, max: 90, step: 1}
+          lo: {min: 10, max: 20, step: 1}
+          hi: {min: 30, max: 45, step: 1}
+          c: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "1 + c", mode: exact}
+        explanation: |
+          {{a}} > {{hi}} is True, so the `or` is True (only one side needs to be). `int(True)` is 1.
   - id: kp2
     title: if and else
     worked_example: kp-2-worked.md
@@ -228,6 +248,25 @@ kps:
                 misconception: all-branches-run
               - id: c
                 text: Only when the `if` condition is True.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          n = {{a}}
+          if n % 2 == 1:
+              n = n + 1
+          print(n // 2)
+          ```
+        params:
+          a: {min: 3, max: 41, step: 1}
+        answer:
+          numeric: {value: "ceiling(a / 2)", mode: exact}
+        explanation: |
+          If {{a}} is odd, 1 is added first to make it even; then it is halved.
   - id: kp3
     title: elif chains
     worked_example: kp-3-worked.md
@@ -351,6 +390,31 @@ kps:
                 misconception: all-branches-run
               - id: c
                 text: medium
+      - id: kp3-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          n = {{n}}
+          if n % 3 == 0:
+              r = 1
+          elif n % 3 == 1:
+              r = 2
+          else:
+              r = 3
+          print(r * {{k}})
+          ```
+        params:
+          n: {min: 10, max: 50, step: 1}
+          k: {min: 2, max: 9, step: 1}
+        derived: {rem: "n % 3"}
+        answer:
+          numeric: {value: "(n % 3 + 1) * k", mode: exact}
+        explanation: |
+          {{n}} % 3 is {{rem}}, so only that branch runs.
 practice:
   - id: practice-1
     type: code
@@ -378,3 +442,38 @@ practice:
           - {args: [2023], expected: false, visible: true}
           - {args: [1900], expected: false}
           - {args: [2000], expected: true}
+  - id: practice-2
+    type: code
+    bloom: create
+    expected_minutes: 8
+    prompt: |
+      Three sticks have lengths `a`, `b` and `c`. They make a triangle only if each length is **less than** the
+      sum of the other two. Write `triangle_type(a, b, c)` that returns:
+
+      - `"none"` if they don't make a triangle,
+      - otherwise `"equilateral"` if all three are equal,
+      - `"isosceles"` if exactly two are equal,
+      - `"scalene"` if all three are different.
+    answer:
+      code:
+        entry: triangle_type
+        starter: |
+          def triangle_type(a, b, c):
+              return "none"
+        solution: |
+          def triangle_type(a, b, c):
+              if a >= b + c or b >= a + c or c >= a + b:
+                  return "none"
+              elif a == b and b == c:
+                  return "equilateral"
+              elif a == b or b == c or a == c:
+                  return "isosceles"
+              else:
+                  return "scalene"
+        tests:
+          - {args: [3, 4, 5], expected: "scalene", visible: true}
+          - {args: [1, 2, 3], expected: "none", visible: true}
+          - {args: [6, 6, 6], expected: "equilateral"}
+          - {args: [5, 5, 8], expected: "isosceles"}
+          - {args: [8, 5, 5], expected: "isosceles"}
+          - {args: [2, 2, 9], expected: "none"}

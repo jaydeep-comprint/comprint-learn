@@ -9,6 +9,7 @@ print(city[-1])         # I: negative indexes count from the end
 print(city[1:4])        # UMB: a slice stops just before index 4
 print(city.lower())     # mumbai: a new string; city itself is still "MUMBAI"
 print(len(city))        # 6
+print("ab" * 3)         # ababab: * repeats a string
 ```
 
 - A string of `n` characters has indexes `0` to `n − 1`, or `-n` to `-1` from the end.

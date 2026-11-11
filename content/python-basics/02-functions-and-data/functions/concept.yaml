@@ -658,12 +658,12 @@ practice:
     bloom: create
     expected_minutes: 10
     prompt: |
-      Write `report()` that reads a whole number `n` with `input()`, then reads `n` marks (one per line).
-      For each mark it prints `Pass` (33 or more) or `Fail`. At the end it prints how many students passed.
+      Write `report()` that reads the marks of **three** students, one per line, with `int(input())`.
+      For each mark it prints `Pass` (33 or more) or `Fail`. At the end it prints how many of the three passed.
 
-      Use a helper function `result(marks)` that **returns** `"Pass"` or `"Fail"`.
+      Use a helper function `result(marks)` that **returns** `"Pass"` or `"Fail"`, and call it for each mark.
 
-      For example, with the input `3`, `45`, `20`, `33` it prints `Pass`, `Fail`, `Pass` and then `2`.
+      For example, with the input `45`, `20`, `33` it prints `Pass`, `Fail`, `Pass` and then `2`.
     answer:
       code:
         entry: report
@@ -672,28 +672,33 @@ practice:
               return "Fail"
 
           def report():
-              n = int(input())
+              a = int(input())
+              b = int(input())
+              c = int(input())
         solution: |
           def result(marks):
               if marks >= 33:
                   return "Pass"
               return "Fail"
 
+          def passed(marks):
+              if result(marks) == "Pass":
+                  return 1
+              return 0
+
           def report():
-              n = int(input())
-              passed = 0
-              for i in range(n):
-                  marks = int(input())
-                  r = result(marks)
-                  print(r)
-                  if r == "Pass":
-                      passed = passed + 1
-              print(passed)
+              a = int(input())
+              b = int(input())
+              c = int(input())
+              print(result(a))
+              print(result(b))
+              print(result(c))
+              print(passed(a) + passed(b) + passed(c))
         tests:
-          - {stdin: "3\n45\n20\n33\n", expected_stdout: "Pass\nFail\nPass\n2\n", visible: true}
-          - {stdin: "0\n", expected_stdout: "0\n"}
-          - {stdin: "2\n32\n0\n", expected_stdout: "Fail\nFail\n0\n"}
-          - {stdin: "1\n100\n", expected_stdout: "Pass\n1\n"}
+          - {stdin: "45\n20\n33\n", expected_stdout: "Pass\nFail\nPass\n2\n", visible: true}
+          - {stdin: "32\n0\n10\n", expected_stdout: "Fail\nFail\nFail\n0\n"}
+          - {stdin: "100\n33\n99\n", expected_stdout: "Pass\nPass\nPass\n3\n"}
+          - {stdin: "33\n32\n34\n", expected_stdout: "Pass\nFail\nPass\n2\n"}
   - id: practice-3
     type: code
     bloom: apply

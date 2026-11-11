@@ -11,6 +11,8 @@ print(clean.find("z"))         # -1             not found
 parts = clean.split()          # ["Asha", "Rao"]
 print(len(parts))              # 2
 print(parts[1])                # Rao
+print(parts[1][0])             # R        the first letter of the second part
+print("ab" * 3)                # ababab   * repeats a string
 print(name)                    # "  Asha Rao  " unchanged!
 ```
 

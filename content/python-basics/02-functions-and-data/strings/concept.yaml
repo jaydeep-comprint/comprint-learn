@@ -453,7 +453,7 @@ kps:
         answer:
           numeric: {value: "ans", mode: exact}
         explanation: |
-          Each "abc" has 2 characters that are not "a", and there are {{n}} copies: 2 × {{n}} = {{ans}}.
+          `s` repeats "abc" {{n}} times, and each "abc" has 2 characters that are not "a": 2 × {{n}} = {{ans}}.
       - id: kp4-q2
         type: numeric
         bloom: apply
@@ -544,7 +544,7 @@ kps:
           mcq:
             options:
               - {id: a, text: UNE, correct: true}
-              - {id: b, text: PUNE, misconception: index-starts-at-one}
+              - {id: b, text: PUN, misconception: index-starts-at-one}
               - {id: c, text: "It stops with an IndexError", misconception: range-includes-stop}
         explanation: |
           `range(1, len(s))` is `range(1, 4)`: the indexes 1, 2 and 3 (not 4). They skip index 0 ("P"), so it

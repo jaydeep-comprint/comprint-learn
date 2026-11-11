@@ -43,15 +43,6 @@
 - id: dict-by-position
   title: A dictionary's pairs have index numbers
   description: Uses `d[0]` or `d[1]` to mean the first or second pair, as with a list; a dictionary is looked up by key, so this is a KeyError unless 0 or 1 happens to be a key.
-- id: dict-keeps-duplicates
-  title: A dictionary can hold the same key twice
-  description: 'Expects `{"Asha": 10, "Asha": 20}` to keep both pairs or the first value; keys are unique, the last value wins, and `d[k] = v` on an existing key replaces its value.'
-- id: def-runs-body
-  title: Defining a function runs it
-  description: Thinks the body of a `def` runs when the function is defined, so expects output from a function that is never called.
-- id: local-visible-outside
-  title: Variables inside a function are seen outside
-  description: Expects a variable assigned inside a function to exist, or to change a same-named variable, outside it; it is local, so outside it is a NameError or the outer variable keeps its value.
 - id: default-must-be-passed
   title: Every parameter must be given
   description: Thinks leaving out an argument that has a default value is an error; the default is used instead.

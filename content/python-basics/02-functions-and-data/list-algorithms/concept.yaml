@@ -431,7 +431,7 @@ kps:
           numeric: {value: "passed", mode: exact}
         explanation: |
           `count` goes up by 1 for each mark that is 33 **or more** (a mark of exactly 33 passes).
-          {{passed}} of the five marks pass.
+          Number of marks that pass: {{passed}}.
       - id: kp3-q2
         type: numeric
         bloom: apply
@@ -459,8 +459,8 @@ kps:
         answer:
           numeric: {value: "n", mode: exact}
         explanation: |
-          `x % 2 == 0` is true for even numbers, so `evens` keeps only those. There are {{n}} even numbers
-          in the list.
+          `x % 2 == 0` is true for even numbers, so `evens` keeps only those, and `len(evens)` counts them:
+          {{n}}.
       - id: kp3-q3
         type: numeric
         bloom: apply
@@ -515,7 +515,7 @@ kps:
           numeric: {value: "n", mode: exact}
         explanation: |
           It counts the multiples of 5 (up to 50) from {{lo}} to {{hi}}, **both ends included**
-          (`>=` and `<=`). There are {{n}} of them.
+          (`>=` and `<=`). Count: {{n}}.
       - id: kp3-q5
         type: mcq
         bloom: understand

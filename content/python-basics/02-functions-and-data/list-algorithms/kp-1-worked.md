@@ -23,3 +23,4 @@ print(find_index(runs, 99))        # -1
 - `return -1` goes **after** the loop, not in an `else`: you only know a value is missing when you
   have checked every item.
 - −1 can't be a real index from this loop, so it safely means "not found".
+- Outside a function, `break` does the same job as `return`: it ends the loop at once when the item is found.

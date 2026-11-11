@@ -1,0 +1,592 @@
+id: factorisation-of-polynomials
+title: Factorisation of polynomials
+summary: The factor theorem, splitting the middle term, factorising with identities, and factorising cubics.
+prereqs:
+  - {concept: polynomials-basics, weight: 0.5}
+  - {concept: algebraic-identities, weight: 0.5}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    For a polynomial $p(x)$, you find that $p(2) = 0$. Which of these must be a factor of $p(x)$?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "$x - 2$", correct: true}
+        - {id: b, text: "$x + 2$", misconception: factor-sign}
+        - {id: c, text: "$x$", misconception: zero-vs-value}
+        - {id: d, text: "$2x$"}
+  explanation: |
+    The factor theorem: $x - a$ is a factor of $p(x)$ exactly when $p(a) = 0$. Here $a = 2$, so $x - 2$ is a factor.
+    Check: $x - 2$ is 0 when $x = 2$, just like $p(x)$. The factor $x + 2$ would need $p(-2) = 0$.
+
+kps:
+  - id: kp1
+    title: The factor theorem
+    worked_example: kp-1-worked.md
+    key_prereqs: [polynomials-basics]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Find the value of $k$ for which $x + {{r}}$ is a factor of $p(x) = {{a}}x^2 + kx - {{c}}$.
+        params:
+          a: {min: 2, max: 4, step: 1}
+          r: {min: 1, max: 5, step: 1}
+          m: {min: 1, max: 9, step: 1}
+        derived:
+          c: "r * m"
+          k: "a * r - m"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          $x + {{r}} = x - (-{{r}})$, so it is a factor when $p(-{{r}}) = 0$:
+          ${{a}}(-{{r}})^2 + k(-{{r}}) - {{c}} = 0$. Collect the numbers and divide by ${{r}}$: $k = {{k}}$.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          $x - {{r}}$ is a factor of $p(x) = x^3 + {{b}}x^2 + kx + {{d}}$. Find $k$.
+        params:
+          b: {min: 2, max: 6, step: 1}
+          r: {min: 1, max: 3, step: 1}
+          t: {min: 1, max: 6, step: 1}
+        derived:
+          d: "r * t"
+          k: "-(r^2 + b * r + t)"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          By the factor theorem, $p({{r}}) = 0$: $({{r}})^3 + {{b}}({{r}})^2 + {{r}}k + {{d}} = 0$.
+          Move the numbers to the other side and divide by ${{r}}$: $k = {{k}}$.
+      - id: kp1-q3
+        type: mcq
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Which of these is a factor of $p(x) = x^3 + 2x^2 - 5x - 6$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$x - 2$", correct: true}
+              - {id: b, text: "$x + 2$", misconception: factor-sign}
+              - {id: c, text: "$x - 1$"}
+              - {id: d, text: "$x + 4$"}
+        explanation: |
+          Test each one at its zero. $p(2) = 8 + 8 - 10 - 6 = 0$, so $x - 2$ is a factor.
+          $x + 2$ needs $p(-2) = -8 + 8 + 10 - 6 = 4 \ne 0$; $p(1) = -8$ and $p(-4) = -18$, so the others are not factors.
+      - id: kp1-q4
+        type: numeric
+        bloom: understand
+        expected_minutes: 1.5
+        prompt: |
+          To test whether $x + {{r}}$ is a factor of $p(x) = x^3 - {{b}}x + {{c}}$, you find the value of $p(x)$ at the right number.
+          What is that value?
+        params:
+          r: {min: 1, max: 4, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 12, step: 1}
+        derived:
+          v: "-r^3 + b * r + c"
+        answer:
+          numeric: {value: "v", mode: exact}
+        explanation: |
+          $x + {{r}}$ is 0 when $x = -{{r}}$, so find $p(-{{r}}) = (-{{r}})^3 - {{b}}(-{{r}}) + {{c}} = {{v}}$.
+          $x + {{r}}$ is a factor exactly when this value is 0.
+      - id: kp1-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $x - {{r}}$ is a factor of $p(x) = kx^2 - {{b}}x - {{c}}$. Find $k$.
+        params:
+          k: {min: 2, max: 5, step: 1}
+          r: {min: 1, max: 3, step: 1}
+          t: {min: 1, max: 6, step: 1}
+        constraints: ["k * r - t >= 2"]
+        derived:
+          b: "k * r - t"
+          c: "r * t"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          $p({{r}}) = 0$: $k({{r}})^2 - {{b}}({{r}}) - {{c}} = 0$. Move the numbers across and divide by
+          $({{r}})^2$: $k = {{k}}$.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $x - 1$ is a factor of $p(x) = kx^2 - 3x + k$. Find $k$.
+        answer:
+          numeric: {value: 1.5, mode: exact}
+        explanation: |
+          $p(1) = 0$: $k - 3 + k = 0$, so $2k = 3$ and $k = 1.5$.
+
+  - id: kp2
+    title: Splitting the middle term
+    worked_example: kp-2-worked.md
+    key_prereqs: [polynomials-basics]
+    items:
+      - id: kp2-q1
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Factorise $x^2 + {{b}}x + {{c}}$.
+        params:
+          m: {min: 2, max: 7, step: 1}
+          n: {min: 2, max: 9, step: 1}
+        derived:
+          b: "m + n"
+          c: "m * n"
+        answer:
+          expression: {value: "(x + m)*(x + n)", variables: [x], sympy_mode: exact}
+        explanation: |
+          Find two numbers with product {{c}} and sum {{b}}: they are {{m}} and {{n}}.
+          So $x^2 + {{b}}x + {{c}} = x^2 + {{m}}x + {{n}}x + {{c}} = (x + {{m}})(x + {{n}})$.
+      - id: kp2-q2
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Factorise $x^2 - {{b}}x - {{c}}$.
+        params:
+          m: {min: 4, max: 12, step: 1}
+          n: {min: 2, max: 8, step: 1}
+        constraints: ["m - n >= 2"]
+        derived:
+          b: "m - n"
+          c: "m * n"
+        answer:
+          expression: {value: "(x - m)*(x + n)", variables: [x], sympy_mode: exact}
+        explanation: |
+          You need two numbers with product $-{{c}}$ and sum $-{{b}}$: they are $-{{m}}$ and ${{n}}$.
+          $x^2 - {{m}}x + {{n}}x - {{c}} = x(x - {{m}}) + {{n}}(x - {{m}}) = (x - {{m}})(x + {{n}})$.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          To factorise ${{a}}x^2 + {{b}}x + {{c}}$ by splitting the middle term, you need two numbers whose
+          product is ${{a}} \times {{c}}$ and whose sum is {{b}}. What is the larger of the two numbers?
+        params:
+          a: {choices: [2, 3, 5]}
+          m: {min: 1, max: 9, step: 1}
+          n: {min: 1, max: 6, step: 1}
+        constraints: ["m % a != 0"]
+        derived:
+          b: "a * n + m"
+          c: "m * n"
+          p: "a * c"
+          big: "Max(a * n, m)"
+        answer:
+          numeric: {value: "big", mode: exact}
+        explanation: |
+          The product must be ${{a}} \times {{c}} = {{p}}$ and the sum {{b}}. Try factor pairs of {{p}}:
+          the pair that adds to {{b}} is $\{ {{m}}, {{a}} \times {{n}} \}$, and the larger is {{big}}.
+          Then ${{a}}x^2 + {{b}}x + {{c}} = ({{a}}x + {{m}})(x + {{n}})$.
+      - id: kp2-q4
+        type: expression
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Factorise ${{a}}x^2 - {{b}}x + {{c}}$.
+        params:
+          a: {choices: [2, 3, 5]}
+          m: {min: 2, max: 9, step: 1}
+          n: {min: 1, max: 6, step: 1}
+        constraints: ["m % a != 0"]
+        derived:
+          b: "a * n + m"
+          c: "m * n"
+          p: "a * c"
+          an: "a * n"
+        answer:
+          expression: {value: "(a*x - m)*(x - n)", variables: [x], sympy_mode: exact}
+        explanation: |
+          Two numbers with product ${{a}} \times {{c}} = {{p}}$ and sum $-{{b}}$: $-{{an}}$ and $-{{m}}$.
+          ${{a}}x^2 - {{an}}x - {{m}}x + {{c}} = {{a}}x(x - {{n}}) - {{m}}(x - {{n}}) = ({{a}}x - {{m}})(x - {{n}})$.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Factorise $x^2 - 5x + 6$.
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$(x - 2)(x - 3)$", correct: true}
+              - {id: b, text: "$(x + 2)(x + 3)$", misconception: sign-error}
+              - {id: c, text: "$(x - 1)(x - 6)$"}
+              - {id: d, text: "$(x + 2)(x - 3)$", misconception: sign-error}
+        explanation: |
+          You need two numbers with product $+6$ and sum $-5$: both must be negative, $-2$ and $-3$.
+          Check: $(x - 2)(x - 3) = x^2 - 3x - 2x + 6 = x^2 - 5x + 6$.
+      - id: kp2-q6
+        type: expression
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Factorise $6x^2 + 5x - 6$.
+        answer:
+          expression: {value: "(2*x + 3)*(3*x - 2)", variables: [x], sympy_mode: exact}
+        explanation: |
+          Product $6 \times (-6) = -36$, sum $5$: the numbers are $9$ and $-4$.
+          $6x^2 + 9x - 4x - 6 = 3x(2x + 3) - 2(2x + 3) = (2x + 3)(3x - 2)$.
+
+  - id: kp3
+    title: Factorising with identities
+    worked_example: kp-3-worked.md
+    key_prereqs: [algebraic-identities]
+    items:
+      - id: kp3-q1
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Factorise ${{A}}x^2 - {{B}}y^2$.
+        params:
+          a: {choices: [2, 3, 5]}
+          b: {min: 2, max: 9, step: 1}
+        constraints: ["b % a != 0"]
+        derived:
+          A: "a^2"
+          B: "b^2"
+        answer:
+          expression: {value: "(a*x - b*y)*(a*x + b*y)", variables: [x, y], sympy_mode: exact}
+        explanation: |
+          ${{A}}x^2 - {{B}}y^2 = ({{a}}x)^2 - ({{b}}y)^2$, a difference of two squares.
+          Use $p^2 - q^2 = (p - q)(p + q)$: $({{a}}x - {{b}}y)({{a}}x + {{b}}y)$.
+      - id: kp3-q2
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Factorise ${{A}}x^2 + {{M}}x + {{B}}$.
+        params:
+          a: {choices: [2, 3, 5]}
+          b: {min: 1, max: 9, step: 1}
+        constraints: ["b % a != 0"]
+        derived:
+          A: "a^2"
+          M: "2 * a * b"
+          B: "b^2"
+        answer:
+          expression: {value: "(a*x + b)^2", variables: [x], sympy_mode: exact}
+        explanation: |
+          ${{A}}x^2 = ({{a}}x)^2$, ${{B}} = ({{b}})^2$ and the middle term is $2 \times {{a}}x \times {{b}} = {{M}}x$.
+          So it is $p^2 + 2pq + q^2 = (p + q)^2$: $({{a}}x + {{b}})^2$.
+      - id: kp3-q3
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Factorise $x^2 - {{M}}xy + {{B}}y^2$ as a perfect square, with the $x$ term first.
+        params:
+          b: {min: 2, max: 9, step: 1}
+        derived:
+          M: "2 * b"
+          B: "b^2"
+        answer:
+          expression: {value: "(x - b*y)^2", variables: [x, y], sympy_mode: exact}
+        explanation: |
+          ${{B}}y^2 = ({{b}}y)^2$ and the middle term is $-2 \times x \times {{b}}y = -{{M}}xy$.
+          So it is $p^2 - 2pq + q^2 = (p - q)^2$: $(x - {{b}}y)^2$.
+      - id: kp3-q4
+        type: expression
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Factorise ${{A}}x^3 - {{C}}$.
+        params:
+          a: {choices: [2, 3, 5]}
+          b: {min: 1, max: 7, step: 1}
+        constraints: ["b % a != 0"]
+        derived:
+          A: "a^3"
+          C: "b^3"
+          A2: "a^2"
+          ab: "a * b"
+          B2: "b^2"
+        answer:
+          expression: {value: "(a*x - b)*(a^2*x^2 + a*b*x + b^2)", variables: [x], sympy_mode: exact}
+        explanation: |
+          ${{A}}x^3 - {{C}} = ({{a}}x)^3 - ({{b}})^3$. Use $p^3 - q^3 = (p - q)(p^2 + pq + q^2)$:
+          $({{a}}x - {{b}})({{A2}}x^2 + {{ab}}x + {{B2}})$.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Factorise $4x^2 - 9$.
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$(2x - 3)(2x + 3)$", correct: true}
+              - {id: b, text: "$(2x - 3)^2$", misconception: square-of-sum}
+              - {id: c, text: "$(4x - 3)(x + 3)$"}
+              - {id: d, text: "$(2x + 3)^2$", misconception: sign-error}
+        explanation: |
+          $4x^2 - 9 = (2x)^2 - 3^2 = (2x - 3)(2x + 3)$. Note $(2x - 3)^2 = 4x^2 - 12x + 9$: it has a middle term,
+          so it is not $4x^2 - 9$.
+      - id: kp3-q6
+        type: expression
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          Factorise $8x^3 + y^3 + 12x^2y + 6xy^2$.
+        answer:
+          expression: {value: "(2*x + y)^3", variables: [x, y], sympy_mode: exact}
+        explanation: |
+          Rearrange: $(2x)^3 + 3(2x)^2y + 3(2x)y^2 + y^3$, since $3 \times 4x^2 \times y = 12x^2y$ and
+          $3 \times 2x \times y^2 = 6xy^2$. This is $p^3 + 3p^2q + 3pq^2 + q^3 = (p + q)^3$ with $p = 2x$, $q = y$: $(2x + y)^3$.
+
+  - id: kp4
+    title: Factorising cubics with the factor theorem
+    worked_example: kp-4-worked.md
+    key_prereqs: [polynomials-basics]
+    items:
+      - id: kp4-q1
+        type: expression
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Factorise $x^3 + {{p}}x^2 + {{q}}x + {{r}}$ completely. (Hint: try $x = -1$.)
+        params:
+          m: {min: 2, max: 6, step: 1}
+          n: {min: 2, max: 7, step: 1}
+        derived:
+          p: "1 + m + n"
+          q: "m + n + m * n"
+          r: "m * n"
+          b: "m + n"
+        answer:
+          expression: {value: "(x + 1)*(x + m)*(x + n)", variables: [x], sympy_mode: exact}
+        explanation: |
+          $p(-1) = -1 + {{p}} - {{q}} + {{r}} = 0$, so $x + 1$ is a factor. Comparing coefficients,
+          $x^3 + {{p}}x^2 + {{q}}x + {{r}} = (x + 1)(x^2 + {{b}}x + {{r}})$, and splitting the middle term gives
+          $(x + 1)(x + {{m}})(x + {{n}})$.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $x - 1$ is a factor of $p(x) = x^3 - {{s}}x^2 + {{t}}x - {{u}}$. Write $p(x) = (x - 1)(x^2 + bx + c)$.
+          Find $b$.
+        params:
+          m: {min: 2, max: 6, step: 1}
+          n: {min: 2, max: 7, step: 1}
+        derived:
+          s: "1 + m + n"
+          t: "m + n + m * n"
+          u: "m * n"
+          b: "-(m + n)"
+        answer:
+          numeric: {value: "b", mode: exact}
+        explanation: |
+          Expand $(x - 1)(x^2 + bx + c) = x^3 + (b - 1)x^2 + \ldots$ and compare the $x^2$ terms:
+          $b - 1 = -{{s}}$, so $b = {{b}}$. (Comparing constants, $-c = -{{u}}$, so $c = {{u}}$.)
+      - id: kp4-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          $x - {{r}}$ is a factor of $p(x) = x^3 - {{s}}x^2 + {{t}}x - {{u}}$. Find the other two zeros of $p(x)$
+          and enter the smaller one.
+        params:
+          r: {min: 1, max: 4, step: 1}
+          m: {min: 1, max: 6, step: 1}
+          n: {min: 1, max: 6, step: 1}
+        constraints: ["m != n"]
+        derived:
+          s: "r + m + n"
+          t: "r * m + r * n + m * n"
+          u: "r * m * n"
+          b: "m + n"
+          c: "m * n"
+          small: "Min(m, n)"
+        answer:
+          numeric: {value: "small", mode: exact}
+        explanation: |
+          Divide by $x - {{r}}$ (or compare coefficients): $p(x) = (x - {{r}})(x^2 - {{b}}x + {{c}})$.
+          Then $x^2 - {{b}}x + {{c}} = (x - {{m}})(x - {{n}})$, so the other zeros are {{m}} and {{n}}; the smaller is {{small}}.
+      - id: kp4-q4
+        type: expression
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Factorise $p(x) = {{a}}x^3 + {{b}}x^2 - {{a}}x - {{b}}$ completely.
+        params:
+          a: {choices: [2, 3, 5]}
+          b: {min: 2, max: 9, step: 1}
+        constraints: ["b % a != 0"]
+        answer:
+          expression: {value: "(x - 1)*(x + 1)*(a*x + b)", variables: [x], sympy_mode: exact}
+        explanation: |
+          $p(1) = {{a}} + {{b}} - {{a}} - {{b}} = 0$, so $x - 1$ is a factor, and $p(x) = (x - 1)({{a}}x^2 + ({{a}} + {{b}})x + {{b}})$.
+          Splitting the middle term: ${{a}}x^2 + {{a}}x + {{b}}x + {{b}} = (x + 1)({{a}}x + {{b}})$.
+          So $p(x) = (x - 1)(x + 1)({{a}}x + {{b}})$.
+      - id: kp4-q5
+        type: mcq
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $p(x) = x^3 - 7x + 6$, and $p(1) = 0$. Which is the complete factorisation of $p(x)$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$(x - 1)(x - 2)(x + 3)$", correct: true}
+              - {id: b, text: "$(x + 1)(x + 2)(x - 3)$", misconception: factor-sign}
+              - {id: c, text: "$(x - 1)(x + 2)(x - 3)$", misconception: sign-error}
+              - {id: d, text: "$(x - 1)(x^2 - 6)$"}
+        explanation: |
+          $p(1) = 0$, so $x - 1$ is a factor: $x^3 - 7x + 6 = (x - 1)(x^2 + x - 6)$ (compare coefficients).
+          Then $x^2 + x - 6 = (x - 2)(x + 3)$. Check: the zeros 1, 2 and $-3$ each make $p(x) = 0$.
+      - id: kp4-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          $x = 1$ is a zero of $p(x) = x^3 - 23x^2 + 142x - 120$. Factorise $p(x)$ and find its largest zero.
+        answer:
+          numeric: {value: 12, mode: exact}
+        explanation: |
+          $p(x) = (x - 1)(x^2 - 22x + 120)$ (compare coefficients). Two numbers with product 120 and sum $-22$ are
+          $-10$ and $-12$, so $p(x) = (x - 1)(x - 10)(x - 12)$. The zeros are 1, 10 and 12; the largest is 12.
+
+practice:
+  - id: practice-plot
+    type: multistep
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      A rectangular vegetable plot has area $({{a}}x^2 + {{b}}x + {{c}})$ m². Its length and breadth are the two
+      linear factors of this polynomial.
+    params:
+      a: {choices: [2, 3, 5]}
+      m: {min: 1, max: 9, step: 1}
+      n: {min: 1, max: 6, step: 1}
+      t: {min: 2, max: 6, step: 1}
+    constraints: ["m % a != 0"]
+    derived:
+      b: "a * n + m"
+      c: "m * n"
+      p: "a * c"
+      big: "Max(a * n, m)"
+      s1: "a * t + m"
+      s2: "t + n"
+      long: "Max(a * t + m, t + n)"
+      per: "2 * (a * t + m + t + n)"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              To split the middle term you need two numbers with product ${{a}} \times {{c}}$ and sum {{b}}.
+              What is the larger number?
+            answer:
+              numeric: {value: "big", mode: exact}
+          - prompt: |
+              Factorise ${{a}}x^2 + {{b}}x + {{c}}$.
+            answer:
+              expression: {value: "(a*x + m)*(x + n)", variables: [x], sympy_mode: exact}
+          - prompt: |
+              Take $x = {{t}}$. How long is the longer side of the plot?
+            answer:
+              numeric: {value: "long", unit: "m", mode: exact}
+          - prompt: |
+              Find the perimeter of the plot when $x = {{t}}$.
+            answer:
+              numeric: {value: "per", unit: "m", mode: exact}
+    explanation: |
+      The numbers with product {{p}} and sum {{b}} are {{m}} and ${{a}} \times {{n}}$, so the area is $({{a}}x + {{m}})(x + {{n}})$.
+      At $x = {{t}}$ the sides are {{s1}} m and {{s2}} m, so the perimeter is $2({{s1}} + {{s2}}) = {{per}}$ m.
+
+  - id: practice-cubic
+    type: multistep
+    bloom: analyze
+    expected_minutes: 7
+    prompt: |
+      $p(x) = x^3 - {{s}}x^2 + {{q}}x - {{u}}$.
+    params:
+      k: {choices: [2, 3]}
+      m: {min: 1, max: 6, step: 1}
+      n: {min: 1, max: 6, step: 1}
+    derived:
+      s: "k + m + n"
+      q: "k * m + k * n + m * n"
+      u: "k * m * n"
+      b: "-(m + n)"
+      c: "m * n"
+      mn: "m + n"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Find $p({{k}})$.
+            answer:
+              numeric: {value: 0, mode: exact}
+          - prompt: |
+              So $x - {{k}}$ is a factor. Write $p(x) = (x - {{k}})(x^2 + bx + c)$ and find $c$.
+            answer:
+              numeric: {value: "c", mode: exact}
+          - prompt: |
+              Find $b$.
+            answer:
+              numeric: {value: "b", mode: exact}
+          - prompt: |
+              Factorise $p(x)$ completely.
+            answer:
+              expression: {value: "(x - k)*(x - m)*(x - n)", variables: [x], sympy_mode: exact}
+    explanation: |
+      $p({{k}}) = 0$, so $x - {{k}}$ is a factor. Comparing constants: $-{{k}}c = -{{u}}$, so $c = {{c}}$; comparing the
+      $x^2$ terms: $b - {{k}} = -{{s}}$, so $b = {{b}}$. Then $x^2 - {{mn}}x + {{c}} = (x - {{m}})(x - {{n}})$, so
+      $p(x) = (x - {{k}})(x - {{m}})(x - {{n}})$.
+
+  - id: practice-tile
+    type: multistep
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      A square sheet of cardboard has area $({{A}}x^2 + {{M}}x + {{B}})$ cm².
+    params:
+      a: {choices: [2, 3, 5]}
+      b: {min: 1, max: 9, step: 1}
+      t: {min: 2, max: 5, step: 1}
+      c: {min: 1, max: 5, step: 1}
+    constraints: ["b % a != 0", "a * t + b > c"]
+    derived:
+      A: "a^2"
+      M: "2 * a * b"
+      B: "b^2"
+      side: "a * t + b"
+      d1: "a * t + b - c"
+      d2: "a * t + b + c"
+      rest: "(a * t + b)^2 - c^2"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Factorise ${{A}}x^2 + {{M}}x + {{B}}$ as a perfect square.
+            answer:
+              expression: {value: "(a*x + b)^2", variables: [x], sympy_mode: exact}
+          - prompt: |
+              Take $x = {{t}}$. How long is a side of the sheet?
+            answer:
+              numeric: {value: "side", unit: "cm", mode: exact}
+          - prompt: |
+              A square of side {{c}} cm is cut from one corner. Find the area of cardboard left, in cm².
+              (Use $p^2 - q^2 = (p - q)(p + q)$.)
+            answer:
+              numeric: {value: "rest", unit: "cm^2", mode: exact}
+    explanation: |
+      ${{A}}x^2 + {{M}}x + {{B}} = ({{a}}x)^2 + 2({{a}}x)({{b}}) + {{b}}^2 = ({{a}}x + {{b}})^2$, so the side is
+      $({{a}}x + {{b}})$ cm, which is {{side}} cm at $x = {{t}}$. The area left is
+      ${{side}}^2 - {{c}}^2 = ({{side}} - {{c}})({{side}} + {{c}}) = {{d1}} \times {{d2}} = {{rest}}$ cm².

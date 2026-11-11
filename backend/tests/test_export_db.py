@@ -125,14 +125,8 @@ async def test_export_has_every_section_and_only_that_student(db_app: DbApp) -> 
     assert set(data) == SECTIONS and data["export_version"] == 1
     assert data["student"]["username"] == "aaa10" and data["school"]["code"] == "AAA"
     assert [c["name"] for c in data["classes"]] == ["9B physics"]
-    for section in (
-        "concepts",
-        "attempts",
-        "study_time",
-        "practice_sessions",
-        "xp_events",
-        "tutor",
-    ):
+    # One KP answer doesn't end a session, so there is no XP event yet (the key is still there).
+    for section in ("concepts", "attempts", "study_time", "practice_sessions", "tutor"):
         assert data[section], section
     concept = next(
         c for c in data["concepts"] if c["concept"].endswith("distance-and-displacement")
@@ -144,7 +138,9 @@ async def test_export_has_every_section_and_only_that_student(db_app: DbApp) -> 
     assert {m["text"] for m in msgs} >= {"why so?"}
     assert not {"input_tokens", "latency_ms", "model"} & set(msgs[0])
     [assignment] = data["assignments"]
-    assert assignment["concepts"] == [SPEED] and assignment["status"] == "not_started"
+    assert (
+        assignment["concepts"] == [SPEED] and assignment["status"] == "in_progress"
+    )  # its prerequisite is started
     [summary] = data["ai_summaries"]
     assert summary["content"]["summary"][0]["text"] == "Aaa10 is ahead of {S2}."
 

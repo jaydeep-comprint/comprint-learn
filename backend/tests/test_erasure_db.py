@@ -26,7 +26,7 @@ from app.models import (
 from app.services import class_view, erasure, teacher_ai
 from tests.conftest import DbApp
 from tests.db_seed import School, grant_consent, seed_school, student
-from tests.learn_helpers import world
+from tests.learn_helpers import SPEED, world
 from tests.test_tutor_api_db import answer, call, kp1_question, tutor_url
 
 pytestmark = pytest.mark.db
@@ -152,7 +152,7 @@ async def test_completion_anonymises_and_hides_the_student(db_app: DbApp) -> Non
     r = await db_app.client.post(
         f"/api/v1/classes/{a.class_ids[1]}/assignments",
         json={
-            "concepts": ["physics/speed-and-velocity"],
+            "concepts": [SPEED],
             "due_date": str(datetime.now(UTC).date() + timedelta(days=3)),
             "student_ids": [str(s), str(a.student_ids[4])],
         },

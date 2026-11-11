@@ -80,8 +80,8 @@
   }
 
   // $…$ and $$…$$ are pulled out before marked runs and rendered with KaTeX (the app uses
-  // remark-math + rehype-katex); code spans and fences are left alone.
-  const MATH = /(```[\s\S]*?```|`[^`\n]*`)|\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+  // remark-math + rehype-katex); code fences and spans and an escaped \$ are left alone.
+  const MATH = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`|\\\$)|\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
   function md(text) {
     if (text === null || text === undefined || text === "") return "";
     const maths = [];
@@ -108,10 +108,7 @@
   function mdEl(text, cls) {
     const e = el("div", "md" + (cls ? " " + cls : ""));
     e.innerHTML = md(text);
-    e.querySelectorAll("img").forEach(function (img) {
-      const ref = img.getAttribute("src");
-      if (Object.prototype.hasOwnProperty.call(images, ref)) img.src = images[ref];
-    });
+    safeUrls(e);
     e.querySelectorAll("code.language-mermaid").forEach(function (c) {
       needsMermaid = true;
       const pre = c.parentElement;
@@ -119,6 +116,19 @@
       pre.replaceWith(div);
     });
     return e;
+  }
+  // Like the app (react-markdown's urlTransform): only https and #fragment links stay live, and
+  // images only come from the concept's own img/ files (inlined as data: URIs).
+  function safeUrls(root) {
+    root.querySelectorAll("a[href]").forEach(function (a) {
+      const href = a.getAttribute("href").trim();
+      if (!/^(https:|#)/i.test(href)) a.removeAttribute("href");
+    });
+    root.querySelectorAll("img").forEach(function (img) {
+      const ref = img.getAttribute("src");
+      if (Object.prototype.hasOwnProperty.call(images, ref)) img.src = images[ref];
+      else img.removeAttribute("src");
+    });
   }
   function label(text) { return el("div", "label", text); }
   function pre(text) { return el("pre", null, text); }
@@ -234,10 +244,10 @@
           div.appendChild(label("Step " + (i + 1) + " (" + st.type + ")"));
           div.appendChild(mdEl(st.prompt));
           if (st.type === "mcq" && it.step_specs[i].options) div.appendChild(options(it.step_specs[i].options));
-          const a = el("div", "answer"); a.innerHTML = md(st.answer); div.appendChild(a);
+          const a = el("div", "answer"); a.innerHTML = md(st.answer); safeUrls(a); div.appendChild(a);
         });
       } else if (it.type !== "mcq") {
-        const a = el("div", "answer"); a.innerHTML = md(s.answer); div.appendChild(a);
+        const a = el("div", "answer"); a.innerHTML = md(s.answer); safeUrls(a); div.appendChild(a);
       }
       if (s.explanation) { div.appendChild(label("Explanation")); div.appendChild(mdEl(s.explanation, "explanation")); }
     });

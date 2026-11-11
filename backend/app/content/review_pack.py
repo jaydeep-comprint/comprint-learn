@@ -275,6 +275,18 @@ def pack_data(
     }
 
 
+def sample_errors(bundle: ContentBundle, course_id: str, *, seeds: int) -> int:
+    """How many items of the course failed to sample (shown as errors in the pack)."""
+    data = pack_data(bundle, course_id, seeds=seeds)
+    items = [
+        item
+        for ch in data["chapters"]
+        for c in ch["concepts"]
+        for item in [c["check"], *(i for kp in c["kps"] for i in kp["items"]), *c["practice"]]
+    ]
+    return sum(any("error" in s for s in item["samples"]) for item in items)
+
+
 def _json_block(data: Any) -> str:
     text = json.dumps(data, ensure_ascii=False, indent=1)
     return text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")

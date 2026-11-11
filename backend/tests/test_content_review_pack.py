@@ -143,8 +143,18 @@ def test_cli_unknown_course(tmp_path: Path) -> None:
     assert result.exit_code == 0
     result = runner.invoke(
         cli.app,
-        ["content", "review-pack", "--root", str(content), "--course", "nope"],
+        [
+            "content",
+            "review-pack",
+            "--root",
+            str(content),
+            "--course",
+            "nope",
+            "--out",
+            str(tmp_path / "o2"),
+        ],
     )
+    assert not (tmp_path / "o2").exists()
     assert result.exit_code == 1 and "nope" in result.output
 
 
@@ -159,3 +169,14 @@ def test_cli_refuses_a_broken_tree(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "a concept needs 3-4 KPs" in result.output
     assert not out.exists()
+
+
+def test_every_rendered_markdown_goes_through_the_url_filter() -> None:
+    """Links other than https/#fragment and images other than the concept's own are disabled in
+    the page (like the app's urlTransform). Checked in a browser DOM (jsdom) while building
+    spec 013; this guards that every innerHTML assignment keeps calling the filter."""
+    from app.content.review_pack import TEMPLATE
+
+    assert TEMPLATE.count("innerHTML = md(") == 3
+    assert TEMPLATE.count("safeUrls(") == 4  # the definition + one per innerHTML assignment
+    assert "/^(https:|#)/i" in TEMPLATE

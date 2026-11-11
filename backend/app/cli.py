@@ -14,7 +14,7 @@ from sqlalchemy import case, func, select
 from app.api.deps import OrgScope
 from app.content.importer import ImportReport, import_tree
 from app.content.loader import ContentBundle, Issue, load
-from app.content.review_pack import build_review_pack
+from app.content.review_pack import build_review_pack, sample_errors
 from app.content.validate import has_errors, validate
 from app.core.config import get_settings
 from app.core.errors import ApiProblem
@@ -220,7 +220,9 @@ def content_review_pack(
         html = build_review_pack(bundle, course_id, seeds=seeds, generated=generated, sha=sha)
         path = out / f"{course_id}.html"
         path.write_text(html, encoding="utf-8")
-        typer.echo(f"wrote {path}")
+        failed = sample_errors(bundle, course_id, seeds=seeds)
+        note = f" ({failed} items failed to sample: see the pack)" if failed else ""
+        typer.echo(f"wrote {path}{note}", err=bool(failed))
 
 
 async def import_content(root: Path, *, dry_run: bool) -> tuple[list[Issue], ImportReport | None]:

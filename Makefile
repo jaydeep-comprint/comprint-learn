@@ -44,7 +44,7 @@ content-check:
 
 # One HTML file per course with every answer, for reviewers (spec 013); gitignored review-packs/.
 review-pack:
-	cd $(BACKEND) && uv run app content review-pack --root ../content $(ARGS)
+	cd $(BACKEND) && uv run --frozen app content review-pack --root ../content $(ARGS)
 
 # Imports content/ into DATABASE_URL (idempotent; add ARGS=--dry-run to preview).
 content-import:

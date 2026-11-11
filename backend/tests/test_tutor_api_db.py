@@ -32,10 +32,12 @@ from app.models import (
 from app.services import tutor as tutor_service
 from app.services.tutor import ist_day
 from tests.conftest import DbApp
+from tests.db_seed import grant_consent
 from tests.learn_helpers import (
     DIST,
     LIN,
     SPEED,
+    World,
     answer_check,
     answer_fields,
     answer_kp,
@@ -43,11 +45,20 @@ from tests.learn_helpers import (
     get,
     post,
     url,
-    world,
 )
+from tests.learn_helpers import world as base_world
 from tests.review_helpers import make_due, review_path, seed_learned
 
 pytestmark = pytest.mark.db
+
+
+async def world(db: DbApp) -> World:
+    """Both schools with tutor consent recorded for every student (spec 014)."""
+    w = await base_world(db)
+    async with db.sessions() as session:
+        await grant_consent(session, w.a)
+        await grant_consent(session, w.b)
+    return w
 
 
 def tutor_url(q: dict[str, Any], tail: str = "") -> str:
@@ -560,3 +571,80 @@ async def test_hints_for_attempt_subtracts_hints_already_on_the_position(db_app:
             == 1
         )
         await session.rollback()
+
+
+# --- consent (spec 014) ---------------------------------------------------------------------------
+
+
+async def test_no_consent_locks_the_tutor_before_any_row_or_model_call(db_app: DbApp) -> None:
+    w = await base_world(db_app)  # nobody has consent
+    s = w.physics_student
+    q = await kp1_question(db_app, s)
+
+    code, thread = await call(db_app, s, "GET", tutor_url(q))
+    assert code == 200 and thread["enabled"] is True and thread["consent"] is False
+    for tail, body in (("/hint", {}), ("/messages", {"text": "help?"})):
+        code, problem = await call(db_app, s, "POST", tutor_url(q, tail), **body)
+        assert code == 403 and problem["code"] == "tutor_consent_required", problem
+        assert "parent or guardian" in problem["message"]
+    assert db_app.tutor.requests == []
+    assert await rows(db_app, s) == []
+    async with db_app.sessions() as session:
+        assert await session.scalar(select(TutorSession)) is None
+
+    async with db_app.sessions() as session:
+        await grant_consent(session, w.a, [s])
+    code, thread = await call(db_app, s, "GET", tutor_url(q))
+    assert thread["consent"] is True
+    code, reply = await call(db_app, s, "POST", tutor_url(q, "/hint"))
+    assert code == 200 and reply["thread"]["consent"] is True
+
+
+async def test_consent_flag_is_present_when_the_tutor_is_disabled(
+    db_app: DbApp, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    q = await kp1_question(db_app, s)
+    monkeypatch.setattr(tutor_service, "tutor_enabled", lambda client: False)
+    code, thread = await call(db_app, s, "GET", tutor_url(q))
+    assert code == 200 and thread["enabled"] is False and thread["consent"] is True
+
+
+async def test_withdrawal_during_a_pending_hint_stores_no_text_and_charges_nothing(
+    db_app: DbApp,
+) -> None:
+    w = await world(db_app)
+    s = w.physics_student
+    q = await kp1_question(db_app, s)
+    code, _ = await call(db_app, s, "POST", tutor_url(q, "/messages"), text="what is a path?")
+    assert code == 200
+
+    db_app.tutor.gate = asyncio.Event()
+    db_app.tutor.started.clear()  # set by the chat above
+    pending = asyncio.create_task(call(db_app, s, "POST", tutor_url(q, "/hint")))
+    await asyncio.wait_for(db_app.tutor.started.wait(), 10)
+    # The question is answered *and* consent withdrawn while the model replies: consent wins.
+    body = {"position": q["position"], "time_taken_ms": 3000} | await answer_fields(db_app, q)
+    await post(db_app, s, url(DIST, "/kps/kp1/answer"), body)
+    r = await db_app.client.post(
+        "/api/v1/students/consent",
+        json={"student_ids": [str(s)], "action": "withdraw"},
+        headers=db_app.auth(w.a.teacher_id),
+    )
+    assert r.status_code == 200, r.text
+    db_app.tutor.gate.set()
+    code, problem = await pending
+    assert code == 403 and problem["code"] == "tutor_consent_required"
+
+    msgs = await rows(db_app, s)
+    assert len(msgs) == 4  # chat + reply, hint request + reply
+    assert all(m.text is None and m.purged_at is not None for m in msgs)
+    assert [m.status for m in msgs[2:]] == [TutorStatus.late, TutorStatus.late]
+    async with db_app.sessions() as session:
+        thread = await session.scalar(select(TutorSession))
+        attempt = await session.scalar(
+            select(Attempt).where(Attempt.session_id == uuid.UUID(q["session_id"]))
+        )
+    assert thread is not None and thread.hints_used == 0 and thread.chat_count == 1
+    assert attempt is not None and attempt.hints_used == 0

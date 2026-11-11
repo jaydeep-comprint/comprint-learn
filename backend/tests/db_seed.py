@@ -3,6 +3,7 @@
 import uuid
 from dataclasses import dataclass, field
 
+from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -15,6 +16,7 @@ from app.models import (
     Subject,
     UserStatus,
 )
+from app.privacy import NOTICE_VERSION
 
 
 @dataclass
@@ -87,3 +89,23 @@ async def seed_school(session: AsyncSession, code: str) -> School:
         await session.flush()
     await session.commit()
     return school
+
+
+async def grant_consent(
+    session: AsyncSession, school: School, student_ids: list[uuid.UUID] | None = None
+) -> None:
+    """Spec 014: record AI-tutor consent (by the school's teacher) for these students, default
+    all of the school's students. Students start with no consent."""
+    await session.execute(
+        update(AppUser)
+        .where(
+            AppUser.org_id == school.org_id,
+            AppUser.id.in_(student_ids if student_ids is not None else school.student_ids),
+        )
+        .values(
+            tutor_consent_at=func.now(),
+            tutor_consent_by=school.teacher_id,
+            tutor_consent_form=NOTICE_VERSION,
+        )
+    )
+    await session.commit()

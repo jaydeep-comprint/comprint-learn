@@ -197,6 +197,11 @@ class StudentDetail(BaseModel):
     student_id: uuid.UUID
     display_name: str
     status: UserStatus
+    # Spec 014: the Privacy card.
+    username: str
+    tutor_consent_at: datetime | None
+    tutor_consent_form: str | None
+    erase_due_at: datetime | None
     at_risk: list[AtRiskReason]
     week_xp: int
     streak_days: int

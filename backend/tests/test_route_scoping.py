@@ -84,6 +84,7 @@ def test_routes_with_tenant_ids_use_org_scope() -> None:
 def test_walker_sees_the_routes() -> None:
     paths = {p for _, p, _ in _routes()}
     assert "/api/v1/classes/{class_id}/enrollments/{student_id}" in paths
+    assert {"/api/v1/students/consent", "/api/v1/audit", "/api/v1/privacy/notice"} <= paths
     assert len(paths) >= 12
 
 

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
@@ -67,7 +68,15 @@ class TeacherPatch(BaseModel):
 # --- students -------------------------------------------------------------------------------------
 
 
-class StudentOut(_Out):
+class _PrivacyFields(_Out):
+    """Spec 014: tutor consent (null = none recorded) and a pending erasure."""
+
+    tutor_consent_at: datetime | None = None
+    tutor_consent_form: str | None = None
+    erase_due_at: datetime | None = None
+
+
+class StudentOut(_PrivacyFields):
     id: uuid.UUID
     display_name: str
     username: str
@@ -148,7 +157,7 @@ class ClassOut(BaseModel):
     leaderboard_enabled: bool
 
 
-class ClassStudentOut(_Out):
+class ClassStudentOut(_PrivacyFields):
     id: uuid.UUID
     display_name: str
     username: str

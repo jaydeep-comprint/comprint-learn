@@ -8,6 +8,7 @@ charged hint rows count in `hints_for_attempt`, so the answer path needs no tuto
 """
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Literal
@@ -26,6 +27,7 @@ from app.core.config import get_settings
 from app.core.errors import ApiProblem, not_found
 from app.grading import multistep
 from app.models import (
+    AppUser,
     Attempt,
     Concept,
     Course,
@@ -56,6 +58,51 @@ def _conflict(code: str, message: str, **extra: object) -> ApiProblem:
 
 def _unavailable() -> ApiProblem:
     return ApiProblem(503, "tutor_unavailable", "The tutor isn't available right now.")
+
+
+CONSENT_REQUIRED = (
+    "The AI tutor needs a consent form from your parent or guardian. Ask your teacher."
+)
+
+
+def consent_required() -> ApiProblem:
+    return ApiProblem(403, "tutor_consent_required", CONSENT_REQUIRED)
+
+
+async def lock_students(session: AsyncSession, student_ids: Iterable[uuid.UUID]) -> None:
+    """The per-student tutor advisory lock (transaction-scoped), in sorted id order. Taken by every
+    tutor request (Tx 1 and Tx 2), consent withdrawal and erasure completion (spec 014), so no
+    chat text can be written after a withdrawal commits."""
+    for sid in sorted(set(student_ids)):
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"), {"k": f"tutor:{sid}"}
+        )
+
+
+async def has_consent(scope: OrgScope, student_id: uuid.UUID) -> bool:
+    """Spec 014: the student's parent/guardian consent for the AI tutor is recorded."""
+    at = await scope.session.scalar(
+        select(AppUser.tutor_consent_at).where(
+            AppUser.org_id == scope.org_id, AppUser.id == student_id
+        )
+    )
+    return at is not None
+
+
+async def purge_student_text(scope: OrgScope, student_id: uuid.UUID, now: datetime) -> int:
+    """Null the text of one student's tutor messages not purged yet (counts, tokens, status and
+    flags stay, as in the 180-day purge). Used by consent withdrawal and erasure; the caller
+    commits."""
+    result = await scope.session.execute(
+        update(TutorMessage)
+        .where(
+            TutorMessage.org_id == scope.org_id,
+            TutorMessage.student_id == student_id,
+            TutorMessage.purged_at.is_(None),
+        )
+        .values(text=None, purged_at=now)
+    )
+    return int(result.rowcount or 0)  # type: ignore[attr-defined]
 
 
 def ist_day(now: datetime) -> date:
@@ -274,6 +321,7 @@ async def _thread_out(
     hints_left = 0 if after else max(0, limits.HINTS_PER_THREAD - hints)
     return TutorThread(
         enabled=enabled,
+        consent=await has_consent(scope, scope.user.id),
         mode=q.mode,
         closed=_closed(q, now),
         hints_used=hints,
@@ -317,11 +365,10 @@ async def _reserve(
 ) -> tuple[_Reserved, TurnRequest | None]:
     """Tx 1: lock, check, insert the pending student row, commit."""
     now = datetime.now(UTC)
-    await scope.session.execute(
-        text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"),
-        {"k": f"tutor:{scope.user.id}"},
-    )
+    await lock_students(scope.session, [scope.user.id])
     q = await _question(scope, session_id, position)
+    if not await has_consent(scope, scope.user.id):
+        raise consent_required()  # before any row is written; nothing goes to the model
     if _closed(q, now):
         raise _conflict("session_closed", "This question has finished.")
     if kind == TutorKind.hint and q.mode == "after":
@@ -373,9 +420,14 @@ async def _reserve(
 
 
 async def _close_pending(scope: OrgScope, row_id: uuid.UUID) -> None:
-    """Mark a reserved row `error` (not charged, not counted), best effort."""
+    """Mark a reserved row `error` (not charged, not counted), best effort. Its text is nulled
+    when consent was withdrawn meanwhile (spec 014)."""
     try:
         await scope.session.rollback()
+        await lock_students(scope.session, [scope.user.id])
+        values: dict[str, object] = {"status": TutorStatus.error}
+        if not await has_consent(scope, scope.user.id):
+            values |= {"text": None, "purged_at": datetime.now(UTC)}
         await scope.session.execute(
             update(TutorMessage)
             .where(
@@ -383,19 +435,61 @@ async def _close_pending(scope: OrgScope, row_id: uuid.UUID) -> None:
                 TutorMessage.id == row_id,
                 TutorMessage.status == TutorStatus.pending,
             )
-            .values(status=TutorStatus.error)
+            .values(**values)
         )
         await scope.session.commit()
     except Exception:
         pass
 
 
+async def _store_withdrawn(
+    scope: OrgScope, r: _Reserved, req: TurnRequest, turn: TurnResult, now: datetime
+) -> None:
+    """Consent was withdrawn while the model was replying: keep the metadata, never the text."""
+    student_row = await scope.get(TutorMessage, r.student_row_id)
+    student_row.status = TutorStatus.late
+    student_row.text = None
+    student_row.purged_at = now
+    scope.session.add(
+        TutorMessage(
+            org_id=scope.org_id,
+            id=uuid.uuid4(),
+            tutor_session_id=r.thread_id,
+            student_id=scope.user.id,
+            role=TutorRole.tutor,
+            kind=TutorKind(req.kind),
+            mode=TutorMode(r.mode),
+            rung=req.rung,
+            category=turn.category,
+            status=TutorStatus.late,
+            flagged=turn.flagged,
+            text=None,
+            purged_at=now,
+            model=turn.model,
+            input_tokens=turn.input_tokens if turn.calls else None,
+            output_tokens=turn.output_tokens if turn.calls else None,
+            cache_read_tokens=turn.cache_read_tokens if turn.calls else None,
+            cache_write_tokens=turn.cache_write_tokens if turn.calls else None,
+            latency_ms=turn.latency_ms if turn.calls else None,
+            day=r.day,
+            created_at=now,
+        )
+    )
+    await scope.session.commit()
+
+
 async def _store(
     scope: OrgScope, r: _Reserved, req: TurnRequest, turn: TurnResult, client: TutorClient | None
 ) -> TutorReply:
-    """Tx 2: lock the thread; a before-mode request whose question got answered meanwhile is
-    stored as `late` (409 `question_answered`); otherwise store and charge the reply."""
+    """Tx 2: take the student's tutor lock and re-read consent: withdrawn meanwhile → both rows
+    stored without text as `late`, nothing charged, 403 (spec 014). Then lock the thread; a
+    before-mode request whose question got answered meanwhile is stored as `late` (409
+    `question_answered`); otherwise store and charge the reply."""
     now = datetime.now(UTC)
+    await lock_students(scope.session, [scope.user.id])
+    if not await has_consent(scope, scope.user.id):
+        await _store_withdrawn(scope, r, req, turn, now)
+        raise consent_required()
     thread = await scope.get(TutorSession, r.thread_id, for_update=True)
     # Serialise with the answer path (which locks the session row): either the answer commits
     # first and this reply is `late`, or the charged hint is committed before the answer reads it.
@@ -489,7 +583,7 @@ async def _run(
         await _close_pending(scope, reserved.student_row_id)
         raise _unavailable() from None
     except ApiProblem:
-        raise  # `question_answered`: the row is already `late`
+        raise  # `question_answered` / `tutor_consent_required`: the rows are already `late`
     except BaseException:
         # Anything else (a bug, a DB error, a cancelled request): never leave the row pending.
         await _close_pending(scope, reserved.student_row_id)

@@ -19,7 +19,7 @@ from app.content.validate import has_errors, validate
 from app.core.config import get_settings
 from app.core.errors import ApiProblem
 from app.db.session import dispose_engine, get_sessionmaker
-from app.models import AppUser, Organization, Role
+from app.models import AppUser, Organization, Role, UserStatus
 from app.models.tenancy import SCHOOL_CODE_PATTERN
 from app.services import tenancy, tutor
 from app.services.supabase_admin import SupabaseAdmin, get_supabase_admin
@@ -95,7 +95,16 @@ async def list_orgs() -> list[tuple[str, str, int, int]]:
                     Organization.code,
                     Organization.name,
                     func.count(case((AppUser.role == Role.teacher, 1))),
-                    func.count(case((AppUser.role == Role.student, 1))),
+                    # Erased students (spec 014) are anonymous rows, not students any more.
+                    func.count(
+                        case(
+                            (
+                                (AppUser.role == Role.student)
+                                & (AppUser.status != UserStatus.erased),
+                                1,
+                            )
+                        )
+                    ),
                 )
                 .outerjoin(AppUser, AppUser.org_id == Organization.id)
                 .group_by(Organization.id)

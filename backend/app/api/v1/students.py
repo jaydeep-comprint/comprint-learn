@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import StaffScope
 from app.core.errors import forbidden
+from app.schemas.privacy import ConsentIn
 from app.schemas.tenancy import StudentOut, StudentPatch, TempPasswordOut
-from app.services import tenancy
+from app.services import consent, tenancy
 from app.services.supabase_admin import SupabaseAdmin, get_supabase_admin
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -21,6 +22,12 @@ async def list_students(
     class_id: uuid.UUID | None = None,
 ) -> list[StudentOut]:
     return await tenancy.list_students(scope, q, class_id)
+
+
+@router.post("/consent", response_model=list[StudentOut])
+async def set_consent(body: ConsentIn, scope: StaffScope) -> list[StudentOut]:
+    """Spec 014: record or withdraw AI-tutor consent for 1-200 students (any teacher)."""
+    return await consent.apply(scope, body.student_ids, body.action)
 
 
 @router.patch("/{student_id}", response_model=StudentOut)

@@ -55,3 +55,6 @@
 - id: default-must-be-passed
   title: Every parameter must be given
   description: Thinks leaving out an argument that has a default value is an error; the default is used instead.
+- id: early-return-in-loop
+  title: Returning "not found" inside the loop
+  description: Puts `return -1` (or `return False`) in the loop's `else`, so a search gives up after checking only the first item; it belongs after the loop.

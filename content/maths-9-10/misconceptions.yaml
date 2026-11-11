@@ -25,3 +25,33 @@
 - id: reverse-translation
   title: Reverses "more than"
   description: Writes "A is 5 more than B" as A + 5 = B instead of A = B + 5.
+- id: square-of-sum
+  title: Squares each term
+  description: Writes (a + b)² as a² + b² (or (a − b)² as a² − b²), dropping the middle term 2ab.
+- id: cube-of-sum
+  title: Cubes each term
+  description: Writes (a + b)³ as a³ + b³, dropping the terms 3a²b + 3ab².
+- id: degree-counts-terms
+  title: Counts terms for the degree
+  description: Gives the number of terms as the degree, instead of the highest power of the variable.
+- id: zero-vs-value
+  title: Confuses a zero with p(0)
+  description: Thinks the zero of p(x) is the value p(0), instead of the x that makes p(x) = 0.
+- id: adds-exponents
+  title: Adds the powers when adding terms
+  description: Adds like terms by adding their exponents (x² + x² = x⁴) instead of their coefficients (2x²).
+- id: factor-sign
+  title: Wrong sign in the factor theorem
+  description: Thinks x − a is a factor when p(−a) = 0 (or x + a when p(a) = 0).
+- id: divides-by-variable
+  title: Divides by the variable
+  description: Divides both sides of an equation by x (e.g. x² = 3x → x = 3) and loses the root x = 0.
+- id: not-standard-form
+  title: Reads a, b, c too early
+  description: Takes a, b and c from a quadratic equation before rearranging it into ax² + bx + c = 0.
+- id: formula-sign
+  title: Sign slip in the quadratic formula
+  description: Uses +b instead of −b in the quadratic formula, or forgets that −b is positive when b is negative.
+- id: discriminant-sign
+  title: Misreads the discriminant
+  description: Thinks D < 0 gives two real roots, or D = 0 gives no real root; or computes D as b² + 4ac.

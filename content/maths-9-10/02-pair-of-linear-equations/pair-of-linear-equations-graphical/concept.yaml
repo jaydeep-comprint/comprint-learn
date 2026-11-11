@@ -34,8 +34,8 @@ kps:
         prompt: |
           The lines ${{a1}}x + {{b1}}y = 7$ and $kx + {{b2}}y = 9$ are parallel. Find $k$.
         params:
-          a1: {min: 1, max: 6, step: 1}
-          b1: {min: 1, max: 6, step: 1}
+          a1: {min: 2, max: 6, step: 1}
+          b1: {min: 2, max: 6, step: 1}
           m: {min: 2, max: 4, step: 1}
         derived:
           b2: "m * b1"
@@ -50,11 +50,11 @@ kps:
         prompt: |
           For the pair ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = {{c2}}$, calculate $a_1b_2 - a_2b_1$.
         params:
-          a1: {min: 1, max: 6, step: 1}
-          b1: {min: 1, max: 6, step: 1}
+          a1: {min: 2, max: 6, step: 1}
+          b1: {min: 2, max: 6, step: 1}
           c1: {min: 1, max: 12, step: 1}
-          a2: {min: 1, max: 6, step: 1}
-          b2: {min: 1, max: 6, step: 1}
+          a2: {min: 2, max: 6, step: 1}
+          b2: {min: 2, max: 6, step: 1}
           c2: {min: 1, max: 12, step: 1}
         constraints: ["a1 * b2 != a2 * b1"]
         answer:
@@ -68,8 +68,8 @@ kps:
         prompt: |
           For which value of $k$ do ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + {{b2}}y = k$ have infinitely many solutions?
         params:
-          a1: {min: 1, max: 5, step: 1}
-          b1: {min: 1, max: 5, step: 1}
+          a1: {min: 2, max: 5, step: 1}
+          b1: {min: 2, max: 5, step: 1}
           c1: {min: 1, max: 9, step: 1}
           m: {min: 2, max: 4, step: 1}
         derived:
@@ -103,6 +103,26 @@ kps:
               - {id: c, text: "intersecting (one solution)", misconception: ratio-test-confusion}
         explanation: |
           Equal $a$ and $b$ ratios mean the same slope; a different $c$ ratio means different lines. Same slope, different lines: parallel.
+      - id: kp1-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          For which value of $k$ do the equations ${{a1}}x + {{b1}}y = {{c1}}$ and ${{a2}}x + ky = {{c2}}$ have infinitely many solutions?
+        params:
+          a1: {min: 2, max: 5, step: 1}
+          b1: {min: 2, max: 6, step: 1}
+          c1: {min: 3, max: 9, step: 1}
+          m: {min: 2, max: 4, step: 1}
+        derived:
+          a2: "m * a1"
+          c2: "m * c1"
+          k: "m * b1"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Infinitely many solutions means coincident lines: $\dfrac{a_1}{a_2} = \dfrac{b_1}{b_2} = \dfrac{c_1}{c_2}$.
+          Here $\dfrac{ {{a1}} }{ {{a2}} } = \dfrac{ {{c1}} }{ {{c2}} } = \dfrac{1}{ {{m}} }$, so $k = {{m}} \times {{b1}} = {{k}}$.
 
   - id: kp2
     title: Reading the solution from the graph
@@ -147,10 +167,10 @@ kps:
         params:
           x0: {min: 0, max: 5, step: 1}
           y0: {min: 0, max: 5, step: 1}
-          a1: {min: 1, max: 4, step: 1}
-          b1: {min: 1, max: 4, step: 1}
-          a2: {min: 1, max: 4, step: 1}
-          b2: {min: 1, max: 4, step: 1}
+          a1: {min: 2, max: 4, step: 1}
+          b1: {min: 2, max: 4, step: 1}
+          a2: {min: 2, max: 4, step: 1}
+          b2: {min: 2, max: 4, step: 1}
         constraints: ["a1 * b2 != a2 * b1"]
         derived:
           c1: "a1 * x0 + b1 * y0"
@@ -179,6 +199,24 @@ kps:
           numeric: {value: 4, mode: exact}
         explanation: |
           On $y = x$: $x + x = 8$, so $x = 4$ and $y = 4$.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          The lines $y = {{m1}}x + {{k1}}$ and $y = {{m2}}x - {{n2}}$ are drawn on the same axes. At what value of $x$ do they meet?
+        params:
+          m1: {min: 2, max: 3, step: 1}
+          m2: {min: 4, max: 7, step: 1}
+          p: {min: 1, max: 5, step: 1}
+          k1: {min: 1, max: 6, step: 1}
+        constraints: ["(m2 - m1) * p > k1"]
+        derived:
+          n2: "(m2 - m1) * p - k1"
+        answer:
+          numeric: {value: "p", mode: exact}
+        explanation: |
+          Where they meet, both give the same $y$: ${{m1}}x + {{k1}} = {{m2}}x - {{n2}}$, so $({{m2}} - {{m1}})x = {{k1}} + {{n2}}$ and $x = {{p}}$.
 
   - id: kp3
     title: Lines, axes and areas
@@ -190,10 +228,10 @@ kps:
         bloom: apply
         expected_minutes: 2
         prompt: |
-          The line ${{q}}x + {{p}}y = {{pq}}$ meets the x-axis at $A$ and the y-axis at $B$. Find the area of triangle $OAB$ in square units.
+          The line ${{q}}x + {{p}}y = {{pq}}$ meets the x-axis at $A$ and the y-axis at $B$. Find the area of triangle $OAB$ in square units, where $O$ is the origin.
         params:
-          p: {min: 1, max: 9, step: 1}
-          q: {min: 1, max: 9, step: 1}
+          p: {min: 2, max: 9, step: 1}
+          q: {min: 2, max: 9, step: 1}
         derived:
           pq: "p * q"
         answer:
@@ -222,6 +260,7 @@ kps:
           p: {min: 1, max: 9, step: 1}
           a: {min: 2, max: 5, step: 1}
           d: {min: 1, max: 9, step: 1}
+        constraints: ["p != d"]
         derived:
           c1: "a * p"
         answer:
@@ -252,6 +291,22 @@ kps:
               - {id: c, text: "They are parallel"}
         explanation: |
           $x = 2$ is vertical and $y = 3$ is horizontal; the point on both has $x = 2$ and $y = 3$.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Find the area, in square units, of the triangle formed by the lines $y = {{m}}x$, $x = {{p}}$ and the x-axis.
+        params:
+          m: {min: 2, max: 5, step: 1}
+          p: {min: 1, max: 6, step: 1}
+        derived:
+          h: "m * p"
+        answer:
+          numeric: {value: "m * p^2 / 2", mode: exact}
+        explanation: |
+          The corners are $(0, 0)$, $({{p}}, 0)$ and $({{p}}, {{h}})$ (put $x = {{p}}$ in $y = {{m}}x$).
+          Base {{p}}, height {{h}}: area $= \frac{1}{2} \times {{p}} \times {{h}}$.
 
 practice:
   - id: practice-triangle
@@ -285,3 +340,43 @@ practice:
               numeric: {value: "(s + d)^2 / 4", mode: exact}
     explanation: |
       The base on the y-axis runs from $-{{d}}$ to {{s}} (length ${{s}} + {{d}}$); the height is the x-coordinate of the meeting point, $\frac{ {{s}} + {{d}} }{2}$. Area $= \frac{1}{2} \times \text{base} \times \text{height}$.
+  - id: practice-auto-fares
+    type: multistep
+    bloom: analyze
+    expected_minutes: 7
+    prompt: |
+      Two auto-rickshaw services charge differently. Service A: ₹{{a}} to start plus ₹{{r1}} per km. Service B: ₹{{b}} to start plus ₹{{r2}} per km.
+      Let $y$ be the fare in ₹ for a trip of $x$ km.
+    params:
+      r1: {choices: [8, 10, 12]}
+      dr: {min: 1, max: 4, step: 1}
+      x0: {min: 2, max: 8, step: 1}
+      b: {min: 20, max: 50, step: 5}
+      e: {min: 2, max: 6, step: 1}
+    derived:
+      r2: "r1 + dr"
+      a: "b + dr * x0"
+      y0: "a + r1 * x0"
+      d: "x0 + e"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write the fare $y$ for Service A in terms of $x$. Enter only the expression for $y$, without "y =".
+            answer:
+              expression: {value: "a + r1*x", variables: [x], sympy_mode: equivalent}
+          - prompt: |
+              The two fare lines meet. For what trip length, in km, do both services charge the same?
+            answer:
+              numeric: {value: "x0", mode: exact}
+          - prompt: |
+              What is that equal fare, in ₹?
+            answer:
+              numeric: {value: "y0", mode: exact}
+          - prompt: |
+              For a {{d}} km trip, how many ₹ less does Service A charge than Service B?
+            answer:
+              numeric: {value: "dr * e", mode: exact}
+    explanation: |
+      A: $y = {{a}} + {{r1}}x$; B: $y = {{b}} + {{r2}}x$. They meet where ${{a}} + {{r1}}x = {{b}} + {{r2}}x$, i.e. ${{dr}}x = {{a}} - {{b}}$, so $x = {{x0}}$ km and $y = ₹{{y0}}$.
+      After that, B costs ₹{{dr}} more per km, so {{e}} km further on, A is ₹{{dr}} × {{e}} cheaper.

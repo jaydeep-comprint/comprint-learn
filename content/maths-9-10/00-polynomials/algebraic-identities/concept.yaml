@@ -1,0 +1,546 @@
+id: algebraic-identities
+title: Algebraic identities
+summary: Expanding squares, products and cubes with the standard identities, and using them to work out values quickly.
+prereqs:
+  - {concept: polynomials-basics, weight: 0.5}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    Which of these is equal to $(x + 4)^2$?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "$x^2 + 8x + 16$", correct: true}
+        - {id: b, text: "$x^2 + 16$", misconception: square-of-sum}
+        - {id: c, text: "$x^2 + 4x + 16$"}
+        - {id: d, text: "$x^2 + 8x + 8$"}
+  explanation: |
+    $(x + 4)^2 = (x + 4)(x + 4) = x^2 + 4x + 4x + 16 = x^2 + 8x + 16$.
+    Squaring each term gives only $x^2 + 16$ and misses the middle term $2 \times x \times 4 = 8x$.
+
+kps:
+  - id: kp1
+    title: "(x ± y)² and x² − y²"
+    worked_example: kp-1-worked.md
+    key_prereqs: [polynomials-basics]
+    items:
+      - id: kp1-q1
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Expand $(x + {{a}})^2$.
+        params:
+          a: {min: 2, max: 12, step: 1}
+        answer:
+          expression: {value: "x^2 + 2*a*x + a^2", variables: [x], sympy_mode: exact}
+        explanation: |
+          $(x + y)^2 = x^2 + 2xy + y^2$ with $y = {{a}}$: $x^2 + 2 \times {{a}} \times x + {{a}}^2$.
+          Don't forget the middle term $2xy$.
+      - id: kp1-q2
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Expand $({{b}}x - {{c}})^2$.
+        params:
+          b: {min: 2, max: 5, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        answer:
+          expression: {value: "b^2*x^2 - 2*b*c*x + c^2", variables: [x], sympy_mode: exact}
+        explanation: |
+          $(x - y)^2 = x^2 - 2xy + y^2$ with ${{b}}x$ in place of $x$ and ${{c}}$ in place of $y$:
+          $({{b}}x)^2 - 2 \times {{b}}x \times {{c}} + {{c}}^2$. Square the whole first term: $({{b}}x)^2 = {{b}}^2 x^2$.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Use the identity $(x - y)^2 = x^2 - 2xy + y^2$ to find ${{n}}^2$.
+        params:
+          a: {min: 1, max: 9, step: 1}
+        derived:
+          n: "100 - a"
+          d: "200 * a"
+          e: "a^2"
+          r: "n^2"
+        answer:
+          numeric: {value: "n^2", mode: exact}
+        explanation: |
+          ${{n}}^2 = (100 - {{a}})^2 = 100^2 - 2 \times 100 \times {{a}} + {{a}}^2 = 10000 - {{d}} + {{e}} = {{r}}$.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Use the identity $(x + y)(x - y) = x^2 - y^2$ to find ${{m}} \times {{n}}$.
+        params:
+          b: {choices: [20, 50, 100]}
+          a: {min: 1, max: 9, step: 1}
+        derived:
+          m: "b + a"
+          n: "b - a"
+        answer:
+          numeric: {value: "b^2 - a^2", mode: exact}
+        explanation: |
+          ${{m}} \times {{n}} = ({{b}} + {{a}})({{b}} - {{a}}) = {{b}}^2 - {{a}}^2$.
+      - id: kp1-q5
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Multiply and simplify: $({{a}}x + {{b}})({{a}}x - {{b}})$.
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        answer:
+          expression: {value: "a^2*x^2 - b^2", variables: [x], sympy_mode: exact}
+        explanation: |
+          $(x + y)(x - y) = x^2 - y^2$ with ${{a}}x$ in place of $x$: $({{a}}x)^2 - {{b}}^2$. The two middle terms cancel.
+      - id: kp1-q6
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          $x + y = {{s}}$ and $xy = {{p}}$. Find $x^2 + y^2$.
+        params:
+          u: {min: 2, max: 9, step: 1}
+          v: {min: 1, max: 9, step: 1}
+        derived:
+          s: "u + v"
+          p: "u * v"
+        answer:
+          numeric: {value: "s^2 - 2*p", mode: exact}
+        explanation: |
+          $(x + y)^2 = x^2 + 2xy + y^2$, so $x^2 + y^2 = (x + y)^2 - 2xy = {{s}}^2 - 2 \times {{p}}$.
+      - id: kp1-q7
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          $(2x - 3)^2 = $ ?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$4x^2 - 12x + 9$", correct: true}
+              - {id: b, text: "$4x^2 - 9$", misconception: square-of-sum}
+              - {id: c, text: "$4x^2 + 12x + 9$", misconception: sign-error}
+              - {id: d, text: "$2x^2 - 12x + 9$"}
+        explanation: |
+          $(2x - 3)^2 = (2x)^2 - 2 \times 2x \times 3 + 3^2 = 4x^2 - 12x + 9$.
+          The middle term is negative, and the last term $(-3)^2 = 9$ is positive.
+
+  - id: kp2
+    title: "(x + a)(x + b)"
+    worked_example: kp-2-worked.md
+    key_prereqs: [polynomials-basics]
+    items:
+      - id: kp2-q1
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Expand $(x + {{a}})(x + {{b}})$.
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        answer:
+          expression: {value: "x^2 + (a + b)*x + a*b", variables: [x], sympy_mode: exact}
+        explanation: |
+          $(x + a)(x + b) = x^2 + (a + b)x + ab$: $x^2 + ({{a}} + {{b}})x + {{a}} \times {{b}}$.
+      - id: kp2-q2
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Expand $(x + {{a}})(x - {{b}})$.
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        answer:
+          expression: {value: "x^2 + (a - b)*x - a*b", variables: [x], sympy_mode: exact}
+        explanation: |
+          Use $(x + a)(x + b) = x^2 + (a + b)x + ab$ with $b = -{{b}}$: the middle coefficient is ${{a}} - {{b}}$
+          and the constant term is ${{a}} \times (-{{b}}) = -{{a}} \times {{b}}$.
+      - id: kp2-q3
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Expand $(y - {{a}})(y - {{b}})$.
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        answer:
+          expression: {value: "y^2 - (a + b)*y + a*b", variables: [y], sympy_mode: exact}
+        explanation: |
+          Both numbers are negative: the middle coefficient is $-{{a}} - {{b}}$, and the constant term is
+          $(-{{a}}) \times (-{{b}})$, which is positive.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Use the identity $(x + a)(x + b) = x^2 + (a + b)x + ab$ with $x = 100$ to find ${{m}} \times {{n}}$.
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+        derived:
+          m: "100 + a"
+          n: "100 + b"
+        answer:
+          numeric: {value: "m * n", mode: exact}
+        explanation: |
+          ${{m}} \times {{n}} = (100 + {{a}})(100 + {{b}}) = 10000 + ({{a}} + {{b}}) \times 100 + {{a}} \times {{b}}$.
+      - id: kp2-q5
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          $(x + {{a}})(x + k) = x^2 + {{s}}x + {{p}}$ for every $x$. Find $k$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          k: {min: 2, max: 9, step: 1}
+        derived:
+          s: "a + k"
+          p: "a * k"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          By the identity, $(x + {{a}})(x + k) = x^2 + ({{a}} + k)x + {{a}}k$. Matching the constant terms, ${{a}}k = {{p}}$,
+          so $k = {{k}}$. Check the middle term: ${{a}} + {{k}} = {{s}}$. ✓
+      - id: kp2-q6
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          $(x + 5)(x - 2) = $ ?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$x^2 + 3x - 10$", correct: true}
+              - {id: b, text: "$x^2 - 3x - 10$", misconception: sign-error}
+              - {id: c, text: "$x^2 + 3x + 10$", misconception: sign-error}
+              - {id: d, text: "$x^2 + 7x - 10$"}
+        explanation: |
+          With $a = 5$ and $b = -2$: $a + b = 3$ and $ab = -10$, so $(x + 5)(x - 2) = x^2 + 3x - 10$.
+
+  - id: kp3
+    title: "(x + y + z)²"
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Expand $(x + y + {{a}})^2$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+        answer:
+          expression: {value: "x^2 + y^2 + a^2 + 2*x*y + 2*a*y + 2*a*x", variables: [x, y], sympy_mode: exact}
+        explanation: |
+          $(x + y + z)^2 = x^2 + y^2 + z^2 + 2xy + 2yz + 2zx$ with $z = {{a}}$:
+          $x^2 + y^2 + {{a}}^2 + 2xy + 2 \times {{a}}y + 2 \times {{a}}x$.
+      - id: kp3-q2
+        type: expression
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Expand $({{a}}x + {{b}}y - {{c}})^2$.
+        params:
+          a: {min: 2, max: 4, step: 1}
+          b: {min: 2, max: 4, step: 1}
+          c: {min: 1, max: 6, step: 1}
+        answer:
+          expression: {value: "a^2*x^2 + b^2*y^2 + c^2 + 2*a*b*x*y - 2*b*c*y - 2*a*c*x", variables: [x, y], sympy_mode: exact}
+        explanation: |
+          Take the three terms as ${{a}}x$, ${{b}}y$ and $-{{c}}$. The squares are ${{a}}^2x^2$, ${{b}}^2y^2$ and ${{c}}^2$ (all positive).
+          The products: $2({{a}}x)({{b}}y)$ is positive, while $2({{b}}y)(-{{c}})$ and $2(-{{c}})({{a}}x)$ are negative.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $a + b + c = {{s}}$ and $ab + bc + ca = {{q}}$. Find $a^2 + b^2 + c^2$.
+        params:
+          u: {min: 1, max: 9, step: 1}
+          v: {min: 1, max: 9, step: 1}
+          w: {min: 1, max: 9, step: 1}
+        derived:
+          s: "u + v + w"
+          q: "u*v + v*w + w*u"
+        answer:
+          numeric: {value: "s^2 - 2*q", mode: exact}
+        explanation: |
+          $(a + b + c)^2 = a^2 + b^2 + c^2 + 2(ab + bc + ca)$, so $a^2 + b^2 + c^2 = {{s}}^2 - 2 \times {{q}}$.
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          $a^2 + b^2 + c^2 = {{t}}$ and $ab + bc + ca = {{q}}$, where $a + b + c$ is positive. Find $a + b + c$.
+        params:
+          u: {min: 1, max: 6, step: 1}
+          v: {min: 1, max: 6, step: 1}
+          w: {min: 1, max: 6, step: 1}
+        derived:
+          t: "u^2 + v^2 + w^2"
+          q: "u*v + v*w + w*u"
+        answer:
+          numeric: {value: "u + v + w", mode: exact}
+        explanation: |
+          $(a + b + c)^2 = (a^2 + b^2 + c^2) + 2(ab + bc + ca) = {{t}} + 2 \times {{q}}$.
+          Take the positive square root.
+      - id: kp3-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What is the coefficient of $yz$ in the expansion of $(x + {{a}}y - {{b}}z)^2$?
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 6, step: 1}
+        answer:
+          numeric: {value: "-2*a*b", mode: exact}
+        explanation: |
+          The $yz$ term is $2 \times ({{a}}y) \times (-{{b}}z) = -2 \times {{a}} \times {{b}}\,yz$. It is negative because one of the two terms is negative.
+      - id: kp3-q6
+        type: mcq
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          $(a + b + c)^2 = $ ?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$a^2 + b^2 + c^2 + 2ab + 2bc + 2ca$", correct: true}
+              - {id: b, text: "$a^2 + b^2 + c^2$", misconception: square-of-sum}
+              - {id: c, text: "$a^2 + b^2 + c^2 + ab + bc + ca$"}
+              - {id: d, text: "$a^2 + b^2 + c^2 + 2abc$"}
+        explanation: |
+          Every pair of terms gives a product, twice: $2ab$, $2bc$ and $2ca$. Squaring each term alone misses all of them.
+
+  - id: kp4
+    title: Cube identities
+    worked_example: kp-4-worked.md
+    items:
+      - id: kp4-q1
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Expand $(x + {{a}})^3$.
+        params:
+          a: {min: 2, max: 6, step: 1}
+        answer:
+          expression: {value: "x^3 + 3*a*x^2 + 3*a^2*x + a^3", variables: [x], sympy_mode: exact}
+        explanation: |
+          $(x + y)^3 = x^3 + 3x^2y + 3xy^2 + y^3$ with $y = {{a}}$:
+          $x^3 + 3 \times {{a}}x^2 + 3 \times {{a}}^2 x + {{a}}^3$.
+      - id: kp4-q2
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Expand $(x - {{a}})^3$.
+        params:
+          a: {min: 1, max: 8, step: 1}
+        answer:
+          expression: {value: "x^3 - 3*a*x^2 + 3*a^2*x - a^3", variables: [x], sympy_mode: exact}
+        explanation: |
+          $(x - y)^3 = x^3 - 3x^2y + 3xy^2 - y^3$ with $y = {{a}}$. The signs alternate: $+, -, +, -$.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Use the identity $(x + y)^3 = x^3 + y^3 + 3xy(x + y)$ to find ${{n}}^3$.
+        params:
+          a: {min: 1, max: 9, step: 1}
+        derived:
+          n: "100 + a"
+          e: "a^3"
+          f: "300 * a * n"
+          r: "n^3"
+        answer:
+          numeric: {value: "n^3", mode: exact}
+        explanation: |
+          ${{n}}^3 = (100 + {{a}})^3 = 100^3 + {{a}}^3 + 3 \times 100 \times {{a}} \times {{n}}$
+          $= 1000000 + {{e}} + {{f}} = {{r}}$.
+      - id: kp4-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          $x + y = {{s}}$ and $xy = {{p}}$. Find $x^3 + y^3$.
+        params:
+          u: {min: 1, max: 6, step: 1}
+          v: {min: 1, max: 6, step: 1}
+        derived:
+          s: "u + v"
+          p: "u * v"
+        answer:
+          numeric: {value: "s^3 - 3*p*s", mode: exact}
+        explanation: |
+          $(x + y)^3 = x^3 + y^3 + 3xy(x + y)$, so $x^3 + y^3 = (x + y)^3 - 3xy(x + y) = {{s}}^3 - 3 \times {{p}} \times {{s}}$.
+      - id: kp4-q5
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          Without finding the cubes, work out ${{u}}^3 + {{v}}^3 + (-{{w}})^3$.
+        params:
+          u: {min: 2, max: 9, step: 1}
+          v: {min: 2, max: 9, step: 1}
+        derived:
+          w: "u + v"
+        answer:
+          numeric: {value: "-3*u*v*w", mode: exact}
+        explanation: |
+          ${{u}} + {{v}} + (-{{w}}) = 0$, and when $x + y + z = 0$, $x^3 + y^3 + z^3 = 3xyz$.
+          So the answer is $3 \times {{u}} \times {{v}} \times (-{{w}})$.
+      - id: kp4-q6
+        type: expression
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Multiply and simplify: $(x - {{a}})(x^2 + {{a}}x + {{b}})$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+        derived:
+          b: "a^2"
+        answer:
+          expression: {value: "x^3 - a^3", variables: [x], sympy_mode: exact}
+        explanation: |
+          This is $(x - y)(x^2 + xy + y^2) = x^3 - y^3$ with $y = {{a}}$ (and $y^2 = {{b}}$). All the middle terms cancel.
+      - id: kp4-q7
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Which of these is equal to $x^3 + y^3$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$(x + y)(x^2 - xy + y^2)$", correct: true}
+              - {id: b, text: "$(x + y)^3$", misconception: cube-of-sum}
+              - {id: c, text: "$(x + y)(x^2 + xy + y^2)$", misconception: sign-error}
+              - {id: d, text: "$(x + y)(x^2 + y^2)$"}
+        explanation: |
+          $x^3 + y^3 = (x + y)(x^2 - xy + y^2)$. Check with $x = y = 1$: $1 + 1 = 2$, and $(2)(1 - 1 + 1) = 2$. ✓
+          But $(x + y)^3 = 8$ there, so $(x + y)^3$ is not $x^3 + y^3$.
+
+practice:
+  - id: practice-two-plots
+    type: multistep
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      A square plot has side $(x + {{a}})$ m. A rectangular plot is $(x + {{b}})$ m long and $(x - {{c}})$ m wide.
+    params:
+      a: {min: 5, max: 9, step: 1}
+      b: {min: 1, max: 4, step: 1}
+      c: {min: 1, max: 4, step: 1}
+      t: {min: 10, max: 20, step: 1}
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write the area of the square plot, in m², as a polynomial in $x$ in expanded form.
+            answer:
+              expression: {value: "x^2 + 2*a*x + a^2", variables: [x], sympy_mode: exact}
+          - prompt: |
+              Write the area of the rectangular plot, in m², as a polynomial in $x$ in expanded form.
+            answer:
+              expression: {value: "x^2 + (b - c)*x - b*c", variables: [x], sympy_mode: exact}
+          - prompt: |
+              How much larger is the square plot's area than the rectangular plot's? Write it as a polynomial in $x$ in simplified form.
+            answer:
+              expression: {value: "(2*a - b + c)*x + a^2 + b*c", variables: [x], sympy_mode: exact}
+          - prompt: |
+              Find this difference in area when $x = {{t}}$.
+            answer:
+              numeric: {value: "(2*a - b + c)*t + a^2 + b*c", unit: "m^2", mode: exact}
+    explanation: |
+      Square: $(x + {{a}})^2 = x^2 + 2 \times {{a}}x + {{a}}^2$. Rectangle: $(x + {{b}})(x - {{c}}) = x^2 + ({{b}} - {{c}})x - {{b}} \times {{c}}$.
+      Subtracting, the $x^2$ terms cancel, leaving $(2 \times {{a}} - {{b}} + {{c}})x + {{a}}^2 + {{b}} \times {{c}}$. Then put $x = {{t}}$.
+
+  - id: practice-sum-and-product
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      Two numbers $x$ and $y$, with $x > y$, have $x + y = {{s}}$ and $xy = {{p}}$.
+    params:
+      u: {min: 4, max: 9, step: 1}
+      v: {min: 1, max: 3, step: 1}
+    derived:
+      s: "u + v"
+      p: "u * v"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Find $x^2 + y^2$.
+            answer:
+              numeric: {value: "s^2 - 2*p", mode: exact}
+          - prompt: |
+              Find $(x - y)^2$.
+            answer:
+              numeric: {value: "(u - v)^2", mode: exact}
+          - prompt: |
+              Find $x - y$.
+            answer:
+              numeric: {value: "u - v", mode: exact}
+          - prompt: |
+              Find $x^3 + y^3$.
+            answer:
+              numeric: {value: "s^3 - 3*p*s", mode: exact}
+    explanation: |
+      $x^2 + y^2 = (x + y)^2 - 2xy = {{s}}^2 - 2 \times {{p}}$. $(x - y)^2 = x^2 + y^2 - 2xy$, which is $(x + y)^2 - 4xy$.
+      Since $x > y$, $x - y$ is the positive square root. Finally $x^3 + y^3 = (x + y)^3 - 3xy(x + y) = {{s}}^3 - 3 \times {{p}} \times {{s}}$.
+
+  - id: practice-three-numbers
+    type: multistep
+    bloom: analyze
+    expected_minutes: 7
+    prompt: |
+      Three numbers $x$, $y$ and $z$ have $x + y + z = {{s}}$, $x^2 + y^2 + z^2 = {{t}}$ and $xyz = {{r}}$.
+    params:
+      u: {min: 1, max: 6, step: 1}
+      v: {min: 1, max: 6, step: 1}
+      w: {min: 1, max: 6, step: 1}
+    derived:
+      s: "u + v + w"
+      t: "u^2 + v^2 + w^2"
+      r: "u * v * w"
+      q: "u*v + v*w + w*u"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Find $xy + yz + zx$.
+            answer:
+              numeric: {value: "q", mode: exact}
+          - prompt: |
+              Find $x^2 + y^2 + z^2 - xy - yz - zx$.
+            answer:
+              numeric: {value: "t - q", mode: exact}
+          - prompt: |
+              Find $x^3 + y^3 + z^3 - 3xyz$.
+            answer:
+              numeric: {value: "s * (t - q)", mode: exact}
+          - prompt: |
+              Find $x^3 + y^3 + z^3$.
+            answer:
+              numeric: {value: "s * (t - q) + 3 * r", mode: exact}
+    explanation: |
+      $(x + y + z)^2 = x^2 + y^2 + z^2 + 2(xy + yz + zx)$, so $xy + yz + zx = ({{s}}^2 - {{t}}) \div 2 = {{q}}$.
+      Then $x^3 + y^3 + z^3 - 3xyz = (x + y + z)(x^2 + y^2 + z^2 - xy - yz - zx) = {{s}} \times ({{t}} - {{q}})$.
+      Add $3xyz = 3 \times {{r}}$ to get $x^3 + y^3 + z^3$.

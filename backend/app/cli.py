@@ -1,8 +1,9 @@
-"""Operator CLI: `uv run app org create|list`, `uv run app content check|import` and
+"""Operator CLI: `uv run app org create|list`, `uv run app content check|import|review-pack` and
 `uv run app tutor eval|purge|flagged`."""
 
 import asyncio
 import re
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -13,6 +14,7 @@ from sqlalchemy import case, func, select
 from app.api.deps import OrgScope
 from app.content.importer import ImportReport, import_tree
 from app.content.loader import ContentBundle, Issue, load
+from app.content.review_pack import build_review_pack, sample_errors
 from app.content.validate import has_errors, validate
 from app.core.config import get_settings
 from app.core.errors import ApiProblem
@@ -25,7 +27,9 @@ from app.services.supabase_admin import SupabaseAdmin, get_supabase_admin
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 org_app = typer.Typer(no_args_is_help=True, help="Schools (organizations).")
 app.add_typer(org_app, name="org")
-content_app = typer.Typer(no_args_is_help=True, help="Courses in content/ (validate, import).")
+content_app = typer.Typer(
+    no_args_is_help=True, help="Courses in content/ (validate, import, review pack)."
+)
 app.add_typer(content_app, name="content")
 tutor_app = typer.Typer(
     no_args_is_help=True, help="AI tutor (eval, retention purge, safety flags)."
@@ -38,6 +42,8 @@ app.add_typer(teacher_ai_app, name="teacher-ai")
 
 DEFAULT_CONTENT_ROOT = Path(__file__).resolve().parents[2] / "content"
 RootOpt = Annotated[Path, typer.Option("--root", help="The content/ folder")]
+# Spec 013: gitignored; the packs contain every answer.
+DEFAULT_REVIEW_PACKS = DEFAULT_CONTENT_ROOT.parent / "review-packs"
 
 BAD_CODE = "School code must be 3-12 characters: A-Z, 0-9 or '-'."
 EMPTY_NAME = "School name and admin name can't be empty."
@@ -169,6 +175,54 @@ def content_check(
         raise typer.Exit(1)
     warnings = f" ({len(issues)} warnings)" if issues else ""
     typer.echo(f"content OK: {summary(bundle)}{warnings}")
+
+
+def _git_sha(root: Path) -> str | None:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
+@content_app.command("review-pack")
+def content_review_pack(
+    root: RootOpt = DEFAULT_CONTENT_ROOT,
+    course: Annotated[
+        list[str] | None, typer.Option("--course", help="Course id (repeatable; default all)")
+    ] = None,
+    out: Annotated[Path, typer.Option("--out", help="Output folder")] = DEFAULT_REVIEW_PACKS,
+    seeds: Annotated[int, typer.Option(min=1, max=20, help="Sample seeds per param item")] = 3,
+) -> None:
+    """Write one self-contained HTML file per course, with every answer, for reviewers."""
+    bundle, issues, ok = check_content(root, strict=False)
+    print_issues(issues)
+    if not ok:
+        errors = sum(i.level == "error" for i in issues)
+        typer.echo(f"{errors} errors; no review pack written.", err=True)
+        raise typer.Exit(1)
+    known = [c.file.id for c in bundle.courses]
+    wanted = course or known
+    unknown = [c for c in wanted if c not in known]
+    if unknown:
+        typer.echo(f"unknown course: {', '.join(unknown)} (have: {', '.join(known)})", err=True)
+        raise typer.Exit(1)
+    generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    sha = _git_sha(root)
+    out.mkdir(parents=True, exist_ok=True)
+    for course_id in wanted:
+        html = build_review_pack(bundle, course_id, seeds=seeds, generated=generated, sha=sha)
+        path = out / f"{course_id}.html"
+        path.write_text(html, encoding="utf-8")
+        failed = sample_errors(bundle, course_id, seeds=seeds)
+        note = f" ({failed} items failed to sample: see the pack)" if failed else ""
+        typer.echo(f"wrote {path}{note}", err=bool(failed))
 
 
 async def import_content(root: Path, *, dry_run: bool) -> tuple[list[Issue], ImportReport | None]:

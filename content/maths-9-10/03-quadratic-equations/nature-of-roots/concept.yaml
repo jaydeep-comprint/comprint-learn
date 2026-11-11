@@ -1,0 +1,556 @@
+id: nature-of-roots
+title: Nature of roots
+summary: "The discriminant D = b² − 4ac: two distinct, two equal or no real roots; finding k; deciding whether a situation is possible."
+prereqs:
+  - {concept: quadratic-equations-solving, weight: 0.6}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    For $x^2 - 6x + 9 = 0$, the discriminant is $D = 0$. What does this tell you about its roots?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "It has two equal real roots.", correct: true}
+        - {id: b, text: "It has no real roots.", misconception: discriminant-sign}
+        - {id: c, text: "It has two distinct real roots."}
+        - {id: d, text: "Its only root is $x = 0$."}
+  explanation: |
+    $D = 0$ means $\sqrt{D} = 0$, so the quadratic formula gives the same root twice: $x = -\dfrac{b}{2a} = \dfrac{6}{2} = 3$.
+    The roots are real and equal ($x^2 - 6x + 9 = (x - 3)^2$). Only $D < 0$ means no real roots.
+
+kps:
+  - id: kp1
+    title: The discriminant
+    worked_example: kp-1-worked.md
+    key_prereqs: [quadratic-equations-solving]
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Find the discriminant of ${{a}}x^2 - {{b}}x + {{c}} = 0$. Use the coefficients as written (don't divide through).
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 12, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        derived:
+          d: "b^2 - 4 * a * c"
+        answer:
+          numeric: {value: "d", mode: exact}
+        explanation: |
+          $a = {{a}}$, $b = -{{b}}$, $c = {{c}}$. $D = b^2 - 4ac = (-{{b}})^2 - 4 \times {{a}} \times {{c}} = {{d}}$.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Find the discriminant of ${{a}}x^2 + {{b}}x - {{c}} = 0$. Use the coefficients as written (don't divide through).
+        params:
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        derived:
+          d: "b^2 + 4 * a * c"
+        answer:
+          numeric: {value: "d", mode: exact}
+        explanation: |
+          $a = {{a}}$, $b = {{b}}$, $c = -{{c}}$. $D = {{b}}^2 - 4 \times {{a}} \times (-{{c}}) = {{d}}$.
+          Because $c$ is negative, $-4ac$ is positive.
+      - id: kp1-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Write ${{a}}x^2 = {{b}}x - {{c}}$ in the form $ax^2 + bx + c = 0$ and find its discriminant. Use the coefficients as written (don't divide through).
+        params:
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 12, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        derived:
+          d: "b^2 - 4 * a * c"
+        answer:
+          numeric: {value: "d", mode: exact}
+        explanation: |
+          Move every term to the left: ${{a}}x^2 - {{b}}x + {{c}} = 0$, so $a = {{a}}$, $b = -{{b}}$, $c = {{c}}$.
+          $D = (-{{b}})^2 - 4 \times {{a}} \times {{c}} = {{d}}$.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Write $x({{a}}x + {{b}}) = {{c}}$ in the form $ax^2 + bx + c = 0$ and find its discriminant. Use the coefficients as written (don't divide through).
+        params:
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 1, max: 9, step: 1}
+          c: {min: 1, max: 12, step: 1}
+        derived:
+          d: "b^2 + 4 * a * c"
+        answer:
+          numeric: {value: "d", mode: exact}
+        explanation: |
+          Expand and move ${{c}}$ to the left: ${{a}}x^2 + {{b}}x - {{c}} = 0$, so $c = -{{c}}$, not ${{c}}$.
+          $D = {{b}}^2 - 4 \times {{a}} \times (-{{c}}) = {{d}}$.
+      - id: kp1-q5
+        type: mcq
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What is the discriminant of $2x^2 - 4x + 3 = 0$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$-8$", correct: true}
+              - {id: b, text: "40", misconception: discriminant-sign}
+              - {id: c, text: "$-40$", misconception: sign-error}
+              - {id: d, text: "8"}
+        explanation: |
+          $D = b^2 - 4ac = (-4)^2 - 4 \times 2 \times 3 = 16 - 24 = -8$. The formula has a minus sign ($b^2 - 4ac$, not $b^2 + 4ac$),
+          and $(-4)^2 = +16$.
+      - id: kp1-q6
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          Find the discriminant of $2x^2 = 7$.
+        answer:
+          numeric: {value: 56, mode: exact}
+        explanation: |
+          In standard form: $2x^2 + 0x - 7 = 0$, so $a = 2$, $b = 0$, $c = -7$.
+          $D = 0^2 - 4 \times 2 \times (-7) = 56$.
+
+  - id: kp2
+    title: Nature of roots from D
+    worked_example: kp-2-worked.md
+    key_prereqs: [quadratic-equations-solving]
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          How many **distinct** real roots does ${{a}}x^2 - {{b}}x + {{c}} = 0$ have? (Enter 0, 1 or 2.)
+        params:
+          a: {min: 2, max: 4, step: 1}
+          p: {min: 2, max: 5, step: 1}
+          t: {min: -2, max: 2, step: 1}
+        derived:
+          b: "2 * a * p"
+          c: "a * p^2 + t"
+          d: "b^2 - 4 * a * c"
+          n: "1 + Min(1, Max(-1, d))"
+        answer:
+          numeric: {value: "n", mode: exact}
+        explanation: |
+          $D = {{b}}^2 - 4 \times {{a}} \times {{c}} = {{d}}$. $D > 0$ gives 2 distinct real roots, $D = 0$ gives two equal roots
+          (1 distinct root) and $D < 0$ gives no real roots. So the answer is {{n}}.
+      - id: kp2-q2
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          What is the nature of the roots of $3x^2 - 4x + 2 = 0$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "No real roots", correct: true}
+              - {id: b, text: "Two distinct real roots", misconception: discriminant-sign}
+              - {id: c, text: "Two equal real roots"}
+        explanation: |
+          $D = (-4)^2 - 4 \times 3 \times 2 = 16 - 24 = -8 < 0$, so there are no real roots.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          ${{a}}x^2 - {{b}}x + {{c}} = 0$ has two equal real roots. Find the root.
+        params:
+          a: {min: 2, max: 5, step: 1}
+          r: {min: 1, max: 6, step: 1}
+        derived:
+          b: "2 * a * r"
+          c: "a * r^2"
+        answer:
+          numeric: {value: "r", mode: exact}
+        explanation: |
+          With $D = 0$ both roots are $x = -\dfrac{b}{2a} = \dfrac{ {{b}} }{2 \times {{a}}} = {{r}}$.
+          Check: ${{a}}x^2 - {{b}}x + {{c}} = {{a}}(x - {{r}})^2$.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          How many **distinct** real roots does ${{a}}x^2 + {{c}} = {{b}}x$ have? (Enter 0, 1 or 2.)
+        params:
+          a: {min: 2, max: 5, step: 1}
+          b: {min: 2, max: 10, step: 1}
+          c: {min: 1, max: 6, step: 1}
+        derived:
+          d: "b^2 - 4 * a * c"
+          n: "1 + Min(1, Max(-1, d))"
+        answer:
+          numeric: {value: "n", mode: exact}
+        explanation: |
+          In standard form: ${{a}}x^2 - {{b}}x + {{c}} = 0$. $D = {{b}}^2 - 4 \times {{a}} \times {{c}} = {{d}}$.
+          $D > 0$: 2 roots; $D = 0$: 1 distinct root; $D < 0$: none. So the answer is {{n}}.
+      - id: kp2-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Find the discriminant of $x^2 - {{s}}x + {{p}} = 0$, then use the quadratic formula to find its **larger** root.
+        params:
+          r: {min: 1, max: 6, step: 1}
+          g: {min: 1, max: 5, step: 1}
+        derived:
+          q: "r + g"
+          s: "r + q"
+          p: "r * q"
+          d: "s^2 - 4 * p"
+        answer:
+          numeric: {value: "q", mode: exact}
+        explanation: |
+          $D = {{s}}^2 - 4 \times {{p}} = {{d}} > 0$, so there are two distinct real roots:
+          $x = \dfrac{ {{s}} \pm \sqrt{ {{d}} } }{2}$, that is $x = {{q}}$ or $x = {{r}}$. The larger root is {{q}}.
+      - id: kp2-q6
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          How many real roots does $x^2 + 5 = 0$ have?
+        answer:
+          numeric: {value: 0, mode: exact}
+        explanation: |
+          $D = 0^2 - 4 \times 1 \times 5 = -20 < 0$, so there are no real roots. (Also: $x^2$ is never negative, so $x^2 = -5$ is impossible.)
+
+  - id: kp3
+    title: Finding k for equal or real roots
+    worked_example: kp-3-worked.md
+    key_prereqs: []
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Find $k$ if $kx^2 - {{b}}x + {{c}} = 0$ has two equal roots.
+        params:
+          c: {min: 1, max: 4, step: 1}
+          t: {min: 1, max: 5, step: 1}
+        derived:
+          b: "2 * c * t"
+          k: "c * t^2"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Equal roots means $D = 0$: $(-{{b}})^2 - 4 \times k \times {{c}} = 0$, so $k = \dfrac{ {{b}}^2 }{4 \times {{c}}} = {{k}}$.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Find the **positive** value of $k$ for which ${{a}}x^2 - kx + {{c}} = 0$ has two equal roots.
+        params:
+          s: {choices: [2, 3]}
+          m: {min: 1, max: 6, step: 1}
+        derived:
+          a: "s^2"
+          c: "m^2"
+          k: "2 * s * m"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          $D = k^2 - 4 \times {{a}} \times {{c}} = 0$, so $k^2 = {{k}}^2$ and $k = \pm {{k}}$. The positive value is {{k}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          ${{a}}x^2 - {{b}}x + k = 0$ has real roots. What is the **greatest** possible value of $k$? Give it as a decimal if it isn't a whole number.
+        params:
+          a: {choices: [2, 4, 5]}
+          b: {min: 2, max: 12, step: 1}
+        derived:
+          k: "b^2 / (4 * a)"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Real roots (distinct or equal) means $D \geq 0$: ${{b}}^2 - 4 \times {{a}} \times k \geq 0$, so $k \leq \dfrac{ {{b}}^2 }{4 \times {{a}}} = {{k}}$.
+          The greatest value is {{k}}, where the roots are equal.
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          Find the non-zero value of $k$ for which $kx(x - {{p}}) + {{c}} = 0$ has two equal roots.
+        params:
+          p: {choices: [2, 4, 6]}
+          k: {min: 2, max: 9, step: 1}
+        derived:
+          c: "k * p^2 / 4"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          Expand: $kx^2 - {{p}}kx + {{c}} = 0$, so $a = k$, $b = -{{p}}k$, $c = {{c}}$.
+          $D = {{p}}^2k^2 - 4 \times k \times {{c}} = 0$. Since $k \neq 0$, divide by $k$: ${{p}}^2k = 4 \times {{c}}$, so $k = {{k}}$.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          For which values of $k$ does $x^2 + 4x + k = 0$ have real roots?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$k \\leq 4$", correct: true}
+              - {id: b, text: "$k < 4$", misconception: discriminant-sign}
+              - {id: c, text: "$k \\geq 4$", misconception: sign-error}
+              - {id: d, text: "$k = 4$ only"}
+        explanation: |
+          Real roots means $D \geq 0$: $16 - 4k \geq 0$, so $k \leq 4$. $k = 4$ is included: then $D = 0$ and the roots are real and equal.
+      - id: kp3-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Find the positive value of $k$ for which $2x^2 + kx + 3 = 0$ has two equal roots. Give it correct to 2 decimal places.
+        answer:
+          numeric: {value: "2 * sqrt(6)", mode: tolerance, abs_tol: 0.01}
+        explanation: |
+          $D = k^2 - 4 \times 2 \times 3 = k^2 - 24 = 0$, so $k = \pm\sqrt{24} = \pm 2\sqrt{6}$. The positive value is $2\sqrt{6} \approx 4.90$.
+
+  - id: kp4
+    title: Is it possible?
+    worked_example: kp-4-worked.md
+    key_prereqs: [quadratic-equations-solving]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          A rectangular park is to have a perimeter of {{P}} m and an area of {{A}} m². Take its length as $x$ m,
+          write the equation for $x$ in the form $x^2 + bx + c = 0$ and find its discriminant.
+        params:
+          s: {min: 20, max: 50, step: 5}
+          A: {min: 100, max: 600, step: 50}
+        derived:
+          P: "2 * s"
+          d: "s^2 - 4 * A"
+        answer:
+          numeric: {value: "d", mode: exact}
+        explanation: |
+          Length + breadth = half the perimeter = {{s}} m, so the breadth is $({{s}} - x)$ m and $x({{s}} - x) = {{A}}$.
+          In standard form: $x^2 - {{s}}x + {{A}} = 0$, so $D = {{s}}^2 - 4 \times {{A}} = {{d}}$.
+          If $D < 0$ such a park is not possible; if $D \geq 0$ it is.
+      - id: kp4-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          The sum of the present ages of two friends is {{s}} years. {{t}} years ago, the product of their ages (in years) was {{q}}.
+          Taking one friend's present age as $x$ years, form a quadratic equation in $x$. How many **distinct** real roots does it have? (Enter 0, 1 or 2.)
+        params:
+          s: {min: 20, max: 30, step: 2}
+          t: {min: 2, max: 5, step: 1}
+          e: {choices: [-12, -5, 0, 4, 9]}
+        derived:
+          h: "(s - 2 * t) / 2"
+          q: "h^2 + e"
+          c: "t * (s - t) + q"
+          d: "s^2 - 4 * c"
+          n: "1 + Min(1, Max(-1, d))"
+        answer:
+          numeric: {value: "n", mode: exact}
+        explanation: |
+          The other friend is $({{s}} - x)$ years old. {{t}} years ago: $(x - {{t}})({{s}} - x - {{t}}) = {{q}}$,
+          which becomes $x^2 - {{s}}x + {{c}} = 0$. $D = {{s}}^2 - 4 \times {{c}} = {{d}}$, so it has {{n}} distinct real root(s).
+          0 would mean the situation is not possible.
+      - id: kp4-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          A wire {{L}} m long is bent into the shape of a rectangle. Using the discriminant, find the **greatest** area
+          the rectangle can have.
+        params:
+          L: {min: 20, max: 100, step: 4}
+        derived:
+          s: "L / 2"
+          h: "L / 4"
+          m: "h^2"
+        answer:
+          numeric: {value: "m", unit: "m^2", mode: exact}
+        explanation: |
+          If one side is $x$ m, the other is $({{s}} - x)$ m. For area $A$: $x({{s}} - x) = A$, so $x^2 - {{s}}x + A = 0$.
+          Real sides need $D \geq 0$: ${{s}}^2 - 4A \geq 0$, so $A \leq \dfrac{ {{s}}^2 }{4} = {{m}}$ m² (a square of side {{h}} m).
+      - id: kp4-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Is it possible to design a rectangular mango grove whose length is twice its breadth and whose area is {{A}} m²?
+          If so, find its breadth.
+        params:
+          w: {min: 5, max: 30, step: 1}
+        derived:
+          A: "2 * w^2"
+          l: "2 * w"
+        answer:
+          numeric: {value: "w", unit: "m", mode: exact}
+        explanation: |
+          Breadth $x$ m, length $2x$ m: $2x^2 = {{A}}$, so $2x^2 - {{A}} = 0$ with $D = 0 - 4 \times 2 \times (-{{A}}) > 0$: it is possible.
+          $x^2 = {{A}} \div 2$, so $x = {{w}}$ (a length can't be negative). Breadth {{w}} m, length {{l}} m.
+      - id: kp4-q5
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Is it possible to design a rectangular park of perimeter 80 m and area 400 m²? If so, find its length.
+        answer:
+          numeric: {value: 20, unit: "m", mode: exact}
+        explanation: |
+          Length $x$ m, breadth $(40 - x)$ m: $x(40 - x) = 400$, so $x^2 - 40x + 400 = 0$.
+          $D = 1600 - 1600 = 0$: possible, with equal roots $x = 20$. The park is a square of side 20 m.
+      - id: kp4-q6
+        type: mcq
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          Is there a real number whose sum with its reciprocal is $\dfrac{3}{2}$, that is $x + \dfrac{1}{x} = \dfrac{3}{2}$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "No: the equation $2x^2 - 3x + 2 = 0$ has $D = -7$", correct: true}
+              - {id: b, text: "Yes, two such numbers: $D = 25$", misconception: discriminant-sign}
+              - {id: c, text: "Yes, exactly one such number: $D = 0$"}
+        explanation: |
+          Multiply by $2x$: $2x^2 + 2 = 3x$, so $2x^2 - 3x + 2 = 0$. $D = 9 - 16 = -7 < 0$: no real roots, so no such number exists.
+          ($D = 25$ comes from $b^2 + 4ac$, the wrong formula.)
+
+practice:
+  - id: practice-roots
+    type: multistep
+    bloom: apply
+    expected_minutes: 5
+    prompt: |
+      Look at the equation ${{a}}x^2 - {{b}}x + {{c}} = 0$.
+    params:
+      a: {choices: [2, 3]}
+      b: {min: 7, max: 12, step: 1}
+      c: {min: 1, max: 3, step: 1}
+    derived:
+      d: "b^2 - 4 * a * c"
+      x1: "(b + sqrt(d)) / (2 * a)"
+      x2: "(b - sqrt(d)) / (2 * a)"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Find its discriminant $D$.
+            answer:
+              numeric: {value: "d", mode: exact}
+          - prompt: |
+              How many distinct real roots does it have? (Enter 0, 1 or 2.)
+            answer:
+              numeric: {value: 2, mode: exact}
+          - prompt: |
+              Find the larger root, correct to 2 decimal places.
+            answer:
+              numeric: {value: "x1", mode: tolerance, abs_tol: 0.01}
+          - prompt: |
+              Find the smaller root, correct to 2 decimal places.
+            answer:
+              numeric: {value: "x2", mode: tolerance, abs_tol: 0.01}
+    explanation: |
+      $D = (-{{b}})^2 - 4 \times {{a}} \times {{c}} = {{d}} > 0$, so there are two distinct real roots:
+      $x = \dfrac{ {{b}} \pm \sqrt{ {{d}} } }{2 \times {{a}}}$, that is $x \approx {{x1}}$ and $x \approx {{x2}}$.
+
+  - id: practice-find-k
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      Look at the equation $kx^2 - {{b}}x + {{c}} = 0$, where $k \neq 0$.
+    params:
+      c: {min: 1, max: 4, step: 1}
+      t: {choices: [1, 2, 4, 5]}
+    derived:
+      b: "2 * c * t"
+      k0: "c * t^2"
+      r: "1 / t"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write its discriminant $D$ in terms of $k$. Enter only the expression, without "D =".
+            answer:
+              expression: {value: "b^2 - 4*c*k", variables: [k], sympy_mode: equivalent}
+          - prompt: |
+              Find the value of $k$ for which the equation has two equal roots.
+            answer:
+              numeric: {value: "k0", mode: exact}
+          - prompt: |
+              For that value of $k$, find the equal root. Give it as a decimal if it isn't a whole number.
+            answer:
+              numeric: {value: "r", mode: exact}
+          - prompt: |
+              If $k$ is greater than {{k0}}, what is the nature of the roots?
+            answer:
+              mcq:
+                options:
+                  - {id: a, text: "No real roots", correct: true}
+                  - {id: b, text: "Two distinct real roots", misconception: discriminant-sign}
+                  - {id: c, text: "Two equal real roots"}
+    explanation: |
+      $D = (-{{b}})^2 - 4 \times k \times {{c}} = {{b}}^2 - 4 \times {{c}} \times k$. $D = 0$ gives $k = {{k0}}$, and then
+      the equal root is $x = -\dfrac{b}{2a} = \dfrac{ {{b}} }{2 \times {{k0}}} = {{r}}$.
+      For $k > {{k0}}$, $4 \times {{c}} \times k$ is bigger than ${{b}}^2$, so $D < 0$: no real roots.
+
+  - id: practice-ages
+    type: multistep
+    bloom: analyze
+    expected_minutes: 7
+    prompt: |
+      The sum of the present ages of two friends is {{s}} years. {{t}} years ago, the product of their ages (in years) was {{q}}.
+      Let one friend's present age be $x$ years.
+    params:
+      s: {min: 20, max: 30, step: 2}
+      t: {min: 2, max: 5, step: 1}
+      e: {choices: [-9, -4, 0, 4, 9, 16]}
+    derived:
+      h: "(s - 2 * t) / 2"
+      q: "h^2 + e"
+      c: "t * (s - t) + q"
+      d: "s^2 - 4 * c"
+      n: "1 + Min(1, Max(-1, d))"
+      m: "h^2"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Form the equation and write it in the form $x^2 + bx + c = 0$. Enter its left-hand side.
+            answer:
+              expression: {value: "x^2 - s*x + c", variables: [x], sympy_mode: equivalent}
+          - prompt: |
+              Find its discriminant $D$.
+            answer:
+              numeric: {value: "d", mode: exact}
+          - prompt: |
+              How many distinct real roots does it have? (Enter 0, 1 or 2. If 0, the situation is not possible.)
+            answer:
+              numeric: {value: "n", mode: exact}
+          - prompt: |
+              Keeping the sum {{s}} years, what is the **greatest** product of their ages {{t}} years ago for which the situation is possible?
+            answer:
+              numeric: {value: "m", mode: exact}
+    explanation: |
+      The other friend is $({{s}} - x)$ years old. {{t}} years ago: $(x - {{t}})({{s}} - x - {{t}}) = {{q}}$, which becomes
+      $x^2 - {{s}}x + {{c}} = 0$. $D = {{s}}^2 - 4 \times {{c}} = {{d}}$, so there are {{n}} distinct real root(s).
+      With product $P$ instead of {{q}}, the constant is ${{t}} \times {{s}} - {{t}}^2 + P$, and $D \geq 0$ gives $P \leq {{m}}$
+      (their ages {{t}} years ago would then both be {{h}}).

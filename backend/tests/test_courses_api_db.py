@@ -6,6 +6,7 @@ import pytest
 
 from app.cli import DEFAULT_CONTENT_ROOT
 from app.content.importer import import_tree
+from app.content.loader import load
 from tests import content_fixtures as fx
 from tests.conftest import DbApp
 from tests.db_seed import seed_school
@@ -49,28 +50,16 @@ async def test_any_school_any_role_sees_the_same_courses(db_app: DbApp) -> None:
     r2 = await db_app.client.get("/api/v1/courses", headers=student_b)
     assert r1.status_code == r2.status_code == 200, r1.text
     assert r1.json() == r2.json()
+    # Counts come from the tree, so adding content (spec 013) doesn't break this test.
     assert r1.json() == [
         {
-            "slug": "maths-9-10",
-            "title": r1.json()[0]["title"],
-            "subject": "maths",
-            "chapter_count": 2,
-            "concept_count": 3,
-        },
-        {
-            "slug": "physics-9-10",
-            "title": r1.json()[1]["title"],
-            "subject": "physics",
-            "chapter_count": 1,
-            "concept_count": 3,
-        },
-        {
-            "slug": "python-basics",
-            "title": r1.json()[2]["title"],
-            "subject": "python",
-            "chapter_count": 1,
-            "concept_count": 3,
-        },
+            "slug": course.file.id,
+            "title": course.file.title,
+            "subject": course.file.subject.value,
+            "chapter_count": len(course.chapters),
+            "concept_count": len(course.concepts),
+        }
+        for course in load(DEFAULT_CONTENT_ROOT).courses
     ]
 
 
@@ -80,12 +69,10 @@ async def test_physics_graph(db_app: DbApp) -> None:
     assert resp.status_code == 200, resp.text
     graph = resp.json()
     assert graph["course"]["slug"] == "physics-9-10"
-    assert [c["id"] for c in graph["concepts"]] == [
-        "physics-9-10/distance-and-displacement",
-        "physics-9-10/speed-and-velocity",
-        "physics-9-10/acceleration",
+    physics = next(c for c in load(DEFAULT_CONTENT_ROOT).courses if c.file.id == "physics-9-10")
+    assert [(c["id"], c["kp_count"], c["chapter"]) for c in graph["concepts"]] == [
+        (c.qualified_id, len(c.file.kps), c.chapter) for c in physics.concepts
     ]
-    assert all(c["kp_count"] == 3 and c["chapter"] == "motion" for c in graph["concepts"])
     edges = {(e["from"], e["to"]): e["weight"] for e in graph["edges"]}
     assert edges[("physics-9-10/distance-and-displacement", "physics-9-10/speed-and-velocity")]
     assert edges[("physics-9-10/speed-and-velocity", "physics-9-10/acceleration")]

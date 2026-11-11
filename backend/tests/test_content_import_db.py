@@ -78,7 +78,7 @@ async def test_import_sample_then_again_is_a_no_op(db_app: DbApp) -> None:
         1 + sum(len(kp.items) for kp in c.file.kps) + len(c.file.practice) for c in bundle.concepts
     )
     assert await _count(db_app, Course) == len(bundle.courses) == 3
-    assert await _count(db_app, Concept) == len(bundle.concepts) == 9
+    assert await _count(db_app, Concept) == len(bundle.concepts)
     assert await _count(db_app, KnowledgePoint) == sum(len(c.file.kps) for c in bundle.concepts)
     assert await _count(db_app, Item) == n_items
     assert await _count(db_app, ConceptPrereq) == sum(len(c.file.prereqs) for c in bundle.concepts)

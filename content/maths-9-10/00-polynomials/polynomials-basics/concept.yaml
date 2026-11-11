@@ -1,0 +1,480 @@
+id: polynomials-basics
+title: Polynomials
+summary: Terms, coefficients and degree; the value and zeros of a polynomial; adding, subtracting and multiplying polynomials.
+prereqs: []
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 1
+  prompt: |
+    What is the degree of the polynomial $3x^2 - 5x^4 + x$?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "4", correct: true}
+        - {id: b, text: "3", misconception: degree-counts-terms}
+        - {id: c, text: "2"}
+        - {id: d, text: "$-5$"}
+  explanation: |
+    The degree is the **highest power** of $x$ in any term. The powers here are 2, 4 and 1, so the degree is 4.
+    The polynomial has 3 terms, but the number of terms is not the degree.
+
+kps:
+  - id: kp1
+    title: Terms, coefficients and degree
+    worked_example: kp-1-worked.md
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What is the degree of $p(x) = {{b}}x^2 + {{a}}x^{{n}} - {{c}}$?
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 15, step: 1}
+          n: {min: 3, max: 7, step: 1}
+        answer:
+          numeric: {value: "n", mode: exact}
+        explanation: |
+          The highest power of $x$ is in the term ${{a}}x^{{n}}$, so the degree is {{n}}.
+      - id: kp1-q2
+        type: numeric
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What is the coefficient of $x^2$ in $p(x) = {{a}}x^3 - {{b}}x^2 + {{c}}x + {{d}}$?
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 2, max: 9, step: 1}
+          d: {min: 1, max: 15, step: 1}
+        answer:
+          numeric: {value: "-b", mode: exact}
+        explanation: |
+          The term in $x^2$ is $-{{b}}x^2$. The coefficient keeps its sign: $-{{b}}$.
+      - id: kp1-q3
+        type: numeric
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          What is the coefficient of the term of highest degree in $p(x) = {{a}}x - {{b}}x^{{n}} + {{c}}$?
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 15, step: 1}
+          n: {min: 2, max: 5, step: 1}
+        answer:
+          numeric: {value: "-b", mode: exact}
+        explanation: |
+          The term of highest degree is $-{{b}}x^{{n}}$ (degree {{n}}), even though it is not written first. Its coefficient is $-{{b}}$.
+      - id: kp1-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          For which value of $k$ is $p(x) = (k - {{a}})x^3 + {{b}}x^2 - {{c}}x + 1$ a quadratic polynomial?
+        params:
+          a: {min: 2, max: 12, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 2, max: 9, step: 1}
+        answer:
+          numeric: {value: "a", mode: exact}
+        explanation: |
+          A quadratic polynomial has degree 2, so the $x^3$ term must vanish: $k - {{a}} = 0$, so $k = {{a}}$.
+          The $x^2$ term ${{b}}x^2$ is still there, so the degree is then exactly 2.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What is the degree of $5x^3 + 2x^2 - x + 7$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "3", correct: true}
+              - {id: b, text: "4", misconception: degree-counts-terms}
+              - {id: c, text: "5"}
+              - {id: d, text: "7"}
+        explanation: |
+          The highest power of $x$ is 3 (in $5x^3$). There are 4 terms, but the degree is the highest power, not the number of terms.
+      - id: kp1-q6
+        type: numeric
+        bloom: remember
+        expected_minutes: 0.5
+        prompt: |
+          What is the degree of the constant polynomial $p(x) = 7$?
+        answer:
+          numeric: {value: 0, mode: exact}
+        explanation: |
+          $7 = 7x^0$, so a non-zero constant polynomial has degree 0.
+
+  - id: kp2
+    title: The value of a polynomial
+    worked_example: kp-2-worked.md
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          $p(x) = {{a}}x^2 + {{b}}x - {{c}}$. Find $p({{t}})$.
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 15, step: 1}
+          t: {choices: [-3, -2, -1, 2, 3, 4]}
+        derived:
+          v: "a * t^2 + b * t - c"
+        answer:
+          numeric: {value: "v", mode: exact}
+        explanation: |
+          Replace every $x$ by $({{t}})$: $p({{t}}) = {{a}}({{t}})^2 + {{b}}({{t}}) - {{c}} = {{v}}$.
+          Brackets around a negative number keep the signs right.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $p(x) = x^3 - {{a}}x + {{b}}$. Find $p({{t}})$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 1, max: 12, step: 1}
+          t: {choices: [-2, -1, 2, 3]}
+        derived:
+          v: "t^3 - a * t + b"
+        answer:
+          numeric: {value: "v", mode: exact}
+        explanation: |
+          $p({{t}}) = ({{t}})^3 - {{a}}({{t}}) + {{b}} = {{v}}$.
+      - id: kp2-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $p(x) = {{a}}x^2 + kx - {{c}}$, and $p({{t}}) = {{v}}$. Find $k$.
+        params:
+          a: {min: 2, max: 5, step: 1}
+          c: {min: 1, max: 12, step: 1}
+          k: {min: -6, max: 6, step: 1}
+          t: {choices: [1, 2, 3, -1, -2]}
+        derived:
+          v: "a * t^2 + k * t - c"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          $p({{t}}) = {{a}}({{t}})^2 + k({{t}}) - {{c}} = {{v}}$. Collect the numbers on one side and divide by {{t}}: $k = {{k}}$.
+      - id: kp2-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $p(x) = {{a}}x^3 - {{b}}x^2 + {{c}}x + {{d}}$. Find $p(0) + p(1)$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 2, max: 9, step: 1}
+          d: {min: 1, max: 12, step: 1}
+        answer:
+          numeric: {value: "a - b + c + 2 * d", mode: exact}
+        explanation: |
+          $p(0) = {{d}}$ (every term with $x$ is 0). $p(1) = {{a}} - {{b}} + {{c}} + {{d}}$ (every power of 1 is 1).
+          Adding them gives the answer.
+      - id: kp2-q5
+        type: mcq
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          $p(x) = x^2 - 3x$. What is $p(-2)$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "10", correct: true}
+              - {id: b, text: "2", misconception: sign-error}
+              - {id: c, text: "$-2$", misconception: sign-error}
+              - {id: d, text: "$-10$"}
+        explanation: |
+          $p(-2) = (-2)^2 - 3(-2) = 4 + 6 = 10$. Squaring a negative number gives a positive number, and $-3 \times (-2) = +6$.
+      - id: kp2-q6
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          $p(x) = 2x^3 - x + 4$. Find $p(-1)$.
+        answer:
+          numeric: {value: 3, mode: exact}
+        explanation: |
+          $p(-1) = 2(-1)^3 - (-1) + 4 = -2 + 1 + 4 = 3$.
+
+  - id: kp3
+    title: Zeros of a polynomial
+    worked_example: kp-3-worked.md
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Find the zero of $p(x) = {{a}}x - {{b}}$. Give your answer as a decimal if it isn't a whole number.
+        params:
+          a: {choices: [2, 4, 5]}
+          b: {min: 1, max: 19, step: 1}
+        answer:
+          numeric: {value: "b / a", mode: exact}
+        explanation: |
+          A zero is the value of $x$ that makes $p(x) = 0$: ${{a}}x - {{b}} = 0$, so $x = \dfrac{ {{b}} }{ {{a}} }$.
+      - id: kp3-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          $x = {{r}}$ is a zero of $p(x) = {{a}}x^2 - {{b}}x + k$. Find $k$.
+        params:
+          a: {min: 2, max: 4, step: 1}
+          b: {min: 2, max: 12, step: 1}
+          r: {choices: [-2, -1, 1, 2, 3]}
+        derived:
+          k: "b * r - a * r^2"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          A zero makes the polynomial 0: $p({{r}}) = {{a}}({{r}})^2 - {{b}}({{r}}) + k = 0$, so $k = {{k}}$.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Find the positive zero of $p(x) = x^2 - {{n}}$.
+        params:
+          m: {min: 2, max: 12, step: 1}
+        derived:
+          n: "m^2"
+        answer:
+          numeric: {value: "m", mode: exact}
+        explanation: |
+          $x^2 - {{n}} = 0$ gives $x^2 = {{n}}$, so $x = {{m}}$ or $x = -{{m}}$. The positive zero is {{m}}.
+      - id: kp3-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 2
+        prompt: |
+          $x = {{r}}$ is a zero of $p(x) = x^2 + kx - {{c}}$. Find $k$.
+        params:
+          r: {min: 1, max: 6, step: 1}
+          s: {min: -6, max: -1, step: 1}
+        constraints: ["r + s != 0"]
+        derived:
+          c: "-r * s"
+          k: "-(r + s)"
+        answer:
+          numeric: {value: "k", mode: exact}
+        explanation: |
+          $p({{r}}) = 0$: $({{r}})^2 + {{r}}k - {{c}} = 0$, so ${{r}}k = {{c}} - ({{r}})^2$ and $k = {{k}}$.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What is the zero of $p(x) = x + 5$?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$-5$", correct: true}
+              - {id: b, text: "5", misconception: zero-vs-value}
+              - {id: c, text: "0", misconception: zero-vs-value}
+              - {id: d, text: "1"}
+        explanation: |
+          The zero is the $x$ that makes $p(x) = 0$: $x + 5 = 0$ gives $x = -5$. Note that $p(0) = 5$ is a value of $p$, not a zero.
+      - id: kp3-q6
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          How many zeros does the constant polynomial $p(x) = 7$ have?
+        answer:
+          numeric: {value: 0, mode: exact}
+        explanation: |
+          $p(x) = 7$ for every $x$, so it is never 0: a non-zero constant polynomial has no zeros.
+
+  - id: kp4
+    title: Adding, subtracting and multiplying polynomials
+    worked_example: kp-4-worked.md
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          Add $({{a}}x^2 + {{b}}x + {{c}}) + ({{d}}x^2 - {{e}}x + {{f}})$ and simplify.
+          What is the coefficient of $x$ in the result?
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+          d: {min: 2, max: 6, step: 1}
+          e: {min: 2, max: 9, step: 1}
+          f: {min: 1, max: 9, step: 1}
+        constraints: ["b != e"]
+        answer:
+          numeric: {value: "b - e", mode: exact}
+        explanation: |
+          Add like terms: $({{a}} + {{d}})x^2 + ({{b}} - {{e}})x + ({{c}} + {{f}})$. Only terms with the same power of $x$ combine,
+          so the coefficient of $x$ is ${{b}} - {{e}}$.
+      - id: kp4-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Subtract $({{a}}x^2 + {{b}}x - {{c}}) - ({{d}}x^2 - {{e}}x + {{f}})$ and simplify.
+          What is the coefficient of $x$ in the result?
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+          d: {min: 2, max: 9, step: 1}
+          e: {min: 2, max: 9, step: 1}
+          f: {min: 1, max: 9, step: 1}
+        answer:
+          numeric: {value: "b + e", mode: exact}
+        explanation: |
+          The minus sign changes the sign of **every** term in the second bracket:
+          ${{a}}x^2 + {{b}}x - {{c}} - {{d}}x^2 + {{e}}x - {{f}}$. The $x$ terms give ${{b}}x + {{e}}x$, so the coefficient is ${{b}} + {{e}}$.
+      - id: kp4-q3
+        type: expression
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          Multiply and simplify: ${{a}}x({{b}}x^2 - {{c}})$.
+        params:
+          a: {min: 2, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        derived:
+          ab: "a * b"
+          ac: "a * c"
+        answer:
+          expression: {value: "a*b*x^3 - a*c*x", variables: [x], sympy_mode: exact}
+        explanation: |
+          Multiply ${{a}}x$ by each term: ${{a}}x \times {{b}}x^2 = $ coefficient ${{a}} \times {{b}}$, power $x^{1+2} = x^3$; and ${{a}}x \times (-{{c}}) = -{{ac}}x$. So the answer is ${{ab}}x^3 - {{ac}}x$.
+      - id: kp4-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What is the coefficient of $x$ in the product $({{a}}x + {{b}})({{c}}x - {{d}})$?
+        params:
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 1, max: 9, step: 1}
+          c: {min: 2, max: 6, step: 1}
+          d: {min: 1, max: 9, step: 1}
+        constraints: ["b * c != a * d"]
+        answer:
+          numeric: {value: "b * c - a * d", mode: exact}
+        explanation: |
+          Only two products give an $x$ term: ${{a}}x \times (-{{d}})$ and ${{b}} \times {{c}}x$.
+          So the coefficient of $x$ is $-{{a}} \times {{d}} + {{b}} \times {{c}}$.
+      - id: kp4-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 1
+        prompt: |
+          $(x^2 + 3x) + (2x^2 - x) = $ ?
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "$3x^2 + 2x$", correct: true}
+              - {id: b, text: "$3x^4 + 2x$", misconception: adds-exponents}
+              - {id: c, text: "$3x^2 + 4x$", misconception: sign-error}
+              - {id: d, text: "$5x^3$"}
+        explanation: |
+          Add the coefficients of like terms and keep the power: $x^2 + 2x^2 = 3x^2$ and $3x - x = 2x$.
+      - id: kp4-q6
+        type: numeric
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What is the degree of the product $(x^3 + 1)(x^2 - 4)$?
+        answer:
+          numeric: {value: 5, mode: exact}
+        explanation: |
+          The highest-degree term of the product is $x^3 \times x^2 = x^5$, so the degree is $3 + 2 = 5$.
+
+practice:
+  - id: practice-garden
+    type: multistep
+    bloom: apply
+    expected_minutes: 6
+    prompt: |
+      A rectangular garden is $({{a}}x + {{b}})$ m long and $({{c}}x + {{d}})$ m wide.
+    params:
+      a: {min: 2, max: 5, step: 1}
+      b: {min: 1, max: 9, step: 1}
+      c: {min: 2, max: 4, step: 1}
+      d: {min: 1, max: 9, step: 1}
+      t: {min: 2, max: 6, step: 1}
+    constraints: ["a > c", "a*t + b > c*t + d"]
+    derived:
+      L: "a*t + b"
+      W: "c*t + d"
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Write the perimeter of the garden, in m, as a polynomial in $x$.
+            answer:
+              expression: {value: "2*(a + c)*x + 2*(b + d)", variables: [x], sympy_mode: equivalent}
+          - prompt: |
+              Write the area of the garden, in m², as a polynomial in $x$ in expanded form.
+            answer:
+              expression: {value: "a*c*x^2 + (a*d + b*c)*x + b*d", variables: [x], sympy_mode: exact}
+          - prompt: |
+              What is the degree of the area polynomial?
+            answer:
+              numeric: {value: 2, mode: exact}
+          - prompt: |
+              Find the area when $x = {{t}}$.
+            answer:
+              numeric: {value: "(a*t + b) * (c*t + d)", unit: "m^2", mode: exact}
+    explanation: |
+      Perimeter $= 2[({{a}}x + {{b}}) + ({{c}}x + {{d}})]$. Area $= ({{a}}x + {{b}})({{c}}x + {{d}})$: multiply every term of the first bracket by every term of the second, then collect the $x$ terms.
+      At $x = {{t}}$ the sides are {{L}} m and {{W}} m, so the area is ${{L}} \times {{W}}$ m².
+
+  - id: practice-two-polynomials
+    type: multistep
+    bloom: analyze
+    expected_minutes: 6
+    prompt: |
+      $p(x) = {{a}}x^2 - {{b}}x + {{c}}$ and $q(x) = {{d}}x - {{e}}$.
+    params:
+      a: {min: 2, max: 6, step: 1}
+      b: {min: 2, max: 9, step: 1}
+      c: {min: 1, max: 9, step: 1}
+      d: {choices: [2, 4, 5]}
+      e: {min: 1, max: 15, step: 1}
+      t: {choices: [-2, -1, 2, 3]}
+    answer:
+      multistep:
+        steps:
+          - prompt: |
+              Simplify $p(x) - q(x)$. What is its coefficient of $x$?
+            answer:
+              numeric: {value: "-b - d", mode: exact}
+          - prompt: |
+              Find $p({{t}})$.
+            answer:
+              numeric: {value: "a*t^2 - b*t + c", mode: exact}
+          - prompt: |
+              Find the zero of $q(x)$. Give it as a decimal if it isn't a whole number.
+            answer:
+              numeric: {value: "e / d", mode: exact}
+          - prompt: |
+              What is the degree of $p(x) \times q(x)$?
+            answer:
+              numeric: {value: 3, mode: exact}
+    explanation: |
+      $p(x) - q(x) = {{a}}x^2 - {{b}}x + {{c}} - {{d}}x + {{e}}$, so the coefficient of $x$ is $-{{b}} - {{d}}$. $p({{t}}) = {{a}}({{t}})^2 - {{b}}({{t}}) + {{c}}$.
+      $q(x) = 0$ when ${{d}}x = {{e}}$, so $x = \dfrac{ {{e}} }{ {{d}} }$. The product's degree is $2 + 1 = 3$.

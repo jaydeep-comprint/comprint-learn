@@ -2,5 +2,7 @@ id: maths-9-10
 title: Mathematics (CBSE Classes 9–10)
 subject: maths
 chapters:
+  - polynomials
   - linear-equations
   - pair-of-linear-equations
+  - quadratic-equations

@@ -41,7 +41,12 @@ facts (a server guard drops anything it can't check) and re-teaching notes open 
 | # | Spec | Done when |
 |---|---|---|
 | 013 | **Content** ([spec](specs/013-pilot-content.md)): complete the pilot slices: 8 concepts each for CBSE 9–10 Maths (algebra), Physics (motion and force) and Python basics; review pack | Strict check + independent AI subject review pass; every concept `ai-reviewed` in docs/content-review.md |
-| 014 | **Hardening**: privacy/consent flow for minors, data export/delete, error tracking, backups, load test | Security review passes; consent flow is live; every concept `teacher-reviewed` in docs/content-review.md |
+| 014 | **Privacy** ([spec](specs/014-privacy-consent-export-erasure.md)): school-attested parental consent for the AI tutor (locked until recorded), per-student data export, erasure (anonymise after a 7-day grace), audit log, scheduled privacy jobs | Tutor is locked without consent; an admin can export and erase a student; every such action is in the audit log |
+| 015 | **Operations hardening** ([spec](specs/015-operations-hardening.md)): Sentry (scrubbed), encrypted nightly backups + restore check, 80-student load test, security headers, body cap, rate limits, CI scanning, security review | Load test passes; a backup restores; security review has no high finding open |
+
+Line 014 ("Hardening") was split into 014 + 015 while specifying (Nov 2026). Deployment is not part of either.
+**Pilot gates that are not specs** (people, not code) are tracked in [pilot-readiness.md](pilot-readiness.md): the legal
+(DPDP) review, every concept `teacher-reviewed` in docs/content-review.md, and the production deployment.
 
 ## Later (v2 candidates)
 Server-side code grading sandbox · authoring UI · parent view · full multi-level FIRe (learning speed, repetition compression) · interactive physics simulations (sliders, free-body diagrams) · goal lenses (board vs JEE depth) · AI-graded free response · analytics per KP and per question · Hindi and regional languages · offline/PWA

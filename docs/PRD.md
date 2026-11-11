@@ -55,6 +55,10 @@ Build order and spec numbers: docs/ROADMAP.md.
     anything whose prerequisites are learned ([spec 010](specs/010-teacher-dashboard-assignments.md)).
 11. Teacher AI assist: class/student summaries and suggested notes for re-teaching, every sentence cited to dashboard
     facts; students sent as pseudonyms only ([spec 011](specs/011-teacher-ai-assist.md)).
+12. Privacy: school-attested parental consent for the AI tutor (the tutor is locked until a teacher records it), per-student
+    data export, erasure (anonymise after a 7-day grace) and an audit log ([spec 014](specs/014-privacy-consent-export-erasure.md)).
+13. Operations hardening: scrubbed error tracking, encrypted backups, a one-lab load test, rate limits, security headers and
+    a security review ([spec 015](specs/015-operations-hardening.md)).
 
 ## Non-goals (NOT in v1)
 - A content authoring UI (our team authors content in the repo).
@@ -84,7 +88,12 @@ Build order and spec numbers: docs/ROADMAP.md.
 - Teacher control: assign targets with due dates; never cap students who are ahead.
 
 - Content review: self-review (strict validator + an independent AI subject review) ships the content (spec 013);
-  a subject-teacher review of every concept, tracked in docs/content-review.md, is a pilot gate (spec 014).
+  a subject-teacher review of every concept, tracked in docs/content-review.md, is a pilot gate
+  ([docs/pilot-readiness.md](pilot-readiness.md)).
+
+- Consent (Nov 2026, spec 014): **school-attested and for the AI tutor only**. The school collects signed forms and a
+  teacher records them; app use without the tutor is treated as the school's own educational activity. Erasure anonymises
+  and keeps learning rows. These are assumptions for the legal review ([docs/pilot-readiness.md](pilot-readiness.md)).
 
 ## Open questions
 - Pilot timeline; how many pilot schools and classes?

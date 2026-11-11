@@ -45,6 +45,8 @@ def create_app() -> FastAPI:
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+            # Spec 014: the export's filename, when the SPA is on another origin.
+            expose_headers=["Content-Disposition"],
         )
     app.add_exception_handler(ApiProblem, _api_problem_handler)
     app.include_router(api_router, prefix="/api/v1")

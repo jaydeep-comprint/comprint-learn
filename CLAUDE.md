@@ -39,6 +39,8 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 - Content tables (`course`…`item`) are global: no `TenantMixin`/`OrgScope`, but still RLS. Item answers live in `item.answer`; API shapes come only from `item.public`.
 - Teacher reads of learning state use `frontier.class_states` (batched, read-only); never call `frontier.load` for staff (it promotes on read). Class views share `services/class_view.load`.
 - Teacher AI summaries (spec 011) build their facts from `dashboard.class_snapshot` / `student_snapshot`: change dashboard numbers there, not in `overview`, so cards and summary facts stay the same numbers.
+- Spec 014: student queries must exclude `status = erased` (anonymised rows stay). Use the existing helpers
+  (`tenancy.get_student`, `list_students`, `class_view.load`); erasure deletes enrolments, so rosters drop them.
 - FastAPI 0.143 nests included routers: walk routes with `fastapi.routing.iter_route_contexts(app.routes)`, not `app.routes`.
 
 ## Compaction

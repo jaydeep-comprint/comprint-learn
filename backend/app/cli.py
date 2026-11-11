@@ -1,7 +1,8 @@
-"""Operator CLI: `uv run app org create|list`, `uv run app content check|import|review-pack` and
-`uv run app tutor eval|purge|flagged`."""
+"""Operator CLI: `uv run app org create|list`, `uv run app content check|import|review-pack`,
+`uv run app tutor eval|purge|flagged` and `uv run app privacy run-due|export`."""
 
 import asyncio
+import json
 import re
 import subprocess
 from datetime import UTC, datetime
@@ -19,9 +20,9 @@ from app.content.validate import has_errors, validate
 from app.core.config import get_settings
 from app.core.errors import ApiProblem
 from app.db.session import dispose_engine, get_sessionmaker
-from app.models import AppUser, Organization, Role, UserStatus
+from app.models import AppUser, AuditAction, Organization, Role, UserStatus
 from app.models.tenancy import SCHOOL_CODE_PATTERN
-from app.services import tenancy, tutor
+from app.services import audit, erasure, export, tenancy, tutor
 from app.services.supabase_admin import SupabaseAdmin, get_supabase_admin
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -39,6 +40,8 @@ teacher_ai_app = typer.Typer(
     help="Teacher AI summaries (spec 011): the offline eval.", no_args_is_help=True
 )
 app.add_typer(teacher_ai_app, name="teacher-ai")
+privacy_app = typer.Typer(no_args_is_help=True, help="Privacy jobs and data export (spec 014).")
+app.add_typer(privacy_app, name="privacy")
 
 DEFAULT_CONTENT_ROOT = Path(__file__).resolve().parents[2] / "content"
 RootOpt = Annotated[Path, typer.Option("--root", help="The content/ folder")]
@@ -494,3 +497,89 @@ def teacher_ai_eval(
     typer.echo("PASS" if ok else "FAIL")
     if not ok:
         raise typer.Exit(1)
+
+
+# --- privacy (spec 014) --------------------------------------------------------------------------
+
+REPO_ROOT = DEFAULT_CONTENT_ROOT.parent
+OUT_IN_REPO = "Refusing to write an export inside a git repository: pick a folder outside it."
+OUT_NOT_EMPTY = "The output folder must be empty (or not exist yet)."
+
+
+def check_out_dir(out: Path) -> Path:
+    """Exports hold personal data: never inside this repo or any git checkout, never mixed with
+    other files."""
+    path = out.expanduser().resolve()
+    repo = REPO_ROOT.resolve()
+    if path == repo or repo in path.parents:
+        raise CliError(OUT_IN_REPO)
+    if any((p / ".git").exists() for p in (path, *path.parents)):
+        raise CliError(OUT_IN_REPO)
+    if path.exists() and (not path.is_dir() or any(path.iterdir())):
+        raise CliError(OUT_NOT_EMPTY)
+    return path
+
+
+async def _run_due() -> tuple[erasure.DueResult, int]:
+    try:
+        async with get_sessionmaker()() as session:
+            now = datetime.now(UTC)
+            result = await erasure.complete_due(session, get_supabase_admin(), now)
+            purged = await tutor.purge_text(session, now)
+            return result, purged
+    finally:
+        await dispose_engine()
+
+
+@privacy_app.command("run-due")
+def privacy_run_due() -> None:
+    """Complete due erasures, then the 180-day tutor text purge. Idempotent; run daily."""
+    result, purged = asyncio.run(_run_due())
+    typer.echo(f"Erasures completed: {len(result.done)}, failed: {len(result.failed)}.")
+    for sid in result.failed:
+        typer.echo(f"  failed (retried next run): {sid}", err=True)
+    typer.echo(f"Purged the text of {purged} tutor messages.")
+    if result.failed:
+        raise typer.Exit(1)
+
+
+async def _export(code: str, out: Path) -> int:
+    try:
+        async with get_sessionmaker()() as session:
+            org = await session.scalar(select(Organization).where(Organization.code == code))
+            if org is None:
+                raise CliError(f"No school with code {code}.")
+            scope = OrgScope.system(session, org.id)
+            school, students = await export.school_export(scope)
+            (out / "students").mkdir(parents=True, exist_ok=True)
+            (out / "school.json").write_text(json.dumps(school, indent=2, ensure_ascii=False))
+            for student in students:
+                data = await export.student_export(scope, student.id)
+                audit.record(
+                    scope,
+                    AuditAction.export_downloaded,
+                    student.id,
+                    {"source": "cli"},
+                    actor_id=None,
+                )
+                await session.commit()  # the event first: no audit row, no file
+                path = out / "students" / f"{student.username}.json"
+                path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+            return len(students)
+    finally:
+        await dispose_engine()
+
+
+@privacy_app.command("export")
+def privacy_export(
+    org: Annotated[str, typer.Option("--org", help="School code")],
+    out: Annotated[Path, typer.Option("--out", help="An empty folder outside the repo")],
+) -> None:
+    """Export a whole school: school.json and one students/{username}.json per student."""
+    try:
+        path = check_out_dir(out)
+        n = asyncio.run(_export(normalize_code(org), path))
+    except CliError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Exported {n} students to {path}.")

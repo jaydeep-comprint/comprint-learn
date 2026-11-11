@@ -1,0 +1,52 @@
+name: Privacy jobs
+
+# Spec 014: daily at 02:00 IST, complete due erasures, then the 180-day tutor text purge.
+# Does nothing until the production secrets exist (deployment is out of scope; until then the
+# command is run by hand, see docs/runbooks/privacy.md).
+on:
+  schedule:
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: privacy-jobs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run-due:
+    runs-on: ubuntu-latest
+    steps:
+      # Secrets can't be used in `if`, and a step's own `env` isn't visible to its `if`,
+      # so a gate step records whether the secrets exist (without exposing them to other steps).
+      - name: Check for production secrets
+        id: prod
+        run: >-
+          echo "present=${{ secrets.PROD_DATABASE_URL != '' && secrets.PROD_SUPABASE_URL != ''
+          && secrets.PROD_SUPABASE_SERVICE_ROLE_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Skip without production secrets
+        if: steps.prod.outputs.present != 'true'
+        run: |
+          echo "skipped: no production secrets"
+
+      - uses: actions/checkout@v7
+        if: steps.prod.outputs.present == 'true'
+
+      - uses: astral-sh/setup-uv@v7
+        if: steps.prod.outputs.present == 'true'
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: app privacy run-due
+        if: steps.prod.outputs.present == 'true'
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
+        run: uv run --frozen app privacy run-due

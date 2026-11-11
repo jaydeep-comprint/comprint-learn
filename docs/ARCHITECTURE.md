@@ -43,7 +43,7 @@ docs/         PRD, architecture, roadmap, specs, plans
 
 ## Domain model (core tables)
 - **Tenancy**: `organization` (school, unique `code`) → `app_user` (role: teacher | student, `is_admin` for teachers only, status
-  invited | active | deactivated, org_id) → `school_class` → `enrollment`; `class_teacher` links co-teachers (no extra access).
+  invited | active | deactivated | erased (spec 014), org_id) → `school_class` → `enrollment`; `class_teacher` links co-teachers (no extra access).
   Link tables carry `org_id` with composite FKs to `(id, org_id)`, so the DB rejects cross-school links. Students store a
   display name and username only (no email).
 - **Content** (global: platform-owned, the same for every school; **no `org_id`**, not `TenantMixin`, read without
@@ -141,6 +141,19 @@ docs/         PRD, architecture, roadmap, specs, plans
     conditional, demoted, confirmed + counts). Its questions run in one `practice_session` of kind `diagnostic`
     (`diagnostic_id`); answers are attempts with `context = diagnostic` (no XP, no study time, left out of dashboard
     accuracy and misconception figures). The engine is pure: `app/services/placement_engine.py`.
+- **Privacy** (spec 014, tenant-owned):
+  - `app_user` consent columns (students only, all set or all null): `tutor_consent_at`, `tutor_consent_by`,
+    `tutor_consent_form` (the notice version, `app/privacy/notice.md`). The current state only; history is in
+    `audit_event`. Erasure columns: `erase_requested_at/by`, `erase_due_at` (request + 7 days) and `erased_at`
+    (set with `status = erased`).
+  - `audit_event`: append-only, one row per consent change, export download, erasure step, password reset and
+    (de)activation: `actor_id` (null = system), `action`, `target_id`, `meta` (counts and versions only, never names
+    or free text), written in the same transaction as the change (`app/services/audit.py`).
+  - Erasure (`app/services/erasure.py`): a request bans the auth user and deactivates at once; `app privacy run-due`
+    (daily workflow `privacy-jobs.yml`) deletes the auth user and anonymises after 7 days: name "Erased student", a
+    random username, tutor text nulled, `enrollment` and `assignment_student` rows deleted. Every learning row is
+    kept, including `attempt.response`.
+  - Export (`app/services/export.py`): one JSON document per student, a fixed number of queries, never `item.answer`.
 - **AI** (spec 009, tenant-owned):
   - `tutor_session`: one thread per question shown, unique `(practice_session_id, position, item_id, seed)` (nulls
     not distinct), with `item_version`, the charged `hints_used` (0–3) and `chat_count`. A new session or a swapped
@@ -206,6 +219,14 @@ docs/         PRD, architecture, roadmap, specs, plans
   Accounts are created only by admin invite or by teachers; with public sign-up on, anyone holding the anon key could
   pre-register predictable student auth emails and block account creation. Set the Site URL / redirect allow-list to
   `APP_URL` so invite and reset links land on `/accept-invite` and `/reset-password`.
+- **Tutor consent gate** (spec 014): hint and chat requests check `app_user.tutor_consent_at` inside Tx 1 under the
+  tutor's per-student advisory lock (403 `tutor_consent_required`, before any row or model call); Tx 2 re-reads it
+  under the same lock and stores a late reply without text. Withdrawal and erasure take the same lock, so no chat
+  text is written after a withdrawal commits. Consent gates only the tutor; teacher summaries include every student
+  as a pseudonym.
+- **Erased students** appear nowhere per-student: `get_student` 404s, `list_students` and auth exclude them, and
+  their enrolment and assignment links are gone. Their anonymous id may remain in `teacher_summary.pseudonyms`
+  (rendered as "a student no longer in this class").
 - **Sessions**: Supabase revokes refresh tokens on a password change, but issued access tokens live until expiry, so the
   API also rejects tokens whose `iat` is before `app_user.sessions_valid_after` (set on admin reset, in-app password change and
   deactivation; a staff email-recovery reset goes straight to Supabase and doesn't set it).

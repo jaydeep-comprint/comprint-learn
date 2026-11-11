@@ -11,7 +11,8 @@ from app.services.supabase_admin import SupabaseAdminError
 
 
 class FakeSupabaseAdmin:
-    """In-memory Supabase admin API. `fail_on` makes an op fail (after `fail_after` calls)."""
+    """In-memory Supabase admin API. `fail_on` makes an op fail (after `fail_after` calls) with
+    HTTP status `fail_status` (spec 014: a 404 from `delete_user` counts as already deleted)."""
 
     def __init__(self) -> None:
         self.users: dict[uuid.UUID, dict[str, object]] = {}
@@ -20,12 +21,13 @@ class FakeSupabaseAdmin:
         self.calls: list[str] = []
         self.fail_on: str | None = None
         self.fail_after = 0  # successful calls of `fail_on` before it starts failing
+        self.fail_status = 500
 
     def _maybe_fail(self, op: str) -> None:
         self.calls.append(op)
         if self.fail_on == op:
             if self.fail_after <= 0:
-                raise SupabaseAdminError(op, 500)
+                raise SupabaseAdminError(op, self.fail_status)
             self.fail_after -= 1
 
     def _user(self, user_id: uuid.UUID) -> dict[str, object]:

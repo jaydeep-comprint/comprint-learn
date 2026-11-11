@@ -75,7 +75,12 @@ Build order and spec numbers: docs/ROADMAP.md.
   review before the pilot. The AI tutor runs on DeepSeek (servers in China): the review must cover sending students'
   tutor chat text there (the tutor sends no names or ids and scrubs emails and phone numbers). Teacher summaries
   (spec 011) also run on DeepSeek and send class learning statistics there under pseudonyms (no names, ids, answers
-  or chat text); the review must cover that too.
+  or chat text); the review must cover that too. Spec 014 built consent, export and erasure on four assumptions the
+  review must confirm ([docs/pilot-readiness.md](pilot-readiness.md)): (1) learning without parental consent is lawful
+  because the school is the data fiduciary for classroom activity; (2) a teacher's tick is acceptable evidence of
+  verifiable parental consent when the school keeps the signed form; (3) pseudonymised class statistics for teacher
+  summaries need no parental consent; (4) anonymised learning rows (including submitted answers and code) are no longer
+  personal data.
 - Every school's data is isolated from every other school (multi-tenant).
 - AI cost must stay low per student per month: use a small model by default, rate-limit, and cache.
 - **Budget: ~$50 total for the POC/MVP** (hosting + AI API). Use free tiers everywhere, set a hard spend limit in the

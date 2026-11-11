@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 import pytest
@@ -5,6 +6,7 @@ from typer.testing import CliRunner
 
 from app import cli
 from app.cli import BAD_CODE, CliError, normalize_code
+from app.services.erasure import DueResult
 from tests import content_fixtures as fx
 
 runner = CliRunner()
@@ -102,3 +104,72 @@ def test_content_check_errors_exit_1(tmp_path: Path) -> None:
         result.output
     )
     assert "1 errors, 0 warnings" in result.output
+
+
+# --- privacy (spec 014) ---------------------------------------------------------------------------
+
+
+def test_run_due_prints_counts_and_exits_1_on_a_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    failed = uuid.uuid4()
+
+    async def ok() -> tuple[DueResult, int]:
+        return DueResult(done=[uuid.uuid4(), uuid.uuid4()]), 7
+
+    monkeypatch.setattr(cli, "_run_due", ok)
+    result = runner.invoke(cli.app, ["privacy", "run-due"])
+    assert result.exit_code == 0, result.output
+    assert "Erasures completed: 2, failed: 0." in result.output
+    assert "Purged the text of 7 tutor messages." in result.output
+
+    async def bad() -> tuple[DueResult, int]:
+        return DueResult(done=[], failed=[failed]), 0
+
+    monkeypatch.setattr(cli, "_run_due", bad)
+    result = runner.invoke(cli.app, ["privacy", "run-due"])
+    assert result.exit_code == 1
+    assert "failed: 1" in result.output and str(failed) in result.output
+
+
+def test_export_passes_the_school_and_folder(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    seen: list[tuple[str, Path]] = []
+
+    async def fake(code: str, out: Path) -> int:
+        seen.append((code, out))
+        return 3
+
+    monkeypatch.setattr(cli, "_export", fake)
+    monkeypatch.setattr(cli, "REPO_ROOT", tmp_path / "repo")  # tmp_path isn't in a checkout
+    out = tmp_path / "export"
+    result = runner.invoke(cli.app, ["privacy", "export", "--org", "abc", "--out", str(out)])
+    assert result.exit_code == 0, result.output
+    assert seen == [("ABC", out.resolve())]
+    assert "Exported 3 students" in result.output
+
+
+def test_export_refuses_paths_in_the_repo_or_not_empty(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    async def boom(code: str, out: Path) -> int:
+        raise AssertionError("must not touch the database")
+
+    monkeypatch.setattr(cli, "_export", boom)
+    inside = cli.REPO_ROOT / "exports"
+    result = runner.invoke(cli.app, ["privacy", "export", "--org", "ABC", "--out", str(inside)])
+    assert result.exit_code == 1 and cli.OUT_IN_REPO in result.output
+
+    checkout = tmp_path / "other"
+    (checkout / ".git").mkdir(parents=True)
+    with pytest.raises(CliError, match="inside a git repository"):
+        cli.check_out_dir(checkout / "out")
+
+    monkeypatch.setattr(cli, "REPO_ROOT", tmp_path / "repo")
+    full = tmp_path / "full"
+    full.mkdir()
+    (full / "x.json").write_text("{}")
+    result = runner.invoke(cli.app, ["privacy", "export", "--org", "ABC", "--out", str(full)])
+    assert result.exit_code == 1 and cli.OUT_NOT_EMPTY in result.output
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert cli.check_out_dir(empty) == empty.resolve()

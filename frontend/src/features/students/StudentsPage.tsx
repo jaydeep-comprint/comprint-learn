@@ -1,4 +1,14 @@
-import { GraduationCap, KeyRound, MoreHorizontal, Search, UserCheck, UserX } from "lucide-react";
+import {
+  Download,
+  GraduationCap,
+  KeyRound,
+  MoreHorizontal,
+  Search,
+  Trash2,
+  Undo2,
+  UserCheck,
+  UserX,
+} from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -28,7 +38,9 @@ import {
 } from "@/components/ui/table";
 import { useMe } from "@/features/auth/useMe";
 import { useClasses } from "@/features/classes/api";
+import { useCancelErasure, useDownloadExport } from "@/features/privacy/api";
 import { ConsentBulkBar, ConsentStatus, ErasureBadge } from "@/features/privacy/consent";
+import { EraseDialog, type EraseTarget } from "@/features/privacy/EraseDialog";
 import { useSelection } from "@/features/privacy/useSelection";
 import { slipsStore } from "@/features/slips/store";
 import { useResetPassword, useStudents, useUpdateStudent } from "@/features/students/api";
@@ -53,6 +65,9 @@ export function StudentsPage() {
   const canSelect = Boolean(me?.is_admin);
   const listed = students.data ?? [];
   const picked = listed.filter((s) => selection.has(s.id));
+  const download = useDownloadExport();
+  const cancelErasure = useCancelErasure();
+  const [erasing, setErasing] = useState<EraseTarget | null>(null);
 
   const resetPassword = (s: Student) =>
     setConfirmRequest({
@@ -230,6 +245,45 @@ export function StudentsPage() {
                                 Deactivate
                               </DropdownMenuItem>
                             ))}
+                          {me?.is_admin && (
+                            <>
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  download.mutate(
+                                    { id: s.id, username: s.username },
+                                    { onError: (err) => toast.error(errorMessage(err)) },
+                                  )
+                                }
+                              >
+                                <Download aria-hidden />
+                                Download data
+                              </DropdownMenuItem>
+                              {s.erase_due_at ? (
+                                <DropdownMenuItem
+                                  onSelect={() =>
+                                    cancelErasure.mutate(s.id, {
+                                      onSuccess: () =>
+                                        toast.success(
+                                          `Erasure cancelled. ${s.display_name} stays deactivated.`,
+                                        ),
+                                      onError: (err) => toast.error(errorMessage(err)),
+                                    })
+                                  }
+                                >
+                                  <Undo2 aria-hidden />
+                                  Cancel erasure
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onSelect={() => setErasing(s)}
+                                >
+                                  <Trash2 aria-hidden />
+                                  Erase…
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -241,6 +295,7 @@ export function StudentsPage() {
         </div>
       )}
       <ConfirmDialog request={confirmRequest} onClose={() => setConfirmRequest(null)} />
+      <EraseDialog student={erasing} onClose={() => setErasing(null)} />
     </div>
   );
 }

@@ -22,3 +22,21 @@
 - id: names-can-be-anything
   title: Any word can be a variable name
   description: Uses names with hyphens, spaces, a leading digit or a keyword (like `class`) as variable names.
+- id: index-starts-at-one
+  title: The first item is at index 1
+  description: Thinks indexing starts at 1, so reads `s[1]` as the first character or item and `s[len(s)]` as the last (an IndexError).
+- id: slice-includes-end
+  title: A slice includes its end index
+  description: Thinks `s[a:b]` includes the item at index `b`, so expects one item too many (like range-includes-stop).
+- id: print-is-return
+  title: print() gives a value back
+  description: Uses `print` inside a function where `return` is needed, then expects the caller to get the value (it gets `None`).
+- id: strings-are-mutable
+  title: Strings can be changed in place
+  description: Expects `s[0] = "H"` or `s.upper()` on its own to change `s`; strings are immutable, so methods return a new string.
+- id: append-returns-list
+  title: append() gives back the new list
+  description: Writes `nums = nums.append(x)`; `append` changes the list in place and returns `None`.
+- id: dict-key-vs-value
+  title: Looking up a dictionary by its value
+  description: Mixes up keys and values, e.g. expects `d["Asha"]` to work when "Asha" is a value, or a `for` loop over a dict to give the values.

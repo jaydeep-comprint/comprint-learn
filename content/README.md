@@ -4,11 +4,30 @@ Courses are authored here as YAML + Markdown, reviewed in git, validated offline
 Postgres. Content is global: every school sees the same courses.
 
 ```sh
-make content-check                    # validate everything (part of make check)
-cd backend && uv run app content check --root ../content --strict   # warnings fail too
+make content-check                    # validate everything, strict: warnings fail too (part of make check)
+cd backend && uv run app content check --root ../content   # the same, warnings only reported
 make content-import ARGS=--dry-run    # show what would change in DATABASE_URL
 make content-import                   # import (one transaction, safe to repeat)
+make review-pack                      # review-packs/<course>.html: every item with answers, for reviewers
 ```
+
+## Pilot quality bar (spec 013)
+
+`backend/tests/test_pilot_content.py` checks the pilot courses on top of the validator. Concepts added since
+spec 013 need **exactly 4 KPs**; the 9 original concepts keep 3 (a 4th KP would re-open learned concepts).
+Every KP: pool weight **≥ 10**, **≥ 2 quick checks** (numeric / expression / mcq: brush-ups, quizzes and
+placement draw only these), MCQ ≤ 30% of the pool. Practice: 2–3 items (the original concepts exactly 2);
+maths and physics use param `multistep`, Python `code`. New items' `expected_minutes`: quick checks 0.5–2,
+multi-step 4–10, code 2–5 inside a KP and 5–15 as practice. Every MCQ has a distractor tagged with a
+misconception. New concepts with prerequisites have at least one KP with `key_prereqs`. Never add a
+prerequisite to an existing concept (it would change frontiers of students who started it).
+
+Python has no free-text answer type: "what does this print" questions with a number use `numeric`; text
+output uses `mcq` (within the 30% cap) or a small `code` task.
+
+**Review**: `make review-pack` renders each course to one self-contained HTML file (answers, sample seeds,
+hidden tests) that can be printed or emailed to a subject teacher. It is gitignored and must never reach
+students. Review status per concept is tracked in [docs/content-review.md](../docs/content-review.md).
 
 ## Layout
 

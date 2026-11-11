@@ -386,7 +386,7 @@ practice:
   - id: practice-2
     type: code
     bloom: apply
-    expected_minutes: 6
+    expected_minutes: 8
     prompt: |
       Some friends share a restaurant bill equally, in whole rupees. Write `share(total, people)` that
       returns `[each, left]`: how many whole rupees each person pays, and how many rupees are left over.

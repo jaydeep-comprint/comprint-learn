@@ -377,7 +377,7 @@ kps:
       - id: kp3-q6
         type: numeric
         bloom: analyze
-        expected_minutes: 1.5
+        expected_minutes: 1
         prompt: |
           What does this program print?
 

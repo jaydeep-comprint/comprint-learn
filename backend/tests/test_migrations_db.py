@@ -197,3 +197,56 @@ async def test_0008_backfills_review_cards_from_learned_at(db_app: DbApp) -> Non
     assert card.last_review == learned_at and card.reps == 1
     assert learned_at < card.due < datetime.now(UTC)  # learned long ago: already due
     assert [(e.source, e.rating) for e in logs] == [(ReviewSource.backfill, 3)]
+
+
+async def test_0013_round_trip_keeps_erased_rows_as_deactivated(db_app: DbApp) -> None:
+    """0013 down and up with an erased student and an audit event: the erased row comes back as
+    deactivated (still anonymised); `erased` stays in `user_status` (Postgres can't drop it)."""
+    async with db_app.sessions() as session:
+        school = await seed_school(session, "AAA")
+        student = school.student_ids[3]
+        await session.execute(
+            text(
+                "UPDATE app_user SET status = 'erased', erased_at = now(), "
+                "display_name = 'Erased student', username = 'erased-0123456789ab' WHERE id = :s"
+            ),
+            {"s": student},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO audit_event (id, org_id, actor_id, action, target_id) VALUES "
+                "(gen_random_uuid(), :org, NULL, 'erase_completed', :s)"
+            ),
+            {"org": school.org_id, "s": student},
+        )
+        await session.commit()
+
+    env = {**os.environ, "DATABASE_URL": get_settings().test_database_url or ""}
+
+    def alembic(*args: str) -> None:
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND_DIR,
+            env=env,
+            check=True,
+            capture_output=True,
+        )
+
+    await db_app.sessions.kw["bind"].dispose()
+    alembic("downgrade", "0012_placement")
+    try:
+        async with db_app.sessions() as session:
+            row = (
+                await session.execute(
+                    text("SELECT status::text, display_name FROM app_user WHERE id = :s"),
+                    {"s": student},
+                )
+            ).one()
+            assert tuple(row) == ("deactivated", "Erased student")
+            assert await session.scalar(text("SELECT to_regclass('public.audit_event')")) is None
+        await db_app.sessions.kw["bind"].dispose()
+    finally:
+        alembic("upgrade", "head")
+    async with db_app.sessions() as session:
+        conn = await session.connection()
+        assert await conn.run_sync(_diff) == []

@@ -40,3 +40,9 @@
 - id: bigger-body-bigger-force
   title: The heavier body pushes harder
   description: Thinks the forces in an action–reaction pair depend on mass or strength (e.g. the bus pushes the fly harder than the fly pushes the bus), instead of always being equal in size.
+- id: acceleration-is-velocity
+  title: Acceleration is the same as velocity
+  description: Mixes up acceleration (the change in velocity each second, m/s²) with velocity (m/s), e.g. gives acceleration in m/s or thinks a fast object must have a large acceleration.
+- id: reaction-comes-later
+  title: The reaction comes after the action
+  description: Thinks the reaction force starts a moment after the action (as a response), instead of both forces acting at the same instant for the same time.

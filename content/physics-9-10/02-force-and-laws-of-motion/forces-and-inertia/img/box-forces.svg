@@ -5,14 +5,14 @@
   <g stroke="#2563eb" stroke-width="3" fill="#2563eb">
     <line x1="170" y1="100" x2="170" y2="45"/><polygon points="170,35 164,47 176,47"/>
     <line x1="170" y1="160" x2="170" y2="205"/><polygon points="170,215 164,203 176,203"/>
-    <line x1="200" y1="130" x2="275" y2="130"/><polygon points="285,130 273,124 273,136"/>
-    <line x1="140" y1="150" x2="85" y2="150"/><polygon points="75,150 87,144 87,156"/>
+    <line x1="55" y1="122" x2="126" y2="122"/><polygon points="138,122 126,116 126,128"/>
+    <line x1="200" y1="152" x2="265" y2="152"/><polygon points="200,152 212,146 212,158"/>
   </g>
   <g fill="#111827">
     <text x="180" y="45">floor pushes up 150 N</text>
     <text x="180" y="215">Earth's pull 150 N</text>
-    <text x="215" y="122">push 60 N</text>
-    <text x="40" y="140">friction 45 N</text>
+    <text x="40" y="112">push 60 N</text>
+    <text x="208" y="146">friction 45 N</text>
   </g>
   <g fill="#6b7280" text-anchor="middle"><text x="30" y="230">west</text><text x="310" y="230">east</text></g>
 </svg>

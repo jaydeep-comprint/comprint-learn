@@ -39,10 +39,11 @@ kps:
         params:
           m: {choices: [50, 60, 70, 80]}
           v: {choices: [3, 4, 5, 6, 8]}
+        derived: {p: "m * v"}
         answer:
-          numeric: {value: "m * v", unit: kg*m/s, mode: exact}
+          numeric: {value: "p", unit: kg*m/s, mode: exact}
         explanation: |
-          p = m × v = {{m}} × {{v}}.
+          p = m × v = {{m}} × {{v}} = {{p}} kg m/s.
       - id: kp1-q2
         type: numeric
         bloom: apply
@@ -76,15 +77,15 @@ kps:
         bloom: understand
         expected_minutes: 0.5
         prompt: |
-          A car of mass 1000 kg moves at 72 km/h. Which calculation gives its momentum in kg m/s?
+          A car of mass 1200 kg moves at 54 km/h. Which calculation gives its momentum in kg m/s?
         answer:
           mcq:
             options:
-              - {id: a, text: 1000 × 20, correct: true}
-              - {id: b, text: 1000 × 72 × 3.6, misconception: kmh-to-ms-multiply}
-              - {id: c, text: 1000 × 72}
+              - {id: a, text: 1200 × 15, correct: true}
+              - {id: b, text: 1200 × 54 × 3.6, misconception: kmh-to-ms-multiply}
+              - {id: c, text: 1200 × 54}
         explanation: |
-          Momentum in kg m/s needs the velocity in m/s: 72 km/h ÷ 3.6 = 20 m/s, so p = 1000 × 20 = 20 000 kg m/s.
+          Momentum in kg m/s needs the velocity in m/s: 54 km/h ÷ 3.6 = 15 m/s, so p = 1200 × 15 = 18 000 kg m/s.
       - id: kp1-q5
         type: numeric
         bloom: apply
@@ -148,10 +149,11 @@ kps:
         params:
           m: {choices: [2, 5, 10, 20, 25]}
           a: {choices: [0.5, 1.5, 2, 3, 4]}
+        derived: {F: "m * a"}
         answer:
-          numeric: {value: "m * a", unit: N, mode: exact}
+          numeric: {value: "F", unit: N, mode: exact}
         explanation: |
-          F = m × a = {{m}} × {{a}}.
+          F = m × a = {{m}} × {{a}} = {{F}} N.
       - id: kp2-q2
         type: numeric
         bloom: apply
@@ -193,8 +195,8 @@ kps:
               - {id: b, text: The weight of a mass of 1 kg, misconception: mass-is-weight}
               - {id: c, text: The force needed to keep a 1 kg mass moving at 1 m/s, misconception: motion-needs-force}
         explanation: |
-          From F = ma: 1 N = 1 kg × 1 m/s² = 1 kg m/s². The weight of 1 kg is about 9.8 N, and no net force is
-          needed to keep something moving at a steady velocity.
+          From F = ma: 1 N = 1 kg × 1 m/s² = 1 kg m/s². Weight is a different idea (you will meet it in the
+          Gravitation chapter), and no net force is needed to keep something moving at a steady velocity.
       - id: kp2-q5
         type: numeric
         bloom: apply
@@ -222,11 +224,13 @@ kps:
         params:
           mg: {choices: [100, 150, 200, 250, 500]}
           a: {choices: [2, 4, 6, 10]}
-        derived: {m: "mg / 1000"}
+        derived:
+          m: "mg / 1000"
+          F: "m * a"
         answer:
-          numeric: {value: "m * a", unit: N, mode: exact}
+          numeric: {value: "F", unit: N, mode: exact}
         explanation: |
-          Mass in kg: {{mg}} g = {{m}} kg. F = {{m}} × {{a}}.
+          Mass in kg: {{mg}} g = {{m}} kg. F = {{m}} × {{a}} = {{F}} N.
       - id: kp2-q7
         type: numeric
         bloom: understand
@@ -317,10 +321,11 @@ kps:
         derived:
           m: "mg / 1000"
           dp: "m * u"
+          F: "dp / t"
         answer:
-          numeric: {value: "dp / t", unit: N, mode: exact}
+          numeric: {value: "F", unit: N, mode: exact}
         explanation: |
-          The momentum falls from {{m}} × {{u}} = {{dp}} kg m/s to 0. Force = change in momentum ÷ time = {{dp}} ÷ {{t}}.
+          The momentum falls from {{m}} × {{u}} = {{dp}} kg m/s to 0. Force = change in momentum ÷ time = {{dp}} ÷ {{t}} = {{F}} N.
       - id: kp3-q4
         type: mcq
         bloom: understand
@@ -342,8 +347,8 @@ kps:
         expected_minutes: 1.5
         prompt: |
           A {{mg}} g ball moving at {{u}} m/s is stopped in {{t1}} s by a catcher with stiff hands. Another catcher pulls
-          her hands back and stops the same ball in {{t2}} s. The average force on the stiff hands is how many times
-          the force on the hands that pull back?
+          her hands back and stops the same ball in {{t2}} s. The average force on the ball from the stiff hands is how
+          many times the force from the hands that pull back?
         params:
           mg: {choices: [150, 160]}
           u: {choices: [15, 20, 25]}
@@ -426,11 +431,12 @@ kps:
         derived:
           v: "vk / 3.6"
           dp: "m * v"
+          F: "dp / t"
         answer:
-          numeric: {value: "dp / t", unit: N, mode: exact}
+          numeric: {value: "F", unit: N, mode: exact}
         explanation: |
           {{vk}} km/h ÷ 3.6 = {{v}} m/s. The momentum falls by {{m}} × {{v}} = {{dp}} kg m/s in {{t}} s,
-          so the force is {{dp}} ÷ {{t}}.
+          so the force is {{dp}} ÷ {{t}} = {{F}} N.
       - id: kp4-q2
         type: numeric
         bloom: apply
@@ -440,11 +446,13 @@ kps:
         params:
           mg: {choices: [200, 250, 400, 500]}
           F: {choices: [1, 2, 3, 4, 5]}
-        derived: {m: "mg / 1000"}
+        derived:
+          m: "mg / 1000"
+          a: "F / m"
         answer:
-          numeric: {value: "F / m", unit: m/s^2, mode: exact}
+          numeric: {value: "a", unit: m/s^2, mode: exact}
         explanation: |
-          Mass in kg: {{mg}} g = {{m}} kg. a = F ÷ m = {{F}} ÷ {{m}}.
+          Mass in kg: {{mg}} g = {{m}} kg. a = F ÷ m = {{F}} ÷ {{m}} = {{a}} m/s².
       - id: kp4-q3
         type: numeric
         bloom: apply
@@ -460,6 +468,7 @@ kps:
         derived:
           P: "f + m * a"
           Fn: "m * a"
+        constraints: ["not (m == 20 and a == 2 and f == 10 and t == 4)"]
         answer:
           numeric: {value: "a * t", unit: m/s, mode: exact}
         explanation: |
@@ -500,11 +509,12 @@ kps:
           u: "uk / 3.6"
           v: "vk / 3.6"
           dp: "m * (u - v)"
+          F: "dp / t"
         answer:
-          numeric: {value: "dp / t", unit: N, mode: exact}
+          numeric: {value: "F", unit: N, mode: exact}
         explanation: |
           In m/s: {{uk}} km/h = {{u}} m/s and {{vk}} km/h = {{v}} m/s. The momentum falls by
-          {{m}} × ({{u}} − {{v}}) = {{dp}} kg m/s, so the force is {{dp}} ÷ {{t}}.
+          {{m}} × ({{u}} − {{v}}) = {{dp}} kg m/s, so the force is {{dp}} ÷ {{t}} = {{F}} N.
       - id: kp4-q6
         type: numeric
         bloom: apply
@@ -633,6 +643,7 @@ practice:
       Fn: "m * a"
       P: "f + Fn"
       v: "a * t"
+    constraints: ["not (m == 20 and a == 2 and f == 10 and t == 4)"]
     answer:
       multistep:
         steps:

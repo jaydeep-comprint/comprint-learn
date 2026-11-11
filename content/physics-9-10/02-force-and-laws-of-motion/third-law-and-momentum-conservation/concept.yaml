@@ -68,7 +68,7 @@ kps:
           numeric: {value: "W", unit: N, mode: exact}
         explanation: |
           The Earth pulls the mango down and the mango pulls the Earth up with the same {{W}} N. Both are pulls of
-          gravity. The Earth is so heavy that this force hardly changes its motion.
+          gravity. The Earth has such a huge mass that this force hardly changes its motion.
       - id: kp1-q4
         type: numeric
         bloom: understand
@@ -111,7 +111,7 @@ kps:
           numeric: {value: "F", unit: N, mode: exact}
         explanation: |
           The gases push the rocket forward with {{F}} N, the same size as the rocket's push on them.
-          This forward push lifts the rocket.
+          This forward push drives the rocket forward.
       - id: kp1-q7
         type: mcq
         bloom: understand
@@ -122,12 +122,13 @@ kps:
           mcq:
             options:
               - {id: a, text: "The ground pushes your foot forward.", correct: true}
-              - {id: b, text: "There is no reaction because the push and friction cancel.", misconception: action-reaction-cancel}
+              - {id: b, text: "The ground's push on your foot cancels your push on the ground, so the pair has no effect.", misconception: action-reaction-cancel}
               - {id: c, text: "The Earth pulls your foot down."}
-              - {id: d, text: "Your foot pushes the ground forward a moment later."}
+              - {id: d, text: "Your foot pushes the ground forward a moment later.", misconception: reaction-comes-later}
         explanation: |
           Swap the two bodies: "foot pushes ground backward" becomes "ground pushes foot forward". It is the same
-          kind of force (a contact push), equal in size, at the same moment. This forward push moves you.
+          kind of force (a contact force: friction from the ground), equal in size, at the same moment. The two
+          forces act on different bodies, so they don't cancel: the forward push on your foot moves you.
       - id: kp1-q8
         type: mcq
         bloom: remember
@@ -139,7 +140,7 @@ kps:
             options:
               - {id: a, text: "They are equal and opposite and act on two different bodies.", correct: true}
               - {id: b, text: "They are equal and opposite and act on the same body, so they cancel.", misconception: action-reaction-cancel}
-              - {id: c, text: "The reaction starts a moment after the action."}
+              - {id: c, text: "The reaction starts a moment after the action.", misconception: reaction-comes-later}
               - {id: d, text: "The heavier body exerts the larger force.", misconception: bigger-body-bigger-force}
         explanation: |
           The pair is equal in size, opposite in direction, of the same kind and simultaneous, and the two forces
@@ -616,7 +617,7 @@ practice:
       A {{ms}} kg sailor jumps from a {{M}} kg boat onto the shore. While his feet push off, he accelerates toward
       the shore at {{acc}} m/s². Ignore the water's drag.
     params:
-      ms: {choices: [50, 60, 70]}
+      ms: {choices: [60, 70, 80]}
       acc: {choices: [2, 2.5, 3]}
       M: {choices: [100, 125, 200, 250]}
     derived:

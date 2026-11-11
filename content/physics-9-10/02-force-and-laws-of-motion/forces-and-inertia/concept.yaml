@@ -146,12 +146,13 @@ kps:
         derived:
           ta: "na * fa"
           tb: "nb * fb"
+          n: "abs(ta - tb)"
         answer:
-          numeric: {value: "abs(ta - tb)", unit: N, mode: exact}
+          numeric: {value: "n", unit: N, mode: exact}
         explanation: |
           Team A: {{na}} × {{fa}} = {{ta}} N. Team B: {{nb}} × {{fb}} = {{tb}} N.
-          They pull in opposite directions, so subtract the smaller total from the bigger one. If the totals are
-          equal, the forces are balanced and the net force is 0.
+          They pull in opposite directions, so subtract the smaller total from the bigger one: the net force is
+          {{n}} N, towards the stronger team. (If the totals are equal, the forces are balanced and the net force is 0.)
 
   - id: kp2
     title: Newton's first law and friction
@@ -257,8 +258,8 @@ kps:
         expected_minutes: 1.5
         prompt: |
           A car moves along a straight road at a constant velocity. The engine gives a forward force of {{F}} N.
-          Air resistance on the car is {{a}} N. The rest of the backward force is friction from the road.
-          What is the friction force from the road?
+          Air resistance on the car is {{a}} N. The rest of the backward force is rolling friction from the road.
+          What is the rolling friction from the road?
         params:
           a: {min: 200, max: 600, step: 100}
           r: {choices: [300, 400, 500, 700]}
@@ -267,7 +268,7 @@ kps:
           numeric: {value: "r", unit: N, mode: exact}
         explanation: |
           Constant velocity means the forces are balanced: forward {{F}} N = air resistance + road friction.
-          Road friction = {{F}} − {{a}} = {{r}} N.
+          Rolling friction = {{F}} − {{a}} = {{r}} N.
       - id: kp2-q8
         type: numeric
         bloom: apply
@@ -541,7 +542,8 @@ practice:
     expected_minutes: 5
     prompt: |
       A large box rests on the floor. Two people push it in the same direction, with {{p1}} N and {{p2}} N.
-      Friction from the floor on the box is {{f}} N while it slides. Draw the horizontal forces as arrows, then answer.
+      Friction from the floor on the box is {{f}} N while it slides, and the box starts to slide.
+      Draw the horizontal forces as arrows, then answer.
     params:
       p1: {min: 60, max: 120, step: 10}
       p2: {choices: [40, 50, 70]}
@@ -580,7 +582,7 @@ practice:
     expected_minutes: 5
     prompt: |
       A car moves along a straight, level road. Its engine gives a forward force of {{F}} N. Air resistance on it
-      is {{a}} N and friction from the road is {{r}} N. Take forwards as positive.
+      is {{a}} N and rolling friction from the road is {{r}} N. Take forwards as positive.
     params:
       F: {min: 1500, max: 3000, step: 250}
       a: {choices: [300, 400, 500, 600]}

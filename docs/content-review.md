@@ -56,11 +56,11 @@ role and school code only (e.g. "maths teacher, ABC"), never by name or contact 
 | physics-9-10 | forces-and-inertia | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
 | physics-9-10 | momentum-and-second-law | ai-reviewed | 2026-11-11 | | | spec 013 PR 2 |
 | physics-9-10 | third-law-and-momentum-conservation | ai-reviewed | 2026-11-11 | | | spec 013 PR 2; titled "Newton's third law of motion": NCERT dropped §9.6 conservation of momentum |
-| python-basics | variables-and-types | draft | | | | |
-| python-basics | conditionals | draft | | | | |
-| python-basics | loops | draft | | | | |
-| python-basics | functions | draft | | | | |
-| python-basics | strings | draft | | | | |
-| python-basics | lists | draft | | | | |
-| python-basics | dictionaries | draft | | | | |
-| python-basics | list-algorithms | draft | | | | |
+| python-basics | variables-and-types | ai-reviewed | 2026-11-11 | | | spec 013 PR 3; for the teacher: legacy kp2-q4 needs `type(...).__name__`, kp1-q5 naming rules aren't in the worked example |
+| python-basics | conditionals | ai-reviewed | 2026-11-11 | | | spec 013 PR 3; for the teacher: legacy kp1-q1..q3 are always True for every seed |
+| python-basics | loops | ai-reviewed | 2026-11-11 | | | spec 013 PR 3; for the teacher: legacy kp1-q4 uses `append`, kp2-q4 loops over a string before the strings lesson |
+| python-basics | functions | ai-reviewed | 2026-11-11 | | | spec 013 PR 3 |
+| python-basics | strings | ai-reviewed | 2026-11-11 | | | spec 013 PR 3 |
+| python-basics | lists | ai-reviewed | 2026-11-11 | | | spec 013 PR 3 |
+| python-basics | dictionaries | ai-reviewed | 2026-11-11 | | | spec 013 PR 3 |
+| python-basics | list-algorithms | ai-reviewed | 2026-11-11 | | | spec 013 PR 3 |

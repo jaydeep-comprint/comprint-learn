@@ -18,7 +18,7 @@ misconception_check:
       options:
         - {id: a, text: "$x - 2$", correct: true}
         - {id: b, text: "$x + 2$", misconception: factor-sign}
-        - {id: c, text: "$x$", misconception: zero-vs-value}
+        - {id: c, text: "$x$"}
         - {id: d, text: "$2x$"}
   explanation: |
     The factor theorem: $x - a$ is a factor of $p(x)$ exactly when $p(a) = 0$. Here $a = 2$, so $x - 2$ is a factor.
@@ -87,8 +87,8 @@ kps:
         bloom: understand
         expected_minutes: 1.5
         prompt: |
-          To test whether $x + {{r}}$ is a factor of $p(x) = x^3 - {{b}}x + {{c}}$, you find the value of $p(x)$ at the right number.
-          What is that value?
+          To test whether $x + {{r}}$ is a factor of $p(x) = x^3 - {{b}}x + {{c}}$, you work out $p(x)$ at the number that makes $x + {{r}}$ equal to 0.
+          What do you get?
         params:
           r: {min: 1, max: 4, step: 1}
           b: {min: 2, max: 9, step: 1}
@@ -124,7 +124,7 @@ kps:
         bloom: apply
         expected_minutes: 1.5
         prompt: |
-          $x - 1$ is a factor of $p(x) = kx^2 - 3x + k$. Find $k$.
+          $x - 1$ is a factor of $p(x) = kx^2 - 3x + k$. Find $k$, as a decimal.
         answer:
           numeric: {value: 1.5, mode: exact}
         explanation: |
@@ -333,7 +333,7 @@ kps:
               - {id: a, text: "$(2x - 3)(2x + 3)$", correct: true}
               - {id: b, text: "$(2x - 3)^2$", misconception: square-of-sum}
               - {id: c, text: "$(4x - 3)(x + 3)$"}
-              - {id: d, text: "$(2x + 3)^2$", misconception: sign-error}
+              - {id: d, text: "$(2x + 3)^2$", misconception: square-of-sum}
         explanation: |
           $4x^2 - 9 = (2x)^2 - 3^2 = (2x - 3)(2x + 3)$. Note $(2x - 3)^2 = 4x^2 - 12x + 9$: it has a middle term,
           so it is not $4x^2 - 9$.

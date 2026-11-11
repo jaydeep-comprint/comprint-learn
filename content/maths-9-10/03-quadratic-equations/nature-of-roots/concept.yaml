@@ -37,7 +37,7 @@ kps:
           Find the discriminant of ${{a}}x^2 - {{b}}x + {{c}} = 0$.
         params:
           a: {min: 2, max: 6, step: 1}
-          b: {min: 1, max: 12, step: 1}
+          b: {min: 2, max: 12, step: 1}
           c: {min: 1, max: 9, step: 1}
         derived:
           d: "b^2 - 4 * a * c"
@@ -53,7 +53,7 @@ kps:
           Find the discriminant of ${{a}}x^2 + {{b}}x - {{c}} = 0$.
         params:
           a: {min: 2, max: 5, step: 1}
-          b: {min: 1, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
           c: {min: 1, max: 9, step: 1}
         derived:
           d: "b^2 + 4 * a * c"
@@ -188,7 +188,7 @@ kps:
           How many **distinct** real roots does ${{a}}x^2 + {{c}} = {{b}}x$ have? (Enter 0, 1 or 2.)
         params:
           a: {min: 2, max: 5, step: 1}
-          b: {min: 1, max: 10, step: 1}
+          b: {min: 2, max: 10, step: 1}
           c: {min: 1, max: 6, step: 1}
         derived:
           d: "b^2 - 4 * a * c"

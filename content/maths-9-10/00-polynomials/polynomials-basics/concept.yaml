@@ -125,7 +125,7 @@ kps:
           $p(x) = {{a}}x^2 + {{b}}x - {{c}}$. Find $p({{t}})$.
         params:
           a: {min: 2, max: 6, step: 1}
-          b: {min: 1, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
           c: {min: 1, max: 15, step: 1}
           t: {choices: [-3, -2, -1, 2, 3, 4]}
         derived:
@@ -158,7 +158,7 @@ kps:
         prompt: |
           $p(x) = {{a}}x^2 + kx - {{c}}$, and $p({{t}}) = {{v}}$. Find $k$.
         params:
-          a: {min: 1, max: 5, step: 1}
+          a: {min: 2, max: 5, step: 1}
           c: {min: 1, max: 12, step: 1}
           k: {min: -6, max: 6, step: 1}
           t: {choices: [1, 2, 3, -1, -2]}
@@ -219,7 +219,7 @@ kps:
         bloom: apply
         expected_minutes: 1
         prompt: |
-          Find the zero of $p(x) = {{a}}x - {{b}}$.
+          Find the zero of $p(x) = {{a}}x - {{b}}$. Give your answer as a decimal if it isn't a whole number.
         params:
           a: {choices: [2, 4, 5]}
           b: {min: 1, max: 19, step: 1}
@@ -234,7 +234,7 @@ kps:
         prompt: |
           $x = {{r}}$ is a zero of $p(x) = {{a}}x^2 - {{b}}x + k$. Find $k$.
         params:
-          a: {min: 1, max: 4, step: 1}
+          a: {min: 2, max: 4, step: 1}
           b: {min: 2, max: 12, step: 1}
           r: {choices: [-2, -1, 1, 2, 3]}
         derived:
@@ -266,6 +266,7 @@ kps:
         params:
           r: {min: 1, max: 6, step: 1}
           s: {min: -6, max: -1, step: 1}
+        constraints: ["r + s != 0"]
         derived:
           c: "-r * s"
           k: "-(r + s)"
@@ -311,11 +312,11 @@ kps:
           Add $({{a}}x^2 + {{b}}x + {{c}}) + ({{d}}x^2 - {{e}}x + {{f}})$ and simplify.
           What is the coefficient of $x$ in the result?
         params:
-          a: {min: 1, max: 6, step: 1}
-          b: {min: 1, max: 9, step: 1}
+          a: {min: 2, max: 6, step: 1}
+          b: {min: 2, max: 9, step: 1}
           c: {min: 1, max: 9, step: 1}
-          d: {min: 1, max: 6, step: 1}
-          e: {min: 1, max: 9, step: 1}
+          d: {min: 2, max: 6, step: 1}
+          e: {min: 2, max: 9, step: 1}
           f: {min: 1, max: 9, step: 1}
         constraints: ["b != e"]
         answer:
@@ -332,10 +333,10 @@ kps:
           What is the coefficient of $x$ in the result?
         params:
           a: {min: 2, max: 9, step: 1}
-          b: {min: 1, max: 9, step: 1}
+          b: {min: 2, max: 9, step: 1}
           c: {min: 1, max: 9, step: 1}
-          d: {min: 1, max: 9, step: 1}
-          e: {min: 1, max: 9, step: 1}
+          d: {min: 2, max: 9, step: 1}
+          e: {min: 2, max: 9, step: 1}
           f: {min: 1, max: 9, step: 1}
         answer:
           numeric: {value: "b + e", mode: exact}
@@ -352,10 +353,13 @@ kps:
           a: {min: 2, max: 9, step: 1}
           b: {min: 2, max: 9, step: 1}
           c: {min: 1, max: 9, step: 1}
+        derived:
+          ab: "a * b"
+          ac: "a * c"
         answer:
           expression: {value: "a*b*x^3 - a*c*x", variables: [x], sympy_mode: exact}
         explanation: |
-          Multiply ${{a}}x$ by each term: ${{a}}x \times {{b}}x^2 = $ coefficient ${{a}} \times {{b}}$, power $x^{1+2} = x^3$; and ${{a}}x \times (-{{c}}) = -{{a}} \times {{c}}\,x$.
+          Multiply ${{a}}x$ by each term: ${{a}}x \times {{b}}x^2 = $ coefficient ${{a}} \times {{b}}$, power $x^{1+2} = x^3$; and ${{a}}x \times (-{{c}}) = -{{ac}}x$. So the answer is ${{ab}}x^3 - {{ac}}x$.
       - id: kp4-q4
         type: numeric
         bloom: apply
@@ -363,9 +367,9 @@ kps:
         prompt: |
           What is the coefficient of $x$ in the product $({{a}}x + {{b}})({{c}}x - {{d}})$?
         params:
-          a: {min: 1, max: 6, step: 1}
+          a: {min: 2, max: 6, step: 1}
           b: {min: 1, max: 9, step: 1}
-          c: {min: 1, max: 6, step: 1}
+          c: {min: 2, max: 6, step: 1}
           d: {min: 1, max: 9, step: 1}
         constraints: ["b * c != a * d"]
         answer:
@@ -409,9 +413,13 @@ practice:
     params:
       a: {min: 2, max: 5, step: 1}
       b: {min: 1, max: 9, step: 1}
-      c: {min: 1, max: 4, step: 1}
+      c: {min: 2, max: 4, step: 1}
       d: {min: 1, max: 9, step: 1}
       t: {min: 2, max: 6, step: 1}
+    constraints: ["a > c", "a*t + b > c*t + d"]
+    derived:
+      L: "a*t + b"
+      W: "c*t + d"
     answer:
       multistep:
         steps:
@@ -433,7 +441,7 @@ practice:
               numeric: {value: "(a*t + b) * (c*t + d)", unit: "m^2", mode: exact}
     explanation: |
       Perimeter $= 2[({{a}}x + {{b}}) + ({{c}}x + {{d}})]$. Area $= ({{a}}x + {{b}})({{c}}x + {{d}})$: multiply every term of the first bracket by every term of the second, then collect the $x$ terms.
-      At $x = {{t}}$ the sides are ${{a}} \times {{t}} + {{b}}$ m and ${{c}} \times {{t}} + {{d}}$ m.
+      At $x = {{t}}$ the sides are {{L}} m and {{W}} m, so the area is ${{L}} \times {{W}}$ m².
 
   - id: practice-two-polynomials
     type: multistep
@@ -442,8 +450,8 @@ practice:
     prompt: |
       $p(x) = {{a}}x^2 - {{b}}x + {{c}}$ and $q(x) = {{d}}x - {{e}}$.
     params:
-      a: {min: 1, max: 6, step: 1}
-      b: {min: 1, max: 9, step: 1}
+      a: {min: 2, max: 6, step: 1}
+      b: {min: 2, max: 9, step: 1}
       c: {min: 1, max: 9, step: 1}
       d: {choices: [2, 4, 5]}
       e: {min: 1, max: 15, step: 1}
@@ -460,7 +468,7 @@ practice:
             answer:
               numeric: {value: "a*t^2 - b*t + c", mode: exact}
           - prompt: |
-              Find the zero of $q(x)$.
+              Find the zero of $q(x)$. Give it as a decimal if it isn't a whole number.
             answer:
               numeric: {value: "e / d", mode: exact}
           - prompt: |

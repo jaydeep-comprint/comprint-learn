@@ -394,7 +394,7 @@ kps:
         bloom: analyze
         expected_minutes: 2
         prompt: |
-          Without finding the cubes, work out $({{u}})^3 + ({{v}})^3 + (-{{w}})^3$.
+          Without finding the cubes, work out ${{u}}^3 + {{v}}^3 + (-{{w}})^3$.
         params:
           u: {min: 2, max: 9, step: 1}
           v: {min: 2, max: 9, step: 1}
@@ -460,7 +460,7 @@ practice:
             answer:
               expression: {value: "x^2 + (b - c)*x - b*c", variables: [x], sympy_mode: exact}
           - prompt: |
-              How much larger is the square plot's area than the rectangular plot's? Write it as a polynomial in $x$.
+              How much larger is the square plot's area than the rectangular plot's? Write it as a polynomial in $x$ in simplified form.
             answer:
               expression: {value: "(2*a - b + c)*x + a^2 + b*c", variables: [x], sympy_mode: exact}
           - prompt: |

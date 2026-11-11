@@ -1,0 +1,705 @@
+id: dictionaries
+title: Dictionaries
+summary: Store key-value pairs, look values up by key, change the pairs, loop over them, and count with a dictionary.
+prereqs:
+  - {concept: lists, weight: 0.4}
+  - {concept: strings, weight: 0.3}
+intro: intro.md
+
+misconception_check:
+  id: check
+  type: mcq
+  bloom: understand
+  expected_minutes: 0.5
+  prompt: |
+    ```python
+    marks = {"Asha": 72, "Ravi": 85, "Meera": 64}
+    ```
+
+    Which line prints `85`?
+  answer:
+    mcq:
+      options:
+        - {id: a, text: "`print(marks[\"Ravi\"])`", correct: true}
+        - {id: b, text: "`print(marks[85])`", misconception: dict-key-vs-value}
+        - {id: c, text: "`print(marks[1])`", misconception: dict-by-position}
+  explanation: |
+    You look a value up by its **key**: the key "Ravi" points to 85. `marks[85]` is a KeyError because 85 is a
+    value, not a key. `marks[1]` is a KeyError too: a dictionary has no positions, and 1 is not one of its keys.
+
+kps:
+  - id: kp1
+    title: Creating a dictionary and looking up a key (KeyError, get)
+    worked_example: kp-1-worked.md
+    key_prereqs: []
+    items:
+      - id: kp1-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          prices = {"pen": {{a}}, "book": {{b}}, "bag": {{c}}}
+          print(prices["book"] + prices["bag"])
+          ```
+        params:
+          a: {min: 10, max: 60, step: 5}
+          b: {min: 50, max: 300, step: 10}
+          c: {min: 200, max: 900, step: 50}
+        derived: {ans: "b + c"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `prices["book"]` is the value for the key "book" ({{b}}) and `prices["bag"]` the value for "bag"
+          ({{c}}): {{b}} + {{c}} = {{ans}}.
+      - id: kp1-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          stock = {"pen": {{a}}, "pencil": {{b}}}
+          print(stock.get("pencil", 0) + stock.get("eraser", {{x}}))
+          ```
+        params:
+          a: {min: 5, max: 50, step: 1}
+          b: {min: 5, max: 50, step: 1}
+          x: {min: 1, max: 9, step: 1}
+        derived: {ans: "b + x"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          "pencil" is a key, so `get` gives its value {{b}}. "eraser" is not a key, so `get` gives the
+          default {{x}} (no error): {{b}} + {{x}} = {{ans}}.
+      - id: kp1-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          runs = {"Asha": {{a}}, "Ravi": {{b}}, "Asha": {{c}}}
+          print(runs["Asha"] + len(runs))
+          ```
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 10, max: 99, step: 1}
+          c: {min: 10, max: 99, step: 1}
+        constraints: ["a != c"]
+        derived: {ans: "c + 2"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          Keys are unique. The key "Asha" is written twice, so only its last value ({{c}}) is kept, and the
+          dictionary has just 2 pairs: {{c}} + 2 = {{ans}}.
+      - id: kp1-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          squares = {1: 1, 2: 4, 3: 9, 4: 16, 5: 25}
+          print(squares[{{k}}] + squares.get({{m}}, 0))
+          ```
+        params:
+          k: {min: 1, max: 5, step: 1}
+          m: {min: 1, max: 9, step: 1}
+        derived:
+          sk: "k * k"
+          sm: "Max(0, Min(1, 6 - m)) * m * m"
+          ans: "sk + sm"
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          Here the keys are numbers. `squares[{{k}}]` is the value for the **key** {{k}} (not a position),
+          which is {{sk}}. `squares.get({{m}}, 0)` is the value for key {{m}} if it is one of the keys 1 to 5,
+          otherwise the default 0; here it is {{sm}}. So it prints {{ans}}.
+      - id: kp1-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What happens when this program runs?
+
+          ```python
+          capitals = {"Kerala": "Thiruvananthapuram", "Bihar": "Patna"}
+          print(capitals["Patna"])
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "A KeyError, because \"Patna\" is not a key", correct: true}
+              - {id: b, text: It prints Bihar, misconception: dict-key-vs-value}
+              - {id: c, text: "It prints `None`"}
+        explanation: |
+          The keys are "Kerala" and "Bihar"; "Patna" is a value. Square brackets only look up keys, and a missing
+          key is a KeyError (only `get` gives `None` or a default instead).
+      - id: kp1-q6
+        type: code
+        bloom: apply
+        expected_minutes: 2
+        prompt: |
+          Write `price_of(menu, item)` that returns the price of `item` from the dictionary `menu`, or 0 if
+          `item` is not on the menu.
+        answer:
+          code:
+            entry: price_of
+            starter: |
+              def price_of(menu, item):
+                  return 0
+            solution: |
+              def price_of(menu, item):
+                  return menu.get(item, 0)
+            tests:
+              - {args: [{"tea": 15, "samosa": 20}, "samosa"], expected: 20, visible: true}
+              - {args: [{"tea": 15, "samosa": 20}, "coffee"], expected: 0, visible: true}
+              - {args: [{}, "tea"], expected: 0}
+              - {args: [{"idli": 30, "dosa": 50, "vada": 25}, "dosa"], expected: 50}
+
+  - id: kp2
+    title: Adding, updating and deleting pairs
+    worked_example: kp-2-worked.md
+    key_prereqs: []
+    items:
+      - id: kp2-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          stock = {"pen": {{a}}, "book": {{b}}}
+          stock["pen"] = stock["pen"] + {{n}}
+          stock["bag"] = {{c}}
+          print(stock["pen"] + len(stock))
+          ```
+        params:
+          a: {min: 10, max: 60, step: 1}
+          b: {min: 10, max: 60, step: 1}
+          n: {min: 2, max: 20, step: 1}
+          c: {min: 2, max: 20, step: 1}
+        derived: {pen: "a + n", ans: "pen + 3"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          "pen" is already a key, so its value becomes {{a}} + {{n}} = {{pen}}. "bag" is new, so it adds a
+          third pair: {{pen}} + 3 = {{ans}}.
+      - id: kp2-q2
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          marks = {"Asha": {{a}}, "Ravi": {{b}}, "Meera": {{c}}, "Kabir": {{d}}}
+          del marks["Ravi"]
+          x = marks.pop("Kabir")
+          print(x + len(marks))
+          ```
+        params:
+          a: {min: 20, max: 100, step: 1}
+          b: {min: 20, max: 100, step: 1}
+          c: {min: 20, max: 100, step: 1}
+          d: {min: 20, max: 100, step: 1}
+        derived: {ans: "d + 2"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `del` removes the "Ravi" pair. `pop("Kabir")` removes that pair and gives back its value, {{d}}.
+          Two pairs are left: {{d}} + 2 = {{ans}}.
+      - id: kp2-q3
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          squares = {}
+          for i in range(1, {{n}} + 1):
+              squares[i] = i * i
+          del squares[1]
+          print(len(squares) + squares[{{n}}])
+          ```
+        params:
+          n: {min: 3, max: 12, step: 1}
+        derived: {left: "n - 1", sq: "n * n", ans: "left + sq"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The loop adds {{n}} pairs (keys 1 to {{n}}), and `del` removes the one with key 1, leaving {{left}}.
+          The value for key {{n}} is {{sq}}: {{left}} + {{sq}} = {{ans}}.
+      - id: kp2-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          cart = {"rice": {{a}}}
+          cart["dal"] = {{b}}
+          cart["rice"] = {{c}}
+          print(cart["rice"] + cart["dal"] + len(cart))
+          ```
+        params:
+          a: {min: 1, max: 9, step: 1}
+          b: {min: 1, max: 9, step: 1}
+          c: {min: 1, max: 9, step: 1}
+        constraints: ["a != c"]
+        derived: {ans: "c + b + 2"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          "dal" is a new key (2 pairs now). "rice" is already a key, so `cart["rice"] = {{c}}` replaces its
+          value instead of adding a pair: {{c}} + {{b}} + 2 = {{ans}}.
+      - id: kp2-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What happens when this program runs?
+
+          ```python
+          marks = {"Asha": 72, "Ravi": 85}
+          del marks[85]
+          print(marks)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "A KeyError, because 85 is not a key", correct: true}
+              - {id: b, text: "It prints `{'Asha': 72}`", misconception: dict-key-vs-value}
+              - {id: c, text: "It prints `{'Asha': 72, 'Ravi': 85}`"}
+        explanation: |
+          `del` needs the **key** of the pair to delete. 85 is a value, so `marks[85]` is a KeyError.
+          To delete Ravi's pair, write `del marks["Ravi"]`.
+      - id: kp2-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `restock(stock, item, amount)` that adds `amount` to the count of `item` in the dictionary
+          `stock` and returns `stock`. If `item` is not in `stock` yet, add it with `amount` as its count.
+        answer:
+          code:
+            entry: restock
+            starter: |
+              def restock(stock, item, amount):
+                  return stock
+            solution: |
+              def restock(stock, item, amount):
+                  if item in stock:
+                      stock[item] = stock[item] + amount
+                  else:
+                      stock[item] = amount
+                  return stock
+            tests:
+              - {args: [{"pen": 10, "book": 4}, "pen", 5], expected: {"pen": 15, "book": 4}, visible: true}
+              - {args: [{"pen": 10}, "bag", 3], expected: {"pen": 10, "bag": 3}, visible: true}
+              - {args: [{}, "ruler", 7], expected: {"ruler": 7}}
+              - {args: [{"pen": 0}, "pen", 0], expected: {"pen": 0}}
+
+  - id: kp3
+    title: Looping over a dictionary with items()
+    worked_example: kp-3-worked.md
+    key_prereqs: [lists]
+    items:
+      - id: kp3-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          bill = {"rice": {{a}}, "dal": {{b}}, "oil": {{c}}}
+          total = 0
+          for item, price in bill.items():
+              total = total + price
+          print(total)
+          ```
+        params:
+          a: {min: 40, max: 90, step: 5}
+          b: {min: 30, max: 80, step: 5}
+          c: {min: 100, max: 200, step: 10}
+        derived: {ans: "a + b + c"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `items()` gives each pair; `price` takes the values {{a}}, {{b}} and {{c}} in turn, so the total is
+          {{ans}}.
+      - id: kp3-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          marks = {"Asha": {{a}}, "Ravi": {{b}}, "Meera": {{c}}, "Kabir": {{d}}}
+          passed = 0
+          for name in marks:
+              if marks[name] >= 33:
+                  passed = passed + 1
+          print(passed)
+          ```
+        params:
+          a: {min: 10, max: 99, step: 1}
+          b: {min: 10, max: 99, step: 1}
+          c: {min: 10, max: 99, step: 1}
+          d: {min: 10, max: 99, step: 1}
+        derived:
+          ans: "Min(1, Max(0, a - 32)) + Min(1, Max(0, b - 32)) + Min(1, Max(0, c - 32)) + Min(1, Max(0, d - 32))"
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `for name in marks` gives the **keys** (the names); `marks[name]` is that student's mark. It counts
+          the marks of 33 or more among {{a}}, {{b}}, {{c}} and {{d}}.
+      - id: kp3-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          runs = {"Asha": {{a}}, "Ravi": {{b}}, "Meera": {{c}}}
+          best = 0
+          for r in runs.values():
+              if r > best:
+                  best = r
+          print(best)
+          ```
+        params:
+          a: {min: 5, max: 120, step: 1}
+          b: {min: 5, max: 120, step: 1}
+          c: {min: 5, max: 120, step: 1}
+        derived: {ans: "Max(a, b, c)"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `runs.values()` gives only the values {{a}}, {{b}} and {{c}}; `best` keeps the biggest one seen so
+          far, so it ends as {{ans}}.
+      - id: kp3-q4
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          prices = {"pen": {{a}}, "book": {{b}}, "bag": {{c}}}
+          sale = {}
+          for item, p in prices.items():
+              sale[item] = p - {{k}}
+          print(sale["book"] + sale["bag"])
+          ```
+        params:
+          a: {min: 20, max: 50, step: 5}
+          b: {min: 60, max: 200, step: 10}
+          c: {min: 300, max: 800, step: 50}
+          k: {min: 5, max: 15, step: 5}
+        derived: {sb: "b - k", sc: "c - k", ans: "sb + sc"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The loop makes a new dictionary with the same keys and every price {{k}} less. So `sale["book"]` is
+          {{sb}} and `sale["bag"]` is {{sc}}: {{ans}}.
+      - id: kp3-q5
+        type: mcq
+        bloom: understand
+        expected_minutes: 0.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          marks = {"Asha": 72, "Ravi": 85}
+          for x in marks:
+              print(x)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`Asha` and then `Ravi`", correct: true}
+              - {id: b, text: "`72` and then `85`", misconception: dict-key-vs-value}
+              - {id: c, text: "`0` and then `1`", misconception: dict-by-position}
+        explanation: |
+          A `for` loop over a dictionary gives its **keys**. Use `marks[x]` or `marks.values()` for the values,
+          and `marks.items()` for both.
+      - id: kp3-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          Write `passed_students(marks)` that takes a dictionary of names and marks (out of 100) and returns a
+          list of the names whose mark is **33 or more**, in the dictionary's order.
+        answer:
+          code:
+            entry: passed_students
+            starter: |
+              def passed_students(marks):
+                  names = []
+                  return names
+            solution: |
+              def passed_students(marks):
+                  names = []
+                  for name, mark in marks.items():
+                      if mark >= 33:
+                          names.append(name)
+                  return names
+            tests:
+              - {args: [{"Asha": 72, "Ravi": 20, "Meera": 33}], expected: ["Asha", "Meera"], visible: true}
+              - {args: [{}], expected: []}
+              - {args: [{"Kabir": 32, "Ravi": 0}], expected: []}
+              - {args: [{"Meera": 100}], expected: ["Meera"]}
+
+  - id: kp4
+    title: Counting with a dictionary
+    worked_example: kp-4-worked.md
+    key_prereqs: [strings]
+    items:
+      - id: kp4-q1
+        type: numeric
+        bloom: apply
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          word = "banana" * {{n}}
+          counts = {}
+          for ch in word:
+              counts[ch] = counts.get(ch, 0) + 1
+          print(counts["a"])
+          ```
+        params:
+          n: {min: 2, max: 9, step: 1}
+        derived: {ans: "3 * n"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          "banana" has 3 a's, and `* {{n}}` repeats it {{n}} times, so the count for "a" is 3 × {{n}} = {{ans}}.
+      - id: kp4-q2
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          word = "level" * {{n}}
+          counts = {}
+          for ch in word:
+              counts[ch] = counts.get(ch, 0) + 1
+          print(counts["e"] + len(counts))
+          ```
+        params:
+          n: {min: 2, max: 9, step: 1}
+        derived: {e: "2 * n", ans: "e + 3"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          "level" has 2 e's, so after {{n}} copies the count for "e" is {{e}}. Its **different** letters are
+          l, e and v, so `counts` has 3 keys: {{e}} + 3 = {{ans}}.
+      - id: kp4-q3
+        type: numeric
+        bloom: apply
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          text = "red blue red green red " * {{n}}
+          counts = {}
+          for w in text.split():
+              counts[w] = counts.get(w, 0) + 1
+          print(counts["red"] - counts["blue"])
+          ```
+        params:
+          n: {min: 2, max: 9, step: 1}
+        derived: {red: "3 * n", ans: "red - n"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          `split()` gives the words. Each copy of the text has "red" 3 times and "blue" once, so the counts are
+          {{red}} and {{n}}: {{red}} − {{n}} = {{ans}}.
+      - id: kp4-q4
+        type: numeric
+        bloom: analyze
+        expected_minutes: 1.5
+        prompt: |
+          What does this program print?
+
+          ```python
+          word = "apple" * {{n}}
+          counts = {}
+          for ch in word:
+              if ch in counts:
+                  counts[ch] = counts[ch] + 1
+              else:
+                  counts[ch] = 1
+          print(counts["p"] * len(counts))
+          ```
+        params:
+          n: {min: 2, max: 9, step: 1}
+        derived: {p: "2 * n", ans: "p * 4"}
+        answer:
+          numeric: {value: "ans", mode: exact}
+        explanation: |
+          The first time a letter is seen it gets the count 1; after that its count goes up by 1. "apple" has
+          2 p's, so the count for "p" is {{p}}. The different letters are a, p, l and e (4 keys):
+          {{p}} × 4 = {{ans}}.
+      - id: kp4-q5
+        type: mcq
+        bloom: analyze
+        expected_minutes: 1
+        prompt: |
+          What does this program print?
+
+          ```python
+          counts = {}
+          for ch in "aab":
+              counts = {}
+              counts[ch] = counts.get(ch, 0) + 1
+          print(counts)
+          ```
+        answer:
+          mcq:
+            options:
+              - {id: a, text: "`{'b': 1}`", correct: true}
+              - {id: b, text: "`{'a': 2, 'b': 1}`", misconception: reset-inside-loop}
+              - {id: c, text: "`{'a': 1, 'b': 1}`"}
+        explanation: |
+          `counts = {}` is inside the loop, so the dictionary is emptied on every pass. After the last pass it
+          holds only the count for "b". Make the empty dictionary **before** the loop.
+      - id: kp4-q6
+        type: code
+        bloom: apply
+        expected_minutes: 3
+        prompt: |
+          A class votes for its monitor. Write `count_votes(votes)` that takes a list of names and returns a
+          dictionary from each name to the number of votes it got.
+
+          For example, `count_votes(["Asha", "Ravi", "Asha"])` returns `{"Asha": 2, "Ravi": 1}`.
+        answer:
+          code:
+            entry: count_votes
+            starter: |
+              def count_votes(votes):
+                  counts = {}
+                  return counts
+            solution: |
+              def count_votes(votes):
+                  counts = {}
+                  for name in votes:
+                      counts[name] = counts.get(name, 0) + 1
+                  return counts
+            tests:
+              - {args: [["Asha", "Ravi", "Asha"]], expected: {"Asha": 2, "Ravi": 1}, visible: true}
+              - {args: [[]], expected: {}}
+              - {args: [["Meera"]], expected: {"Meera": 1}}
+              - {args: [["Kabir", "Kabir", "Kabir", "Ravi"]], expected: {"Kabir": 3, "Ravi": 1}}
+
+practice:
+  - id: practice-1
+    type: code
+    bloom: apply
+    expected_minutes: 8
+    prompt: |
+      A canteen keeps its prices (in ₹) in a dictionary. Write `total_bill(prices, order)` that returns the
+      total cost of `order`, a list of item names. An item can appear in the order more than once. Skip any item
+      that is not in `prices`.
+
+      For example, `total_bill({"tea": 15, "samosa": 20}, ["tea", "samosa", "tea"])` returns `50`.
+    answer:
+      code:
+        entry: total_bill
+        starter: |
+          def total_bill(prices, order):
+              total = 0
+              return total
+        solution: |
+          def total_bill(prices, order):
+              total = 0
+              for item in order:
+                  if item in prices:
+                      total = total + prices[item]
+              return total
+        tests:
+          - {args: [{"tea": 15, "samosa": 20}, ["tea", "samosa", "tea"]], expected: 50, visible: true}
+          - {args: [{"tea": 15}, []], expected: 0, visible: true}
+          - {args: [{"idli": 30, "dosa": 50}, ["dosa", "coffee"]], expected: 50}
+          - {args: [{}, ["tea"]], expected: 0}
+          - {args: [{"vada": 25}, ["vada", "vada", "vada", "vada"]], expected: 100}
+  - id: practice-2
+    type: code
+    bloom: create
+    expected_minutes: 8
+    prompt: |
+      Write `top_scorer(scores)` that takes a dictionary of names and runs and returns the **name** with the
+      most runs. If two players tie, return the one that comes first in the dictionary. If `scores` is empty,
+      return `""`.
+
+      For example, `top_scorer({"Asha": 45, "Ravi": 72, "Meera": 30})` returns `"Ravi"`.
+    answer:
+      code:
+        entry: top_scorer
+        starter: |
+          def top_scorer(scores):
+              best_name = ""
+              return best_name
+        solution: |
+          def top_scorer(scores):
+              best_name = ""
+              for name, runs in scores.items():
+                  if best_name == "" or runs > scores[best_name]:
+                      best_name = name
+              return best_name
+        tests:
+          - {args: [{"Asha": 45, "Ravi": 72, "Meera": 30}], expected: "Ravi", visible: true}
+          - {args: [{}], expected: "", visible: true}
+          - {args: [{"Kabir": 50, "Asha": 50}], expected: "Kabir"}
+          - {args: [{"Meera": 0, "Ravi": 0, "Asha": 0}], expected: "Meera"}
+          - {args: [{"Asha": 12, "Ravi": 30, "Kabir": 30}], expected: "Ravi"}
+  - id: practice-3
+    type: code
+    bloom: create
+    expected_minutes: 10
+    prompt: |
+      A school's two stationery shops keep their stock in dictionaries. Write `merge_stock(a, b)` that
+      returns a **new** dictionary with every item from both. If an item is in both, add the two counts.
+      Don't change `a` or `b`.
+
+      For example, `merge_stock({"pen": 10, "book": 4}, {"pen": 5, "bag": 2})` returns
+      `{"pen": 15, "book": 4, "bag": 2}`.
+    answer:
+      code:
+        entry: merge_stock
+        starter: |
+          def merge_stock(a, b):
+              result = {}
+              return result
+        solution: |
+          def merge_stock(a, b):
+              result = {}
+              for item, count in a.items():
+                  result[item] = count
+              for item, count in b.items():
+                  result[item] = result.get(item, 0) + count
+              return result
+        tests:
+          - {args: [{"pen": 10, "book": 4}, {"pen": 5, "bag": 2}], expected: {"pen": 15, "book": 4, "bag": 2}, visible: true}
+          - {args: [{}, {}], expected: {}}
+          - {args: [{"pen": 3}, {}], expected: {"pen": 3}}
+          - {args: [{}, {"bag": 6, "ruler": 1}], expected: {"bag": 6, "ruler": 1}}
+          - {args: [{"pen": 1, "bag": 2}, {"bag": 3, "pen": 4}], expected: {"pen": 5, "bag": 5}}

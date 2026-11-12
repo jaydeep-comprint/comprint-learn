@@ -55,6 +55,10 @@ Build order and spec numbers: docs/ROADMAP.md.
     anything whose prerequisites are learned ([spec 010](specs/010-teacher-dashboard-assignments.md)).
 11. Teacher AI assist: class/student summaries and suggested notes for re-teaching, every sentence cited to dashboard
     facts; students sent as pseudonyms only ([spec 011](specs/011-teacher-ai-assist.md)).
+12. Privacy: school-attested parental consent for the AI tutor (the tutor is locked until a teacher records it), per-student
+    data export, erasure (anonymise after a 7-day grace) and an audit log ([spec 014](specs/014-privacy-consent-export-erasure.md)).
+13. Operations hardening: scrubbed error tracking, encrypted backups, a one-lab load test, rate limits, security headers and
+    a security review ([spec 015](specs/015-operations-hardening.md)).
 
 ## Non-goals (NOT in v1)
 - A content authoring UI (our team authors content in the repo).
@@ -71,7 +75,12 @@ Build order and spec numbers: docs/ROADMAP.md.
   review before the pilot. The AI tutor runs on DeepSeek (servers in China): the review must cover sending students'
   tutor chat text there (the tutor sends no names or ids and scrubs emails and phone numbers). Teacher summaries
   (spec 011) also run on DeepSeek and send class learning statistics there under pseudonyms (no names, ids, answers
-  or chat text); the review must cover that too.
+  or chat text); the review must cover that too. Spec 014 built consent, export and erasure on four assumptions the
+  review must confirm ([docs/pilot-readiness.md](pilot-readiness.md)): (1) learning without parental consent is lawful
+  because the school is the data fiduciary for classroom activity; (2) a teacher's tick is acceptable evidence of
+  verifiable parental consent when the school keeps the signed form; (3) pseudonymised class statistics for teacher
+  summaries need no parental consent; (4) anonymised learning rows (including submitted answers and code) are no longer
+  personal data.
 - Every school's data is isolated from every other school (multi-tenant).
 - AI cost must stay low per student per month: use a small model by default, rate-limit, and cache.
 - **Budget: ~$50 total for the POC/MVP** (hosting + AI API). Use free tiers everywhere, set a hard spend limit in the
@@ -84,7 +93,12 @@ Build order and spec numbers: docs/ROADMAP.md.
 - Teacher control: assign targets with due dates; never cap students who are ahead.
 
 - Content review: self-review (strict validator + an independent AI subject review) ships the content (spec 013);
-  a subject-teacher review of every concept, tracked in docs/content-review.md, is a pilot gate (spec 014).
+  a subject-teacher review of every concept, tracked in docs/content-review.md, is a pilot gate
+  ([docs/pilot-readiness.md](pilot-readiness.md)).
+
+- Consent (Nov 2026, spec 014): **school-attested and for the AI tutor only**. The school collects signed forms and a
+  teacher records them; app use without the tutor is treated as the school's own educational activity. Erasure anonymises
+  and keeps learning rows. These are assumptions for the legal review ([docs/pilot-readiness.md](pilot-readiness.md)).
 
 ## Open questions
 - Pilot timeline; how many pilot schools and classes?

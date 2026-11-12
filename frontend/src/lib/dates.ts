@@ -21,3 +21,25 @@ export function dayDate(iso: string): string {
   const date = new Date(`${iso.slice(0, 10)}T00:00:00`);
   return date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 }
+
+/** "12 Nov 2026": the IST calendar date of a timestamp (consent and erasure dates). */
+export function istDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** "12 Nov 2026, 3:04 pm" in IST (the audit log). */
+export function istDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

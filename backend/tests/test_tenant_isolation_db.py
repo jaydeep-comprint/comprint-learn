@@ -8,7 +8,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AppUser, ClassTeacher, Enrollment, Organization, SchoolClass
+from app.models import AppUser, AuditEvent, ClassTeacher, Enrollment, Organization, SchoolClass
 from tests.conftest import DbApp
 from tests.db_seed import School, seed_school
 
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.db
 async def _snapshot(session: AsyncSession, org_id: Any) -> dict[str, list[tuple[Any, ...]]]:
     """Every column of every row school B owns, to prove nothing changed."""
     out: dict[str, list[tuple[Any, ...]]] = {}
-    for model in (Organization, AppUser, SchoolClass, ClassTeacher, Enrollment):
+    for model in (Organization, AppUser, SchoolClass, ClassTeacher, Enrollment, AuditEvent):
         table = model.__table__
         col = table.c.id if model is Organization else table.c.org_id
         rows = (await session.execute(select(table).where(col == org_id))).all()
@@ -76,6 +76,16 @@ def _cross_school_calls(a: School, b: School) -> list[tuple[str, str, Any, Any]]
         ("PATCH", f"/api/v1/classes/{bc}/assignments/{uuid.uuid4()}", {"note": "x"}, tch),
         ("DELETE", f"/api/v1/classes/{bc}/assignments/{uuid.uuid4()}", None, tch),
         ("GET", f"/api/v1/classes/{ac}/assignments/{uuid.uuid4()}", None, tch),
+        # Spec 014: export and erasure (admins), consent (all-or-nothing, so one foreign id
+        # spoils the request).
+        ("GET", f"/api/v1/students/{bs}/export", None, adm),
+        ("POST", f"/api/v1/students/{bs}/erasure", {"confirm_username": "bbb00"}, adm),
+        ("DELETE", f"/api/v1/students/{bs}/erasure", None, adm),
+        *[
+            ("POST", "/api/v1/students/consent", {"student_ids": ids, "action": act}, tch)
+            for ids in ([str(bs)], [str(as_), str(bs)])
+            for act in ("record", "withdraw")
+        ],
     ]
 
 
@@ -111,6 +121,11 @@ async def test_list_endpoints_return_only_own_school(db_app: DbApp) -> None:
     for query in ("", "?archived=true", "?mine=true"):
         classes = (await db_app.client.get(f"/api/v1/classes{query}", headers=h)).json()
         assert {c["id"] for c in classes} == {str(c) for c in a.class_ids}
+
+    # Spec 014: the audit log is per school; B's ids filter to nothing.
+    ha = db_app.auth(a.admin_id)
+    r = await db_app.client.get(f"/api/v1/audit?target_id={_b.student_ids[0]}", headers=ha)
+    assert r.status_code == 200 and r.json()["items"] == []
 
     me = (await db_app.client.get("/api/v1/me", headers=h)).json()
     assert me["org"]["code"] == "AAA"

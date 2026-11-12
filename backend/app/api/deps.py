@@ -1,7 +1,7 @@
 """Auth and org scoping: the one choke point every tenant-owned query goes through.
 
 - `get_current_user`: verified bearer token → `app_user` row → `CurrentUser`. Rejects unknown and
-  deactivated users (401) and users who must change their password (403).
+  deactivated and erased users (401) and users who must change their password (403).
 - `require_staff` / `require_admin` / `require_student`: role checks (403).
 - `OrgScope` (`Scope`, `StaffScope`, `AdminScope`): builds every tenant query with `org_id` set, and
   returns 404 for ids in other schools.
@@ -65,7 +65,7 @@ async def get_current_user_allow_password_change(
 
     # Identity lookup by the verified token's `sub` (the only by-id query outside OrgScope).
     user = await session.get(AppUser, token.user_id)
-    if user is None or user.status == UserStatus.deactivated:
+    if user is None or user.status in (UserStatus.deactivated, UserStatus.erased):
         raise unauthenticated()
     if user.sessions_valid_after is not None and token.issued_at < (
         user.sessions_valid_after.timestamp() - TOKEN_CLOCK_SKEW_S
@@ -112,6 +112,9 @@ async def require_student(user: Annotated[CurrentUser, Depends(get_current_user)
     return user
 
 
+SYSTEM_ACTOR_ID = uuid.UUID(int=0)
+
+
 class OrgScope:
     """Tenant-scoped query helper. Services take this, never a raw session + id."""
 
@@ -122,9 +125,10 @@ class OrgScope:
 
     @classmethod
     def system(cls, session: AsyncSession, org_id: uuid.UUID) -> "OrgScope":
-        """A scope with no signed-in user, for the operator CLI (`app org create`) only."""
+        """A scope with no signed-in user, for the operator CLI and scheduled jobs only. Its actor
+        id is the nil uuid, which must never be written (audit events take `actor_id=None`)."""
         actor = CurrentUser(
-            id=uuid.UUID(int=0),
+            id=SYSTEM_ACTOR_ID,
             org_id=org_id,
             role=Role.teacher,
             is_admin=True,

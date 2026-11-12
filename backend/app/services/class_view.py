@@ -22,6 +22,11 @@ class Student:
     display_name: str
     status: UserStatus
     enrolled_at: datetime
+    # Spec 014, for the student page's Privacy card only (never in AI facts).
+    username: str = ""
+    tutor_consent_at: datetime | None = None
+    tutor_consent_form: str | None = None
+    erase_due_at: datetime | None = None
 
 
 @dataclass
@@ -84,7 +89,16 @@ async def enrolled_students(
 ) -> list[Student]:
     stmt = (
         scope.select(AppUser)
-        .with_only_columns(AppUser.id, AppUser.display_name, AppUser.status, Enrollment.created_at)
+        .with_only_columns(
+            AppUser.id,
+            AppUser.display_name,
+            AppUser.status,
+            Enrollment.created_at,
+            AppUser.username,
+            AppUser.tutor_consent_at,
+            AppUser.tutor_consent_form,
+            AppUser.erase_due_at,
+        )
         .join(
             Enrollment,
             (Enrollment.student_id == AppUser.id) & (Enrollment.org_id == AppUser.org_id),
@@ -97,7 +111,7 @@ async def enrolled_students(
     if only is not None:
         stmt = stmt.where(AppUser.id == only)
     rows = (await scope.session.execute(stmt)).all()
-    out = [Student(r[0], r[1], r[2], r[3]) for r in rows]
+    out = [Student(r[0], r[1], r[2], r[3], r[4] or "", r[5], r[6], r[7]) for r in rows]
     out.sort(key=lambda s: (s.display_name.lower(), str(s.id)))
     return out
 

@@ -21,6 +21,7 @@ class TutorMessageOut(BaseModel):
 
 class TutorThread(BaseModel):
     enabled: bool
+    consent: bool  # spec 014: tutor consent recorded (always present, also when disabled)
     mode: Literal["before", "after"]
     closed: bool  # POSTs get 409 `session_closed` (finished question / after-mode window over)
     hints_used: int

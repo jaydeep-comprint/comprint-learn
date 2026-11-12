@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AssignmentDialog, type AssignmentDraft } from "@/features/assignments/AssignmentDialog";
 import { ASSIGNMENT_STATUS } from "@/features/assignments/status";
 import type { MapMode } from "@/features/graph/ConceptNode";
+import { PrivacyCard } from "@/features/privacy/PrivacyCard";
 import { SummaryCard } from "@/features/teacher-ai/SummaryCard";
 import { ApiError } from "@/lib/api";
 import { placedLabel } from "@/features/learn/paths";
@@ -224,6 +225,8 @@ export function StudentPage() {
         <h3 className="font-medium">Tutor chats</h3>
         <TutorThreads classId={cls.id} studentId={studentId} />
       </section>
+
+      <PrivacyCard student={d} />
       <AssignmentDialog
         classId={cls.id}
         courseSlug={courseSlug}

@@ -6,7 +6,7 @@ Every pilot concept is reviewed twice before students use it:
    is clean, then a fresh AI subagent that never saw the authoring conversation gets only the review pack, the
    concept folders and the checklist below, solves every item at seed 1 and reports findings. Findings are fixed
    (or answered with a reason in the PR), then the concept moves to `ai-reviewed`.
-2. **Teacher review** (pilot gate, spec 014): the review pack goes to a subject teacher (maths, physics; Python by
+2. **Teacher review** (pilot gate, tracked in docs/pilot-readiness.md): the review pack goes to a subject teacher (maths, physics; Python by
    a computer-science teacher if available). Their notes come back as fixes in normal content PRs; the concept
    moves to `teacher-reviewed`. The pilot doesn't start until every row is `teacher-reviewed`.
 

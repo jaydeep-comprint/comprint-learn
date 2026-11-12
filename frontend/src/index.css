@@ -117,6 +117,13 @@
     border: 1px dashed #888;
     margin: -0.5px;
   }
+  /* Spec 014: one consent form per A4 page. */
+  .consent-form {
+    break-after: page;
+  }
+  .consent-form:last-child {
+    break-after: auto;
+  }
 }
 
 /* Content Markdown (components/markdown/Markdown.tsx). Display maths scrolls inside its own block on

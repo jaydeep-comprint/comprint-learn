@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase", () => ({
   signOut: async () => {},
 }));
 
-import { TutorButton } from "@/features/tutor/TutorButton";
+import { TUTOR_CONSENT_NOTE, TutorButton } from "@/features/tutor/TutorButton";
 import { TutorPanel } from "@/features/tutor/TutorPanel";
 import { renderAt } from "@/features/xp/testUtils";
 import type { TutorMessage, TutorThread } from "@/lib/types";
@@ -19,6 +19,7 @@ const BASE = "/api/v1/tutor/s1/2";
 function thread(overrides: Partial<TutorThread> = {}): TutorThread {
   return {
     enabled: true,
+    consent: true,
     mode: "before",
     closed: false,
     hints_used: 0,
@@ -241,5 +242,47 @@ describe("TutorButton", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("is disabled with the lock note when no consent form is recorded (spec 014)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(routeFetch({ [`GET ${BASE}`]: () => jsonResponse(200, thread({ consent: false })) })),
+    );
+    renderAt(<TutorButton sessionId="s1" position={2} onOpen={() => {}} />);
+    expect(await screen.findByRole("button", { name: "Get help" })).toBeDisabled();
+    expect(screen.getByText(TUTOR_CONSENT_NOTE)).toBeInTheDocument();
+  });
+});
+
+describe("TutorPanel consent (spec 014)", () => {
+  it("closes and shows the lock when consent is withdrawn mid-session", async () => {
+    let consent = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        routeFetch({
+          [`GET ${BASE}`]: () => jsonResponse(200, thread({ consent })),
+          [`POST ${BASE}/hint`]: () => {
+            consent = false;
+            return jsonResponse(403, {
+              code: "tutor_consent_required",
+              message: TUTOR_CONSENT_NOTE,
+            });
+          },
+        }),
+      ),
+    );
+    const onClose = vi.fn();
+    renderAt(
+      <>
+        <TutorButton sessionId="s1" position={2} onOpen={() => {}} />
+        <TutorPanel open onClose={onClose} sessionId="s1" position={2} draft={draftRef()} />
+      </>,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /Hint 1 of 3/ }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(await screen.findByRole("button", { name: "Get help" })).toBeDisabled();
+    expect(screen.getAllByText(TUTOR_CONSENT_NOTE).length).toBeGreaterThan(0);
   });
 });

@@ -10,6 +10,7 @@ from app.api.v1 import (
     learn,
     me,
     placement,
+    privacy,
     quiz,
     reviews,
     students,
@@ -36,3 +37,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(assignments.router)
 api_router.include_router(teacher_ai.router)
 api_router.include_router(placement.router)
+api_router.include_router(privacy.router)

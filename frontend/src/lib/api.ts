@@ -66,12 +66,8 @@ async function errorFromResponse(response: Response, path: string): Promise<ApiE
   return new ApiError(response.status, path, code, message, body);
 }
 
-/**
- * Call the API with the signed-in user's bearer token.
- *
- * 401 → sign out and go to /login. 403 `password_change_required` → go to /change-password.
- */
-export async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
+/** A signed-in request; non-2xx → `ApiError` (401 signs out, a temp password redirects). */
+async function authedFetch(path: string, options: FetchOptions = {}): Promise<Response> {
   const token = await getAccessToken();
   const headers: Record<string, string> = { Accept: "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -95,8 +91,38 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     }
     throw error;
   }
+  return response;
+}
+
+/**
+ * Call the API with the signed-in user's bearer token.
+ *
+ * 401 → sign out and go to /login. 403 `password_change_required` → go to /change-password.
+ */
+export async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
+  const response = await authedFetch(path, options);
   if (response.status === 204) {
     return undefined as T;
   }
   return (await response.json()) as T;
+}
+
+/** The filename from `Content-Disposition: attachment; filename="..."`, if any. */
+export function attachmentName(header: string | null): string | null {
+  const match = header?.match(/filename="([^"]+)"/);
+  return match?.[1] ?? null;
+}
+
+/** Spec 014: download an authenticated attachment (the student export) as a file. */
+export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+  const response = await authedFetch(path);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = attachmentName(response.headers.get("Content-Disposition")) ?? fallbackName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

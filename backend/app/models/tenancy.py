@@ -40,6 +40,8 @@ class UserStatus(enum.StrEnum):
     invited = "invited"
     active = "active"
     deactivated = "deactivated"
+    # Anonymised by erasure completion (spec 014): never listed, never signed in, 404 everywhere.
+    erased = "erased"
 
 
 class Subject(enum.StrEnum):
@@ -80,6 +82,17 @@ class Organization(Base):
     )
 
 
+CONSENT_CHECK = (
+    "(tutor_consent_at IS NULL AND tutor_consent_by IS NULL AND tutor_consent_form IS NULL)"
+    " OR (tutor_consent_at IS NOT NULL AND tutor_consent_by IS NOT NULL"
+    " AND tutor_consent_form IS NOT NULL AND role = 'student')"
+)
+ERASE_CHECK = (
+    "(erase_requested_at IS NULL) = (erase_due_at IS NULL)"
+    " AND (erase_requested_at IS NULL) = (erase_requested_by IS NULL)"
+)
+
+
 class AppUser(TenantMixin, Base):
     __tablename__ = "app_user"
     __table_args__ = (
@@ -92,6 +105,27 @@ class AppUser(TenantMixin, Base):
         CheckConstraint("role = 'student' OR email IS NOT NULL", name="staff_email"),
         Index("uq_app_user_org_username", "org_id", text("lower(username)"), unique=True),
         Index("uq_app_user_email", text("lower(email)"), unique=True),
+        # Spec 014: tutor consent (students only, all set or all null) and erasure.
+        ForeignKeyConstraint(
+            ["tutor_consent_by", "org_id"],
+            ["app_user.id", "app_user.org_id"],
+            ondelete="RESTRICT",
+            name="fk_app_user_tutor_consent_by_app_user",
+        ),
+        ForeignKeyConstraint(
+            ["erase_requested_by", "org_id"],
+            ["app_user.id", "app_user.org_id"],
+            ondelete="RESTRICT",
+            name="fk_app_user_erase_requested_by_app_user",
+        ),
+        CheckConstraint(CONSENT_CHECK, name="tutor_consent"),
+        CheckConstraint(ERASE_CHECK, name="erase_request"),
+        CheckConstraint("(status = 'erased') = (erased_at IS NOT NULL)", name="erased_at"),
+        Index(
+            "ix_app_user_erase_due_at",
+            "erase_due_at",
+            postgresql_where=text("erase_due_at IS NOT NULL"),
+        ),
     )
 
     # Same as the Supabase auth user id (JWT `sub`).
@@ -108,6 +142,15 @@ class AppUser(TenantMixin, Base):
     # Access tokens issued before this are rejected (set on reset, password change, deactivation):
     # Supabase revokes refresh tokens, but an issued access token lives until it expires.
     sessions_valid_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Spec 014. Current tutor consent only (history is in `audit_event`); null = no consent.
+    tutor_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    tutor_consent_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    tutor_consent_form: Mapped[str | None] = mapped_column(Text)
+    # A pending erasure: completed by `app privacy run-due` once `erase_due_at` has passed.
+    erase_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    erase_requested_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    erase_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

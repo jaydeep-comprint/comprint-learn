@@ -22,6 +22,7 @@ from app.core.passwords import temp_password
 from app.core.usernames import SUFFIX_DIGITS, username_base, username_candidate
 from app.models import (
     AppUser,
+    AuditAction,
     ClassTeacher,
     Enrollment,
     Organization,
@@ -38,7 +39,7 @@ from app.schemas.tenancy import (
     TeacherRef,
     TempPasswordOut,
 )
-from app.services import quiz, srs, xp
+from app.services import audit, quiz, srs, xp
 from app.services.supabase_admin import SupabaseAdmin, SupabaseAdminError
 
 logger = logging.getLogger(__name__)
@@ -119,10 +120,14 @@ async def _get_teacher(scope: OrgScope, user_id: uuid.UUID, *, for_update: bool 
 
 
 async def _get_student(scope: OrgScope, user_id: uuid.UUID, *, for_update: bool = False) -> AppUser:
+    """A student of the caller's school; 404 for teachers and erased students (spec 014)."""
     user = await scope.get(AppUser, user_id, for_update=for_update)
-    if user.role != Role.student:
+    if user.role != Role.student or user.status == UserStatus.erased:
         raise not_found()
     return user
+
+
+get_student = _get_student
 
 
 async def invite_teacher(
@@ -197,6 +202,8 @@ async def _set_status(
     """Ban/unban in Supabase first; our row changes only after that call succeeds."""
     if status == user.status or (status == UserStatus.active and user.status == UserStatus.invited):
         return
+    if status == UserStatus.active and user.erase_requested_at is not None:
+        raise conflict("erasure_pending", "Cancel the erasure first.")
     try:
         await admin.set_banned(user.id, status == UserStatus.deactivated)
     except SupabaseAdminError as exc:
@@ -204,6 +211,14 @@ async def _set_status(
     user.status = status
     if status == UserStatus.deactivated:
         user.sessions_valid_after = func.clock_timestamp()
+    audit.record(
+        scope,
+        AuditAction.user_deactivated
+        if status == UserStatus.deactivated
+        else AuditAction.user_reactivated,
+        user.id,
+        {"role": user.role.value},
+    )
     logger.info("User %s status -> %s", user.id, status.value)
 
 
@@ -250,10 +265,31 @@ async def _class_ids_by_student(
     return out
 
 
+def student_out(s: AppUser, class_ids: list[uuid.UUID]) -> StudentOut:
+    return StudentOut(
+        id=s.id,
+        display_name=s.display_name,
+        username=s.username or "",
+        status=s.status,
+        class_ids=class_ids,
+        tutor_consent_at=s.tutor_consent_at,
+        tutor_consent_form=s.tutor_consent_form,
+        erase_due_at=s.erase_due_at,
+    )
+
+
+async def class_ids_by_student(
+    scope: OrgScope, student_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, list[uuid.UUID]]:
+    return await _class_ids_by_student(scope, student_ids)
+
+
 async def list_students(
     scope: OrgScope, q: str | None, class_id: uuid.UUID | None
 ) -> list[StudentOut]:
-    stmt = scope.select(AppUser).where(AppUser.role == Role.student)
+    stmt = scope.select(AppUser).where(
+        AppUser.role == Role.student, AppUser.status != UserStatus.erased
+    )
     if q and q.strip():
         pattern = f"%{_escape_like(q.strip())}%"
         stmt = stmt.where(
@@ -271,16 +307,7 @@ async def list_students(
     stmt = stmt.order_by(func.lower(AppUser.display_name), AppUser.username).limit(1000)
     students = (await scope.session.scalars(stmt)).all()
     classes = await _class_ids_by_student(scope, [s.id for s in students])
-    return [
-        StudentOut(
-            id=s.id,
-            display_name=s.display_name,
-            username=s.username or "",
-            status=s.status,
-            class_ids=classes.get(s.id, []),
-        )
-        for s in students
-    ]
+    return [student_out(s, classes.get(s.id, [])) for s in students]
 
 
 async def patch_student(
@@ -298,13 +325,7 @@ async def patch_student(
         await _set_status(scope, admin, student, status)
     await scope.session.commit()
     classes = await _class_ids_by_student(scope, [student.id])
-    return StudentOut(
-        id=student.id,
-        display_name=student.display_name,
-        username=student.username or "",
-        status=student.status,
-        class_ids=classes.get(student.id, []),
-    )
+    return student_out(student, classes.get(student.id, []))
 
 
 async def reset_student_password(
@@ -320,6 +341,7 @@ async def reset_student_password(
     student.must_change_password = True
     # Old access tokens can't claim the account.
     student.sessions_valid_after = func.clock_timestamp()
+    audit.record(scope, AuditAction.password_reset, student.id)
     await scope.session.commit()
     assert student.username is not None
     return TempPasswordOut(username=student.username, temp_password=password)
@@ -603,7 +625,7 @@ async def enroll_students(
     unique_ids = list(dict.fromkeys(student_ids))
     stmt = scope.select(AppUser).where(AppUser.id.in_(unique_ids))
     found = {u.id: u for u in (await scope.session.scalars(stmt)).all()}
-    if len(found) != len(unique_ids):
+    if len(found) != len(unique_ids) or any(u.status == UserStatus.erased for u in found.values()):
         raise not_found()
     if any(u.role != Role.student or u.status != UserStatus.active for u in found.values()):
         raise ApiProblem(422, "not_active_student", ONLY_ACTIVE_STUDENTS)

@@ -1,5 +1,6 @@
 """All models are imported here so `Base.metadata` (and Alembic) sees every table."""
 
+from app.models.audit import AuditAction, AuditEvent
 from app.models.content import (
     Chapter,
     Concept,
@@ -75,6 +76,8 @@ __all__ = [
     "AssignmentStudent",
     "Attempt",
     "AttemptContext",
+    "AuditAction",
+    "AuditEvent",
     "Chapter",
     "ClassCoveredChapter",
     "ClassTeacher",

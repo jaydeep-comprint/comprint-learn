@@ -23,7 +23,6 @@ from app.api.deps import OrgScope
 from app.core.errors import ApiProblem, conflict, not_found
 from app.grading import QUICK_TYPES
 from app.models import (
-    AppUser,
     Attempt,
     AttemptContext,
     ClassCoveredChapter,
@@ -371,7 +370,7 @@ async def send(scope: OrgScope, class_id: uuid.UUID, body: SendIn) -> SendOut:
 async def _student_row(
     scope: OrgScope, class_id: uuid.UUID, student_id: uuid.UUID
 ) -> PlacementStudentRow:
-    user = await scope.get(AppUser, student_id)
+    user = await tenancy.get_student(scope, student_id)
     diags = await _diagnostics(scope, class_id, [student_id])
     return _row(student_id, user.display_name, diags.get(student_id, []))
 
@@ -400,7 +399,7 @@ async def cancel(
     school_class = await scope.get(SchoolClass, class_id)
     if school_class.archived_at is not None:
         raise conflict("class_archived", tenancy.CLASS_ARCHIVED)
-    user = await scope.get(AppUser, student_id)
+    user = await tenancy.get_student(scope, student_id)
     diag = await scope.session.scalar(
         scope.select(DiagnosticSession)
         .where(

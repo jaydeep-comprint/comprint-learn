@@ -29,7 +29,12 @@ import sentry_sdk
 from starlette.requests import ClientDisconnect
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core.observability import ACCESS_LOGGER, capture_exception, request_id_var
+from app.core.observability import (
+    ACCESS_LOGGER,
+    capture_exception,
+    query_stats_var,
+    request_id_var,
+)
 
 log = logging.getLogger(__name__)
 access_log = logging.getLogger(ACCESS_LOGGER)
@@ -85,6 +90,8 @@ class RequestIdMiddleware:
         request_id = _incoming_request_id(scope) or uuid.uuid4().hex
         _state(scope)["request_id"] = request_id
         token = request_id_var.set(request_id)
+        stats: list[float] = [0, 0.0]
+        stats_token = query_stats_var.set(stats)
         # Every Sentry event in this request (incl. ones from log lines) carries the id. The
         # Starlette integration forks the isolation scope per request outside this middleware.
         sentry_sdk.set_tag("request_id", request_id)
@@ -119,10 +126,13 @@ class RequestIdMiddleware:
                         "path": route_template(scope),
                         "status": status,
                         "ms": round((time.perf_counter() - started) * 1000, 1),
+                        "queries": int(stats[0]),
+                        "db_ms": round(stats[1], 1),
                         "user_id": state.get("user_id"),
                         "org_id": state.get("org_id"),
                     },
                 )
+            query_stats_var.reset(stats_token)
             request_id_var.reset(token)
 
 

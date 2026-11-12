@@ -31,6 +31,11 @@ if TYPE_CHECKING:
 
 # The current request's id (set by `RequestIdMiddleware`); "-" outside a request.
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
+# Per-request database statement count and time [count, ms] (spec 015 load test: shows N+1s
+# and round trips per endpoint in the access log). None outside a request.
+query_stats_var: contextvars.ContextVar[list[float] | None] = contextvars.ContextVar(
+    "query_stats", default=None
+)
 
 KEPT_HEADERS = frozenset({"user-agent"})
 ACCESS_LOGGER = "app.access"
@@ -228,7 +233,7 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
-_ACCESS_FIELDS = ("method", "path", "status", "ms", "user_id", "org_id")
+_ACCESS_FIELDS = ("method", "path", "status", "ms", "queries", "db_ms", "user_id", "org_id")
 
 
 class JsonFormatter(logging.Formatter):

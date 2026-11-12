@@ -1,7 +1,10 @@
 """Async engine and sessions. The engine is created lazily; creating it opens no connection."""
 
+import time
 from collections.abc import AsyncIterator
+from typing import Any
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -10,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import get_settings
+from app.core.observability import query_stats_var
 
 _engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
@@ -29,7 +33,25 @@ def get_engine() -> AsyncEngine:
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
         )
+        _count_queries(_engine)
     return _engine
+
+
+def _count_queries(engine: AsyncEngine) -> None:
+    """Statements and their time per request, for the access log (ids and counts only)."""
+
+    @event.listens_for(engine.sync_engine, "before_cursor_execute")
+    def _before(conn: Any, _cursor: Any, _stmt: Any, _params: Any, _ctx: Any, _many: Any) -> None:
+        conn.info["query_started"] = time.perf_counter()
+
+    @event.listens_for(engine.sync_engine, "after_cursor_execute")
+    def _after(conn: Any, _cursor: Any, _stmt: Any, _params: Any, _ctx: Any, _many: Any) -> None:
+        stats = query_stats_var.get()
+        if stats is not None:
+            stats[0] += 1
+            stats[1] += (
+                time.perf_counter() - conn.info.pop("query_started", time.perf_counter())
+            ) * 1000
 
 
 def get_sessionmaker() -> async_sessionmaker[AsyncSession]:

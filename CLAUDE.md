@@ -15,6 +15,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 - Onboard a school: `cd backend && uv run app org create --name "..." --code ABC --admin-email ... --admin-name "..."` (`app org list`)
 - Full check (what the Stop hook and CI run): `make check`
 - Security scan (network): `make audit` (pip-audit, pnpm audit, gitleaks). Backups: `make backup`, `make restore-check FILE=...` (docs/runbooks/backup-restore.md)
+- Load test: `make loadtest` (test DB; never with `make test-db`, a lock refuses; needs `backend/certs/supabase-ca.crt`). Smoke: `ARGS="--users 30 --run-time 2m"`
 
 ## Workflow
 - New features start from a spec in docs/specs/ (use `/spec`). Implement in a fresh session, plan first.

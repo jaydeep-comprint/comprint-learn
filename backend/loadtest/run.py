@@ -74,9 +74,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
+DEFAULT_CA = BACKEND / "certs" / "supabase-ca.crt"
+
+
+def root_cert(settings: Settings) -> str | None:
+    """Supabase's CA: DATABASE_SSL_ROOT_CERT, else backend/certs/supabase-ca.crt if present."""
+    if settings.database_ssl_root_cert:
+        return settings.database_ssl_root_cert
+    return str(DEFAULT_CA) if DEFAULT_CA.exists() else None
+
+
 def child_env(settings: Settings, secret: str) -> dict[str, str]:
     assert settings.test_database_url and settings.supabase_url
+    ca = root_cert(settings)
     return {
+        **({"DATABASE_SSL_ROOT_CERT": ca} if ca else {}),
         **os.environ,
         "ENVIRONMENT": "test",
         "DATABASE_URL": settings.test_database_url,
@@ -205,6 +217,16 @@ async def main(argv: list[str]) -> int:
     if not settings.test_database_url or not settings.supabase_url:
         print("loadtest: TEST_DATABASE_URL and SUPABASE_URL must be set", file=sys.stderr)
         return 1
+    ca = root_cert(settings)
+    if ca is None:
+        print(
+            "loadtest: Supabase's CA certificate is needed to verify the test database: save it as "
+            f"{DEFAULT_CA} (Dashboard -> Database -> SSL Configuration) or set "
+            "DATABASE_SSL_ROOT_CERT",
+            file=sys.stderr,
+        )
+        return 1
+    os.environ["DATABASE_SSL_ROOT_CERT"] = ca  # the lock and round-trip connections verify too
     try:
         lock = await acquire(settings.test_database_url)
     except TestDbBusy as exc:

@@ -15,9 +15,14 @@ Check every line before real students' data goes in.
 | `SENTRY_DSN`, `GIT_SHA` | `learning-api` DSN, the deployed commit | docs/runbooks/errors.md |
 | `TRUSTED_PROXY_COUNT` | the number of proxies that append to `X-Forwarded-For` (Render/Fly: 1) | per-IP limit on bad tokens; 0 = socket address |
 | `RATE_LIMIT_ENABLED` | unset (true) | never off in production |
+| `DATABASE_SSL_ROOT_CERT` | path to Supabase's CA file (Dashboard -> Database -> SSL Configuration -> Download certificate) | verifies the DB server certificate and host name; without it the connection is encrypted but unverified (security review area 9) |
 | `DEEPSEEK_API_KEY`, `TUTOR_ENABLED`, `TEACHER_AI_ENABLED` | | provider console spend limit set first |
 
 Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --workers <n>`.
+Don't set `FORWARDED_ALLOW_IPS=*`: uvicorn would then put the client-controlled `X-Forwarded-For`
+address into the socket address, and the per-IP limit could be spoofed. The API's own
+`TRUSTED_PROXY_COUNT` is the one place that reads the header.
+The API must be reachable only through the host's proxy (no public direct port).
 Rate limits are per process, so with n workers a user's effective limit is up to n times the setting.
 
 ## SPA (Cloudflare Pages / Netlify / Vercel)

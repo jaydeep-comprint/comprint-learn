@@ -10,7 +10,10 @@ make loadtest ARGS="--users 30 --run-time 2m"  # a smoke run
 make loadtest ARGS="--workers 2"               # tuning: uvicorn workers
 ```
 
-Needs `TEST_DATABASE_URL` and `SUPABASE_URL` (env or `backend/.env`). It holds the shared test-DB
+Needs `TEST_DATABASE_URL` and `SUPABASE_URL` (env or `backend/.env`), and Supabase's CA
+certificate to verify the database (Dashboard -> Database -> SSL Configuration -> Download
+certificate): save it as `backend/certs/supabase-ca.crt` (gitignored) or set
+`DATABASE_SSL_ROOT_CERT`. It holds the shared test-DB
 lock for the whole run, so it refuses to start during `make test-db`, and `make test-db` refuses
 during it. Ctrl-C stops the API too.
 

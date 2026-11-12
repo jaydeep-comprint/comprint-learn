@@ -35,3 +35,4 @@ coverage/
 /backups/
 backend/loadtest/.seed.json
 backend/loadtest/out/
+backend/certs/

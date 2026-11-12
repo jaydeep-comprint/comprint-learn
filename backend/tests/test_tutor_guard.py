@@ -52,6 +52,14 @@ def test_prompt_numbers_are_exempt() -> None:
     assert before("Look at the 120 m and the 8 s.", numeric("15")) == set()
 
 
+def test_a_stuffed_draft_exempts_nothing() -> None:
+    """Spec 015 review: listing candidate values in the draft can't switch the guard off."""
+    stuffed = " ".join(str(i) for i in range(1, 60))
+    assert "number" in before("Of those, 15 is the one.", numeric("15"), draft=stuffed)
+    long_text = "my working: " + "x" * 80 + " 15"
+    assert "number" in before("You wrote 15.", numeric("15"), draft=long_text)
+
+
 def test_draft_numbers_are_exempt() -> None:
     assert (
         before("You wrote 15 in your draft; check the units.", numeric("15"), draft="15") == set()

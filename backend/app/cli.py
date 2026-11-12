@@ -622,6 +622,10 @@ def privacy_export(
     old_umask = os.umask(0o077)  # personal data: folders 0700, files 0600
     try:
         path = check_out_dir(out)
+        if path.exists():
+            path.chmod(
+                0o700
+            )  # an existing empty folder keeps its mode otherwise (umask is new-only)
         n = asyncio.run(_export(normalize_code(org), path))
     except CliError as exc:
         typer.echo(str(exc), err=True)

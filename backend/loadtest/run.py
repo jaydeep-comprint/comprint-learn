@@ -6,8 +6,10 @@
 `--users` counts everyone: 2 teachers + the students (82 = one lab of 80). Targets the TEST
 database (TEST_DATABASE_URL, from the env or backend/.env), never the dev one, and holds the
 shared test-DB lock for the whole run: it refuses to start during `make test-db` (and vice versa).
-The API runs on :8001 with a random per-run HS256 secret, the tutor and teacher AI off, and the
+The API runs on 127.0.0.1 with a random per-run HS256 secret, the tutor and teacher AI off, and the
 rate limiter on (a real lab must not trip it).
+
+Port 8001, or a free one if something else listens there.
 
 Writes backend/loadtest/out/: Locust CSVs, api.log (JSON lines incl. one access line per
 request), summary.json (peak DB connections, pool errors, round trip, server-side time per
@@ -42,8 +44,24 @@ HERE = Path(__file__).resolve().parent
 BACKEND = HERE.parent
 OUT = HERE / "out"
 SEED = HERE / ".seed.json"
-PORT = 8001
-HOST = f"http://127.0.0.1:{PORT}"
+PREFERRED_PORT = 8001
+
+
+def free_port(preferred: int = PREFERRED_PORT) -> int:
+    """8001 if nothing listens on it (on any interface), else a free one: another local app on
+    *:8001 would silently take part of the traffic (it happened on the first smoke run)."""
+    import socket
+
+    for port in (preferred, 0):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError:
+                continue
+            return int(s.getsockname()[1])
+    raise RuntimeError("no free port")
+
+
 POOL_ERRORS = re.compile(r"QueuePool limit|TimeoutError: QueuePool|pool.*timed out", re.I)
 
 
@@ -183,6 +201,8 @@ async def main(argv: list[str]) -> int:
         print(f"loadtest: {exc}", file=sys.stderr)
         return 3
     OUT.mkdir(exist_ok=True)
+    port = free_port()
+    host = f"http://127.0.0.1:{port}"
     secret = secrets.token_urlsafe(32)
     env = child_env(settings, secret)
     api: asyncio.subprocess.Process | None = None
@@ -201,7 +221,7 @@ async def main(argv: list[str]) -> int:
         log_path = OUT / "api.log"
         with log_path.open("wb") as log:
             api = await asyncio.create_subprocess_exec(
-                *(sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(PORT)),
+                *(sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(port)),
                 *("--workers", str(args.workers), "--log-config", str(HERE / "logging.json")),
                 cwd=BACKEND,
                 env=env,
@@ -212,7 +232,7 @@ async def main(argv: list[str]) -> int:
         async with httpx.AsyncClient() as client:
             for _ in range(120):
                 try:
-                    if (await client.get(f"{HOST}/api/v1/health")).status_code == 200:
+                    if (await client.get(f"{host}/api/v1/health")).status_code == 200:
                         break
                 except httpx.TransportError:
                     pass
@@ -220,7 +240,7 @@ async def main(argv: list[str]) -> int:
             else:
                 print("loadtest: the API didn't become healthy (see out/api.log)", file=sys.stderr)
                 return 1
-        print(f"loadtest: API up on {HOST}; DB round trip {rtt:.0f} ms; starting Locust")
+        print(f"loadtest: API up on {host}; DB round trip {rtt:.0f} ms; starting Locust")
         locust = await asyncio.create_subprocess_exec(
             sys.executable,
             "-m",
@@ -235,7 +255,7 @@ async def main(argv: list[str]) -> int:
             "--run-time",
             args.run_time,
             "--host",
-            HOST,
+            host,
             "--csv",
             str(OUT / "run"),
             "--only-summary",

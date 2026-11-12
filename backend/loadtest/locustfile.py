@@ -212,7 +212,8 @@ class StudentUser(HttpUser, Api):
         if _err(queue) or not queue.get("offered"):
             return
         r = random.choice(queue["offered"])
-        self.run_session(f"/reviews/{r['course']}/{r['concept']}", "/reviews/[c]/[k]")
+        # `concept.id` is "<course>/<slug>", already the path the review routes take.
+        self.run_session(f"/reviews/{r['concept']['id']}", "/reviews/[c]/[k]")
 
     def take_pending_quiz(self) -> bool:
         current = self.get("/quizzes/current", "/quizzes/current")

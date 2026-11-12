@@ -312,6 +312,19 @@ def length_leak(reply: str, word_limit: int) -> Leak | None:
 # --- entry point ----------------------------------------------------------------------------------
 
 
+DRAFT_MAX_NUMBERS = 3  # "3.2 * 10^5" is three numbers
+DRAFT_MAX_CHARS = 60
+
+
+def _single_attempt(draft: str | None) -> str:
+    """The draft, when it reads as one answer attempt; else nothing is exempt."""
+    if not draft:
+        return ""
+    if len(numbers_in(draft)) > DRAFT_MAX_NUMBERS or len(draft.strip()) > DRAFT_MAX_CHARS:
+        return ""
+    return draft
+
+
 def check(
     reply: str,
     facts: GuardFacts,
@@ -333,10 +346,14 @@ def check(
             leaks += [block] if block else []
             leaks += _solution_leaks(reply, facts, draft)
         return leaks
-    exempt_texts: Iterable[str] = [*facts.exempt_texts, draft or ""]
+    # A draft only exempts what it says when it looks like one attempt: a draft stuffed with
+    # candidate values ("1 2 3 ... 500, which is right?") must not switch the guard off
+    # (spec 015 review, decision 8). Code items keep their line-based draft exemption below.
+    own = _single_attempt(draft)
+    exempt_texts: Iterable[str] = [*facts.exempt_texts, own]
     exempt_numbers = [n for t in exempt_texts for n in numbers_in(t)]
     leaks += _number_leaks(reply, facts, exempt_numbers)
-    leaks += _expression_leaks(reply, facts, _squash(" ".join([*facts.exempt_texts, draft or ""])))
+    leaks += _expression_leaks(reply, facts, _squash(" ".join([*facts.exempt_texts, own])))
     leaks += _mcq_leaks(reply, facts)
     block = code_block_leak(reply)
     leaks += [block] if block else []

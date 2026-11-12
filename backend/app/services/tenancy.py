@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import OrgScope
 from app.core.config import get_settings
-from app.core.errors import AUTH_SERVICE_DOWN, ApiProblem, conflict, not_found
+from app.core.errors import AUTH_SERVICE_DOWN, ApiProblem, conflict, forbidden, not_found
 from app.core.passwords import temp_password
 from app.core.usernames import SUFFIX_DIGITS, username_base, username_candidate
 from app.models import (
@@ -318,6 +318,9 @@ async def patch_student(
     display_name: str | None,
     status: UserStatus | None,
 ) -> StudentOut:
+    if status is not None and not scope.user.is_admin:
+        # Also checked by the route; here too so no future caller skips it (spec 015 review).
+        raise forbidden()
     student = await _get_student(scope, student_id, for_update=True)
     if display_name is not None:
         student.display_name = display_name

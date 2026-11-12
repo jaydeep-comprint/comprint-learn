@@ -26,6 +26,9 @@ LEEWAY_S = 30
 JWKS_TTL_S = 600.0
 # An unknown `kid` forces at most one refetch per interval (no fetch amplification).
 FORCED_REFETCH_MIN_INTERVAL_S = 30.0
+# Spec 015 review: with no keys cached and the JWKS down, fail fast for a few seconds after a
+# failed fetch instead of queueing every request behind another 5 s attempt.
+COLD_RETRY_S = 5.0
 JWKS_TIMEOUT_S = 5.0
 ASYMMETRIC_ALGORITHMS = frozenset({"ES256", "RS256", "EdDSA"})
 
@@ -73,6 +76,7 @@ class TokenVerifier:
         self._keys: dict[str, jwt.PyJWK] = {}
         self._fetched_at: float | None = None
         self._forced_at: float | None = None
+        self._cold_failed_at: float | None = None
         self._lock = asyncio.Lock()
 
     async def verify(self, token: str) -> VerifiedToken:
@@ -113,6 +117,12 @@ class TokenVerifier:
 
     async def _key_for(self, kid: str) -> jwt.PyJWK:
         now = self._clock()
+        if (
+            not self._keys
+            and self._cold_failed_at is not None
+            and now - self._cold_failed_at < COLD_RETRY_S
+        ):
+            raise AuthUnavailable
         fresh = self._fetched_at is not None and now - self._fetched_at < JWKS_TTL_S
         if not fresh:
             await self._refresh(forced=False)
@@ -147,6 +157,7 @@ class TokenVerifier:
             except Exception as exc:
                 logger.warning("JWKS fetch failed (%s)", type(exc).__name__)
                 if not self._keys:
+                    self._cold_failed_at = self._clock()
                     raise AuthUnavailable from exc
                 # Keep serving the stale keys; try again in a little while, not on every request.
                 self._fetched_at = self._clock() - JWKS_TTL_S + FORCED_REFETCH_MIN_INTERVAL_S

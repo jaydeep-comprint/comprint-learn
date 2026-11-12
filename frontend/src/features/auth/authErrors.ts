@@ -12,3 +12,8 @@ export function signInErrorMessage(error: unknown, badCredentials: string): stri
   if (error instanceof TypeError) return AUTH_UNREACHABLE; // fetch failed
   return badCredentials;
 }
+
+/** The account's email, unless it is a student's synthetic one (never shown, CLAUDE.md). */
+export function shownEmail(email: string | undefined): string | undefined {
+  return email && !email.endsWith(".students.invalid") ? email : undefined;
+}

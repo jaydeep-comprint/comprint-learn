@@ -105,3 +105,12 @@ describe("LoginPage", () => {
     expect(await screen.findByText("API: ok · Database: ok")).toBeInTheDocument();
   });
 });
+
+describe("shownEmail (spec 015 review)", () => {
+  it("never shows a student's synthetic auth email", async () => {
+    const { shownEmail } = await import("./authErrors");
+    expect(shownEmail("asha07@abc.students.invalid")).toBeUndefined();
+    expect(shownEmail("ms.rao@school.in")).toBe("ms.rao@school.in");
+    expect(shownEmail(undefined)).toBeUndefined();
+  });
+});

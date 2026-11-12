@@ -182,3 +182,16 @@ def test_position_results_counts_a_multistep_item_once_when_done() -> None:
     assert position_results(rows, {ms: 4}) == [True, True, False]
     assert position_results(rows[:4], {ms: 4}) == [True]
     assert position_results([row(ms, 1, True, 1), row(ms, 1, False, 0)], {ms: 2}) == [False]
+
+
+def test_retry_prefers_new_numbers_over_a_fixed_item_whose_answer_was_shown() -> None:
+    """Spec 015 review (area 4): after a failed session, an answered fixed item (its answer was
+    shown) comes after answered param items, even when it was answered longer ago."""
+    t0 = datetime(2026, 11, 1, tzinfo=UTC)
+    pool = ["fixed1", "param1", "fixed2"]
+    history = {"fixed1": t0, "param1": t0 + timedelta(hours=1), "fixed2": t0}
+    assert choose_next_item(pool, history, set(), {"param1"}) == "param1"
+    # Never-answered items still come first, fixed or not.
+    assert choose_next_item([*pool, "fixed3"], history, set(), {"param1"}) == "fixed3"
+    # With only answered fixed items left, the least recently answered one.
+    assert choose_next_item(pool, history, {"param1"}, {"param1"}) == "fixed1"

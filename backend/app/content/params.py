@@ -23,8 +23,15 @@ PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
 # A sampled number: exact `sympy.Rational` when possible, else `float`.
 type Value = Any
 
+
+def _sqrt(x: Any) -> Any:
+    """`sqrt` through the same root-size check as `x^(1/2)`."""
+    _check_root(x, sympy.Rational(1, 2))
+    return sympy.sqrt(x)
+
+
 FUNCTIONS: dict[str, Callable[..., Any]] = {
-    "sqrt": sympy.sqrt,
+    "sqrt": _sqrt,
     "sin": sympy.sin,
     "cos": sympy.cos,
     "tan": sympy.tan,
@@ -49,9 +56,27 @@ MAX_EXPONENT = 1000
 MAX_RESULT_BITS = 10_000
 MAX_LITERAL_DIGITS = 30
 MAX_NODES = 200
+# A root (non-integer power) of an exact number makes SymPy factor it (`factorint`), with no time
+# bound and holding the GIL: `(999...9^100+1)^(1/2)` stalled the whole API for seconds to minutes
+# (spec 015 security review, area 5). Roots of numbers this large are never a real answer.
+MAX_ROOT_BITS = 256
+
+
+def _check_root(base: Any, exponent: Any) -> None:
+    if not getattr(exponent, "is_number", False) or getattr(exponent, "is_integer", False):
+        return
+    if isinstance(base, sympy.Rational):
+        if max(abs(base.p).bit_length(), abs(base.q).bit_length()) > MAX_ROOT_BITS:
+            raise ExpressionError("that root is too large")
+    elif getattr(base, "is_number", False):
+        # A numeric expression (sums of roots, pi, ...): bound every exact number inside it.
+        for atom in base.atoms(sympy.Rational):
+            if max(abs(atom.p).bit_length(), abs(atom.q).bit_length()) > MAX_ROOT_BITS:
+                raise ExpressionError("that root is too large")
 
 
 def _pow(base: Any, exponent: Any, max_exponent: int = MAX_EXPONENT) -> Any:
+    _check_root(base, exponent)
     if getattr(exponent, "is_number", False):
         if abs(exponent) > max_exponent:
             raise ExpressionError(f"exponents above {max_exponent} aren't allowed")

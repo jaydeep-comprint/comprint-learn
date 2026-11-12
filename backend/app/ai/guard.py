@@ -312,6 +312,24 @@ def length_leak(reply: str, word_limit: int) -> Leak | None:
 # --- entry point ----------------------------------------------------------------------------------
 
 
+# One attempt has few distinct numbers ("2x^2 - 7x + 3": 2, 7, 3) and is short; a list of
+# candidates ("1 2 3 ... 50") isn't. Counted on the raw text: `numbers_in` also yields derived
+# values (fractions give numerator, denominator and value).
+DRAFT_MAX_NUMBERS = 8
+DRAFT_MAX_CHARS = 60
+_RAW_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _single_attempt(draft: str | None) -> str:
+    """The draft, when it reads as one answer attempt; else nothing is exempt."""
+    if not draft:
+        return ""
+    distinct = set(_RAW_NUMBER.findall(draft))
+    if len(distinct) > DRAFT_MAX_NUMBERS or len(draft.strip()) > DRAFT_MAX_CHARS:
+        return ""
+    return draft
+
+
 def check(
     reply: str,
     facts: GuardFacts,
@@ -333,10 +351,14 @@ def check(
             leaks += [block] if block else []
             leaks += _solution_leaks(reply, facts, draft)
         return leaks
-    exempt_texts: Iterable[str] = [*facts.exempt_texts, draft or ""]
+    # A draft only exempts what it says when it looks like one attempt: a draft stuffed with
+    # candidate values ("1 2 3 ... 500, which is right?") must not switch the guard off
+    # (spec 015 review, decision 8). Code items keep their line-based draft exemption below.
+    own = _single_attempt(draft)
+    exempt_texts: Iterable[str] = [*facts.exempt_texts, own]
     exempt_numbers = [n for t in exempt_texts for n in numbers_in(t)]
     leaks += _number_leaks(reply, facts, exempt_numbers)
-    leaks += _expression_leaks(reply, facts, _squash(" ".join([*facts.exempt_texts, draft or ""])))
+    leaks += _expression_leaks(reply, facts, _squash(" ".join([*facts.exempt_texts, own])))
     leaks += _mcq_leaks(reply, facts)
     block = code_block_leak(reply)
     leaks += [block] if block else []

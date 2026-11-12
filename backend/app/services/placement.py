@@ -30,7 +30,6 @@ from app.models import (
     ConceptSource,
     ConceptState,
     ConceptStatus,
-    Course,
     DiagnosticSession,
     DiagnosticStatus,
     Enrollment,
@@ -90,13 +89,13 @@ def _stale() -> ApiProblem:
 # --- content: range, edges and askable items ------------------------------------------------------
 
 
-def _course_ref(course: Course | None) -> CourseRef | None:
+def _course_ref(course: learn.CourseInfo | None) -> CourseRef | None:
     if course is None:
         return None
     return CourseRef(slug=course.slug, title=course.title, subject=course.subject)
 
 
-def _course_chapters(graph: learn._Graph, course: Course | None) -> list[uuid.UUID]:
+def _course_chapters(graph: learn._Graph, course: learn.CourseInfo | None) -> list[uuid.UUID]:
     if course is None:
         return []
     own = [ch for ch in graph.chapters.values() if ch.course_id == course.id]
@@ -105,7 +104,7 @@ def _course_chapters(graph: learn._Graph, course: Course | None) -> list[uuid.UU
 
 
 def range_for(
-    graph: learn._Graph, course: Course | None, chapter_ids: Collection[uuid.UUID]
+    graph: learn._Graph, course: learn.CourseInfo | None, chapter_ids: Collection[uuid.UUID]
 ) -> list[uuid.UUID]:
     """The covered chapters' active concepts plus all their prerequisite ancestors, in outline
     order: the class course first, then other courses by slug; (chapter, concept) position."""
@@ -175,7 +174,7 @@ async def _items(scope: OrgScope, ids: Collection[uuid.UUID]) -> _Items:
 
 
 async def _covered(
-    scope: OrgScope, class_id: uuid.UUID, graph: learn._Graph, course: Course | None
+    scope: OrgScope, class_id: uuid.UUID, graph: learn._Graph, course: learn.CourseInfo | None
 ) -> list[uuid.UUID]:
     """Covered chapters of the class's *current* course (rows of another course are ignored)."""
     own = _course_chapters(graph, course)

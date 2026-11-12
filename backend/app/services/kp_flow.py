@@ -115,15 +115,19 @@ def choose_next_item[K: Hashable](
     """The next item for a session; deterministic given the student's history.
 
     `pool` is in this student's shuffled order (the tie-break). Items not yet served in this
-    session come first, preferring ones never answered for this KP, then the least recently
-    answered. Once every item has been served, only param items (new numbers) may come again.
+    session come first: ones never answered, then answered param items (new numbers), then
+    answered fixed items, each least recently answered first. A fixed item's answer was shown
+    when it was answered (and a KP code item's solution), so a retry prefers anything else
+    (spec 015 security review: "retry later with new questions"). Once every item has been
+    served, only param items may come again.
     """
     index = {k: i for i, k in enumerate(pool)}
     floor = datetime.min.replace(tzinfo=UTC)
 
-    def key(k: K) -> tuple[bool, datetime, int]:
+    def key(k: K) -> tuple[bool, bool, datetime, int]:
         when = last_answered.get(k)
-        return (when is not None, when or floor, index[k])
+        seen_answer = when is not None and k not in param_items
+        return (when is not None, seen_answer, when or floor, index[k])
 
     fresh = [k for k in pool if k not in served]
     if fresh:

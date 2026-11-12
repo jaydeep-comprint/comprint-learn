@@ -1,5 +1,6 @@
 """The tutor's answer guard (spec 009), offline: numbers, expressions, MCQ, code, length."""
 
+import re
 from decimal import Decimal
 
 import pytest
@@ -50,6 +51,14 @@ def test_answer_number_leaks(reply: str) -> None:
 
 def test_prompt_numbers_are_exempt() -> None:
     assert before("Look at the 120 m and the 8 s.", numeric("15")) == set()
+
+
+def test_a_stuffed_draft_exempts_nothing() -> None:
+    """Spec 015 review: listing candidate values in the draft can't switch the guard off."""
+    stuffed = " ".join(str(i) for i in range(1, 60))
+    assert "number" in before("Of those, 15 is the one.", numeric("15"), draft=stuffed)
+    long_text = "my working: " + "x" * 80 + " 15"
+    assert "number" in before("You wrote 15.", numeric("15"), draft=long_text)
 
 
 def test_draft_numbers_are_exempt() -> None:
@@ -189,3 +198,13 @@ def test_length_limits() -> None:
     assert before("word " * 121, facts) == {"length"}
     assert before("Do this:\n1. read it\n2. solve it", facts) == {"length"}
     assert before("- first\n- second", facts) == {"length"}
+
+
+@pytest.mark.parametrize(
+    "draft", ["2x^2 - 7x + 3", "2*x**2 + 3*x - 5", "3/4 + 1/2", "v = 5 + 2*3 = 11"]
+)
+def test_an_ordinary_algebra_draft_still_exempts_its_numbers(draft: str) -> None:
+    """Spec 015 review: one attempt keeps its exemption (only stuffed drafts lose it)."""
+    numbers = sorted(set(re.findall(r"\d+", draft)), key=len)
+    value = numbers[-1]
+    assert before(f"You wrote {value} in your working.", numeric(value), draft=draft) == set()

@@ -171,3 +171,35 @@ async def test_legacy_hs256_secret() -> None:
         await v.verify(jwt.encode(_claims(), "wrong-secret-" + "y" * 32, algorithm="HS256"))
     with pytest.raises(Unauthenticated):
         await v.verify(_token())  # ES256 not accepted in legacy mode
+
+
+async def test_cold_start_with_jwks_down_fails_fast_then_retries() -> None:
+    """Spec 015 review: nothing cached and the JWKS down → one fetch per COLD_RETRY_S, not one
+    per request; afterwards the next request tries again."""
+    from app.core.auth import COLD_RETRY_S, AuthUnavailable
+
+    fetch, clock = FakeJwks(JWK_A), Clock()
+    fetch.fail = True
+    v = _verifier(fetch, clock)
+    for _ in range(5):
+        with pytest.raises(AuthUnavailable):
+            await v.verify(_token())
+    assert fetch.calls == 1
+    fetch.fail = False
+    clock.t += COLD_RETRY_S
+    assert (await v.verify(_token())).user_id == USER_ID
+    assert fetch.calls == 2
+
+
+async def test_requests_queued_behind_a_failed_cold_fetch_fail_fast() -> None:
+    """Spec 015 review: concurrent requests during a JWKS outage don't each retry the fetch."""
+    import asyncio
+
+    from app.core.auth import AuthUnavailable
+
+    fetch, clock = FakeJwks(JWK_A), Clock()
+    fetch.fail = True
+    v = _verifier(fetch, clock)
+    results = await asyncio.gather(*(v.verify(_token()) for _ in range(5)), return_exceptions=True)
+    assert all(isinstance(r, AuthUnavailable) for r in results)
+    assert fetch.calls == 1

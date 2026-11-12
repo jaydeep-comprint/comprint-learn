@@ -29,7 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setLoading(false);
     });
-    const { data } = auth.onAuthStateChange((_event, next) => {
+    const { data } = auth.onAuthStateChange((event, next) => {
+      if (event === "SIGNED_OUT" || !next) {
+        // Also a sign-out in another tab, a failed refresh or a revoked session: on a shared lab
+        // computer nothing of the last user may stay in memory (spec 015 review, area 12).
+        queryClient.clear();
+        slipsStore.clear();
+        setObservedUser(null);
+      }
       setSession(next);
       setLoading(false);
     });
@@ -37,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -47,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await getSupabase().auth.signInWithPassword({ email, password });
         if (error) throw error;
         queryClient.clear();
+        slipsStore.clear(); // never the previous teacher's temp passwords
       },
       async signOut() {
         await supabaseSignOut();

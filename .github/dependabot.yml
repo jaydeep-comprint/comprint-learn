@@ -1,0 +1,7 @@
+# Spec 015 security review (area 11): actions are pinned to commit SHAs; Dependabot keeps them current.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

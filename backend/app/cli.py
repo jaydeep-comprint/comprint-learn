@@ -1,5 +1,6 @@
 """Operator CLI: `uv run app org create|list`, `uv run app content check|import|review-pack`,
-`uv run app tutor eval|purge|flagged` and `uv run app privacy run-due|export`."""
+`uv run app tutor eval|purge|flagged`, `uv run app privacy run-due|export` and (test environment
+only) `uv run app loadtest seed`."""
 
 import asyncio
 import json
@@ -43,6 +44,10 @@ teacher_ai_app = typer.Typer(
 app.add_typer(teacher_ai_app, name="teacher-ai")
 privacy_app = typer.Typer(no_args_is_help=True, help="Privacy jobs and data export (spec 014).")
 app.add_typer(privacy_app, name="privacy")
+loadtest_app = typer.Typer(
+    no_args_is_help=True, help="Load test (spec 015): seed the TEST database. Test env only."
+)
+app.add_typer(loadtest_app, name="loadtest")
 
 DEFAULT_CONTENT_ROOT = Path(__file__).resolve().parents[2] / "content"
 RootOpt = Annotated[Path, typer.Option("--root", help="The content/ folder")]
@@ -409,6 +414,43 @@ def tutor_eval(
         raise typer.Exit(1)
 
 
+DEFAULT_SEED_OUT = Path(__file__).resolve().parents[1] / "loadtest" / ".seed.json"
+
+
+@loadtest_app.command("seed")
+def loadtest_seed(
+    out: Annotated[
+        Path, typer.Option("--out", help="Where to write the seeded ids (JSON)")
+    ] = DEFAULT_SEED_OUT,
+) -> None:
+    """Rebuild the test schema, import content/, create school LOADTEST (2 x 40 students)."""
+    from app import loadtest_seed
+
+    try:
+        url = loadtest_seed.check_target(get_settings())
+    except loadtest_seed.SeedRefused as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo("Rebuilding the test schema (downgrade base, upgrade head)...")
+    loadtest_seed.rebuild_schema(url)
+
+    async def go() -> loadtest_seed.SeedResult:
+        try:
+            return await loadtest_seed.run(get_sessionmaker(), DEFAULT_CONTENT_ROOT)
+        finally:
+            await dispose_engine()
+
+    try:
+        result = asyncio.run(go())
+    except loadtest_seed.SeedRefused as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result.as_json(), indent=2))
+    total = sum(len(c["students"]) for c in result.classes)
+    typer.echo(f"Seeded school {loadtest_seed.ORG_CODE}: {total} students -> {out}")
+
+
 def main() -> None:
     app()
 
@@ -580,6 +622,10 @@ def privacy_export(
     old_umask = os.umask(0o077)  # personal data: folders 0700, files 0600
     try:
         path = check_out_dir(out)
+        if path.exists():
+            path.chmod(
+                0o700
+            )  # an existing empty folder keeps its mode otherwise (umask is new-only)
         n = asyncio.run(_export(normalize_code(org), path))
     except CliError as exc:
         typer.echo(str(exc), err=True)

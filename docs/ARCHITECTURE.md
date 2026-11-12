@@ -12,7 +12,7 @@
 | Code editor | CodeMirror 6 | Lighter than Monaco, works on mobile |
 | Python execution | **Pyodide in a Web Worker** (in-browser), pinned (`frontend/src/features/code/protocol.ts`) and loaded from jsDelivr; CodeMirror 6 editor (lazy-loaded) | No server sandbox needed; safe and free to run |
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2 (async), Alembic | Team choice (Python); typed |
-| Database | PostgreSQL (hosted Supabase, Session pooler, port 5432) | Relational data (orgs/classes) + JSONB for content. Test DB = a separate Supabase project (`TEST_DATABASE_URL`), used only by `make test-db` and CI |
+| Database | PostgreSQL (hosted Supabase, Session pooler, port 5432; SSL always, certificate verified against Supabase's CA when `DATABASE_SSL_ROOT_CERT` is set, spec 015) | Relational data (orgs/classes) + JSONB for content. Test DB = a separate Supabase project (`TEST_DATABASE_URL`), used only by `make test-db` and CI |
 | Auth | **Supabase Auth** (same project as the DB). FastAPI verifies its JWTs against the project JWKS (`app/core/auth.py`); our `app_user.id` = the auth user id. Teachers are invited by email; students get teacher-created accounts with a synthetic, never-emailed auth email | Don't build password, reset and invite flows ourselves; one free-tier project for DB + auth |
 | Maths answer checking | SymPy (server side, `app/grading/`): student expressions go through the safe AST walker, never `parse_expr`; `simplify` runs in a time-limited process pool (1 s, numeric fallback) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs 6.3), one module-level `Scheduler` in `app/services/srs.py` (retention 0.9, no learning steps, no fuzzing) | Modern scheduler with fewer reviews than SM-2 |
@@ -21,6 +21,7 @@
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
 | JS tooling | pnpm, eslint, prettier, vitest, Playwright (e2e) | Standard |
 | Backups | Nightly `pg_dump` (custom format) of `public` + auth users, AES256 `gpg`, restore-checked in a scratch Postgres, 14-day GitHub artifacts (`.github/workflows/backup.yml`, spec 015) | Supabase free has no backups; RPO 24 h, RTO 1 h (`docs/runbooks/backup-restore.md`) |
+| Load test | Locust (optional `loadtest` dependency group), `make loadtest`: one lab (80 students + 2 teachers, 10 min) against a local API on the test project, pass criteria in `backend/loadtest/check.py` (spec 015) | Proves a lab works on the free tier before a school tries it; results in `docs/loadtest/` |
 | Hosting | Free tiers: Supabase (DB + Auth), Cloudflare Pages or Vercel (SPA), Render free or Fly.io/Railway (~$5/mo) for the API, GitHub Actions, Sentry free | POC budget ~$50 total (see Cost budget) |
 
 ## Cost budget (POC, ~$50 total)

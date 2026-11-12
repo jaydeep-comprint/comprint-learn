@@ -32,7 +32,7 @@ jobs:
         if: steps.gate.outputs.present != 'true'
         run: echo "skipped - no BACKUP_DATABASE_URL / BACKUP_PASSPHRASE secrets"
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: steps.gate.outputs.present == 'true'
         with:
           persist-credentials: false
@@ -42,6 +42,7 @@ jobs:
         if: steps.gate.outputs.present == 'true'
         env:
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          PGSSLMODE: require  # never fall back to plaintext (review area 9)
         run: |
           # The runner's psql is enough to ask the server its version.
           major=$(psql "$BACKUP_DATABASE_URL" -XAtc "SHOW server_version" | cut -d. -f1)
@@ -89,7 +90,7 @@ jobs:
           RESTORE_DATABASE_URL: postgresql://postgres:scratch@localhost:55432/postgres
         run: make restore-check FILE="$(ls backups/public-*.dump.gpg | tail -1)"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: steps.gate.outputs.present == 'true'
         with:
           name: backup-${{ github.run_id }}

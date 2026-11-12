@@ -53,6 +53,27 @@ def test_ordinary_text_is_not_distress() -> None:
     assert not safety.is_distress("what does displacement mean? this question kills me lol")
 
 
+@pytest.mark.parametrize(
+    "number",
+    [
+        "9876543210",
+        "98765 43210",
+        "98765-43210",
+        "+91 98765 43210",
+        "+919876543210",
+        "0091 9876543210",
+        "09876543210",
+    ],
+)
+def test_scrub_pii_catches_how_students_type_phone_numbers(number: str) -> None:
+    assert safety.scrub_pii(f"call me on {number} ok") == "call me on [removed] ok"
+
+
+def test_scrub_pii_leaves_ordinary_numbers() -> None:
+    for text in ("v = 12345 m/s", "1234567890123", "answer 5 43210", "t = 98765.43210 s"):
+        assert safety.scrub_pii(text) == text
+
+
 def test_scrub_pii() -> None:
     text = "mail me at a.b@school.in or call +91 9876543210 / 9876543210, not 19876543210"
     assert safety.scrub_pii(text) == (
@@ -211,3 +232,8 @@ def test_before_mode_context_hides_answer_explanation_and_derived_values() -> No
         assert secret not in ctx.text, secret
     values = {f.value for f in ctx.facts.numbers}
     assert {Decimal(15), Decimal(60)} <= values  # ... but the guard knows them
+
+
+def test_scrub_pii_ignores_numbers_after_a_decimal_point() -> None:
+    for text in ("x = 0.98765 43210", "t = 1.62500-12500"):
+        assert safety.scrub_pii(text) == text

@@ -89,7 +89,25 @@ CONTENT_TABLES = (
 
 
 @pytest.fixture(scope="session")
-def migrated_test_db() -> str:
+async def _test_db_lock() -> AsyncIterator[None]:
+    """Spec 015: `make test-db` and `make loadtest` share one test project; hold its lock for
+    the whole run, or stop at once with a clear message if the other one is running."""
+    from app.testdb_lock import TestDbBusy, acquire
+
+    url = get_settings().test_database_url
+    assert url
+    try:
+        conn = await acquire(url)
+    except TestDbBusy as exc:
+        pytest.exit(str(exc), returncode=3)
+    try:
+        yield
+    finally:
+        await conn.close()
+
+
+@pytest.fixture(scope="session")
+def migrated_test_db(_test_db_lock: None) -> str:
     """Rebuilds the test project's schema once per run: downgrade to base, then upgrade head."""
     url = get_settings().test_database_url
     assert url

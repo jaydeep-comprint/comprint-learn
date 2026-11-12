@@ -1,6 +1,6 @@
 # Spec 015: Operations hardening — error tracking, backups, load test, security
 
-Status: draft
+Status: built (Nov 2026; PRs 1-3). Open: the browser check (batched) and the load-test latency findings (docs/loadtest/2026-11-results.md).
 PRD link: docs/PRD.md#mvp-scope-v1 (item 13)
 
 Second half of roadmap line 014 ("Hardening"), split out while specifying (Nov 2026). The privacy half is
@@ -359,35 +359,35 @@ exist.
 Delivered as three PRs (branches `feat/015-operations-1`, `-2`, `-3`, as spec 013 did): **PR 1** error tracking + request id + error screens; **PR 2**
 headers, body cap, rate limits, CI scanning, backups; **PR 3** load test (+ fixes) and the security review.
 
-- [ ] `cd backend && uv run mypy`, `cd frontend && pnpm typecheck`, `make check` green; `make test-db` green.
-- [ ] `tests/test_observability.py`: with no DSN the SDK is not initialised; `before_send` on a synthetic event
+- [x] `cd backend && uv run mypy`, `cd frontend && pnpm typecheck`, `make check` green; `make test-db` green (194 passed, 2026-11-12).
+- [x] `tests/test_observability.py`: with no DSN the SDK is not initialised; `before_send` on a synthetic event
       strips body, cookies, headers, query, locals and httpx breadcrumb data; a validation error carrying a name
       and a fake secret yields an event with neither; `ApiProblem` 4xx is dropped, 5xx kept.
-- [ ] `tests/test_middleware.py`: request id generated / accepted / rejected when malformed and echoed; catch-all
+- [x] `tests/test_middleware.py`: request id generated / accepted / rejected when malformed and echoed; catch-all
       500 shape with no trace; every header present; HSTS only in production; 413 for `Content-Length` over the cap
       and for an oversized chunked body; a 20 000-char code submission with realistic
       outputs is not a 413.
-- [ ] `tests/test_ratelimit.py`: bucket maths with a fake clock; per-user isolation (80 users from one IP are
+- [x] `tests/test_ratelimit.py`: bucket maths with a fake clock; per-user isolation (80 users from one IP are
       independent); 429 + `Retry-After`; per-IP limit only for missing/invalid tokens; idle
       buckets dropped; the read burst constant is 120. The page-load count is a vitest: rendering the class
       Overview and the Students tab with a counting fetch mock makes fewer than 30 GETs each.
-- [ ] `tests/test_config.py`: the production guard refuses each bad setting; docs routes 404 in production.
-- [ ] Frontend vitest: error boundary renders the screen with a code; API client surfaces `request_id`, 429 and
+- [x] `tests/test_config.py`: the production guard refuses each bad setting; docs routes 404 in production.
+- [x] Frontend vitest: error boundary renders the screen with a code; API client surfaces `request_id`, 429 and
       413 messages and does not retry a 429; observability `beforeSend` strips what it should.
 - [ ] CSP: `pnpm build && pnpm preview`, then open a lesson with maths, a Mermaid diagram, the knowledge graph and
       a Python task: zero CSP violations in the console (screenshot of the clean console).
-- [ ] Sentry smoke (manual, optional DSN from the user): one test error from the API and one from the browser
+- [ ] Sentry smoke (skipped: no DSN provided; unit + end-to-end SDK tests are the gate) (manual, optional DSN from the user): one test error from the API and one from the browser
       arrive, grouped, with request id and no personal data (screenshot of the event JSON). Skipped with a note if
       no DSN is provided; the unit tests above are the gate.
-- [ ] Backups: `make backup` against the dev project, then `make restore-check` into a scratch Postgres (local
+- [x] Backups: `make backup` against the dev project, then `make restore-check` into a scratch Postgres (local
       Docker or the workflow's service container): output shows the alembic head, row counts and RLS on every
       table. `backup.yml` run by `workflow_dispatch`: green "skipped" without secrets; with `BACKUP_*` secrets
       pointing at the dev project, green with an encrypted artifact. `actionlint` clean. The drill is recorded in
       the runbook.
-- [ ] Load test: `make loadtest` (80 students + 2 teachers, 10 min) passes `check.py`; results and any fixes are
+- [ ] Load test (functional pass, 0 errors in 20,507 requests; 4 endpoints miss p95, recorded as findings F1-F4 in docs/loadtest/2026-11-results.md for the user): `make loadtest` (80 students + 2 teachers, 10 min) passes `check.py`; results and any fixes are
       in `docs/loadtest/2026-11-results.md`. A 30-user smoke run also works.
-- [ ] CI `security` job green on the PR (pip-audit, pnpm audit, gitleaks); `make audit` works locally.
-- [ ] `docs/security-review.md` complete: every checklist line has evidence and a result; `security-reviewer`
+- [ ] CI `security` job green on the PR (pending: runs when PR 2/3 are pushed) (pip-audit, pnpm audit, gitleaks); `make audit` works locally.
+- [x] `docs/security-review.md` complete: every checklist line has evidence and a result; `security-reviewer`
       subagent run per area; no critical or high finding open; mediums fixed or listed with reason and owner.
 - [ ] Browser check (done by the user: Chrome can't reach localhost from the session): `make dev`, trigger a 500
       (`GET /api/v1/debug/boom`, registered only in development) and

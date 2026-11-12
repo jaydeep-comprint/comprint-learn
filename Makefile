@@ -3,7 +3,7 @@ SHELL := /bin/bash
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: install dev dev-api dev-web check check-api check-web content-check content-import review-pack test-db migrate fmt fmt-api fmt-web audit audit-py audit-js audit-secrets backup restore-check
+.PHONY: install dev dev-api dev-web check check-api check-web content-check content-import review-pack test-db migrate fmt fmt-api fmt-web audit audit-py audit-js audit-secrets backup restore-check loadtest
 
 install:
 	cd $(BACKEND) && uv sync --frozen
@@ -65,7 +65,7 @@ audit: audit-py audit-js audit-secrets
 # pipefail: a failed `uv export` must not let pip-audit pass on empty input.
 audit-py:
 	set -o pipefail; cd $(BACKEND) && uv export --frozen --no-dev --no-emit-project --no-hashes --format requirements-txt \
-		| uvx pip-audit --requirement /dev/stdin --no-deps --disable-pip --format json \
+		| uvx pip-audit@2.10.1 --requirement /dev/stdin --no-deps --disable-pip --format json \
 		| python3 ../scripts/pip_audit_filter.py
 
 audit-js:
@@ -75,6 +75,12 @@ audit-js:
 audit-secrets:
 	@command -v gitleaks >/dev/null || { echo "gitleaks not found: brew install gitleaks (CI pins its version)"; exit 1; }
 	gitleaks detect --source . --config .gitleaks.toml --redact --no-banner
+
+# Spec 015: one school lab (80 students + 2 teachers, 10 min) against a local API on the TEST
+# database; seeds it, checks the pass criteria, writes backend/loadtest/out/report.md.
+# Never at the same time as `make test-db` (a lock refuses). Smoke run: ARGS="--users 30 --run-time 2m".
+loadtest:
+	cd $(BACKEND) && uv run --frozen --group loadtest python -m loadtest.run $(ARGS)
 
 # Spec 015: encrypted dump of BACKUP_DATABASE_URL into backups/ (needs BACKUP_PASSPHRASE).
 backup:

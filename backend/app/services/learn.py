@@ -24,9 +24,11 @@ from typing import Any
 
 from sqlalchemy import any_, case, func, literal, select, text, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.dml import ReturningInsert
 
 from app.api.deps import OrgScope
+from app.content import cache as content_cache
 from app.core.errors import ApiProblem, forbidden, not_found
 from app.grading.mcq import ShownOptions
 from app.models import (
@@ -196,13 +198,35 @@ class _Node:
         return (SUBJECT_ORDER[self.subject], self.chapter_position, self.position, self.ref)
 
 
+@dataclass(frozen=True)
+class CourseInfo:
+    """A course as the cached graph holds it: plain values, never a session-bound ORM row (the
+    graph is shared across requests, and a rollback would expire ORM rows; spec 015 review)."""
+
+    id: uuid.UUID
+    slug: str
+    title: str
+    subject: Subject
+    position: int
+
+
+@dataclass(frozen=True)
+class ChapterInfo:
+    id: uuid.UUID
+    course_id: uuid.UUID
+    slug: str
+    title: str
+    grade: int | None
+    position: int
+
+
 @dataclass
 class _Graph:
     nodes: dict[uuid.UUID, _Node]
     prereqs: dict[uuid.UUID, list[uuid.UUID]]
     by_ref: dict[str, uuid.UUID]
-    courses: dict[str, Course]
-    chapters: dict[uuid.UUID, Chapter]
+    courses: dict[str, CourseInfo]
+    chapters: dict[uuid.UUID, ChapterInfo]
 
     def outline(self, course_slug: str) -> list[tuple[uuid.UUID, uuid.UUID]]:
         course = self.courses[course_slug]
@@ -216,15 +240,20 @@ class _Graph:
 
 
 async def _graph(scope: OrgScope) -> _Graph:
-    """All active content concepts and edges: three small queries, whatever the course count."""
-    session = scope.session
+    """All active content concepts and edges (global content: cached per process, spec 015).
+    Read-only: never mutate the result."""
+    return await content_cache.cached(scope.session, "graph", lambda: _load_graph(scope.session))
+
+
+async def _load_graph(session: AsyncSession) -> _Graph:
+    """Four small queries, whatever the course count."""
     courses = {
-        c.slug: c
+        c.slug: CourseInfo(c.id, c.slug, c.title, c.subject, c.position)
         for c in (await session.scalars(select(Course).where(Course.retired_at.is_(None)))).all()
     }
     course_by_id = {c.id: c for c in courses.values()}
     chapters = {
-        ch.id: ch
+        ch.id: ChapterInfo(ch.id, ch.course_id, ch.slug, ch.title, ch.grade, ch.position)
         for ch in (
             await session.scalars(
                 select(Chapter).where(

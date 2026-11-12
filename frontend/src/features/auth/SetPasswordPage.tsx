@@ -10,6 +10,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { NewPasswordForm } from "@/features/auth/NewPasswordForm";
 import { ME_KEY } from "@/features/auth/useMe";
 import { getSupabase } from "@/lib/supabase";
+import { shownEmail } from "@/features/auth/authErrors";
 
 /** Supabase puts `error_code=otp_expired` etc. in the URL hash when a link is invalid. */
 function linkHasError(): boolean {
@@ -44,7 +45,8 @@ export function SetPasswordPage({ mode }: { mode: "invite" | "reset" }) {
   }
 
   return (
-    <AuthLayout title={title} description={session.user.email}>
+    // A student's auth email is synthetic (`…@school.students.invalid`): never shown.
+    <AuthLayout title={title} description={shownEmail(session.user.email)}>
       <NewPasswordForm
         submitLabel="Save password"
         onSubmit={async (password) => {

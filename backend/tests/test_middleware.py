@@ -109,7 +109,13 @@ async def test_production_access_log_uses_route_template(
     async def student(student_id: str) -> dict[str, str]:
         return {"id": student_id}
 
-    app.add_api_route("/api/v1/_t/students/{student_id}", student)
+    # Through an included router, as real routes are (FastAPI 0.143 nests them, so the route's
+    # own `path` is relative to its router).
+    from fastapi import APIRouter
+
+    router = APIRouter()
+    router.add_api_route("/students/{student_id}", student)
+    app.include_router(router, prefix="/api/v1/_t")
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         with caplog.at_level(logging.INFO, logger="app.access"):
             await c.get("/api/v1/_t/students/abc?name=Asha", headers={"X-Request-ID": "r-123456"})
@@ -137,3 +143,21 @@ async def test_no_access_log_in_development(caplog: pytest.LogCaptureFixture) ->
         with caplog.at_level(logging.INFO, logger="app.access"):
             await c.get("/api/v1/zzz")
     assert not [r for r in caplog.records if r.name == "app.access"]
+
+
+def test_route_template_of_real_routes_keeps_the_prefix() -> None:
+    from types import SimpleNamespace
+
+    from app.core.middleware import route_template
+
+    def tmpl(route_path: str, path: str) -> str:
+        return route_template({"route": SimpleNamespace(path=route_path), "path": path})
+
+    assert tmpl("/students/{student_id}", "/api/v1/students/abc") == (
+        "/api/v1/students/{student_id}"
+    )
+    assert tmpl("/health", "/api/v1/health") == "/api/v1/health"
+    assert (
+        tmpl("/courses/{slug}/graph", "/api/v1/courses/m/graph") == "/api/v1/courses/{slug}/graph"
+    )
+    assert route_template({"path": "/x"}) == "(unmatched)"

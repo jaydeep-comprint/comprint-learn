@@ -263,8 +263,9 @@ def sentry_capture(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Capture]:
     monkeypatch.setenv("SENTRY_DSN", "https://public@o0.ingest.de.sentry.io/1")
     get_settings.cache_clear()
     yield transport
+    sentry_sdk.flush(timeout=1)
     sentry_sdk.get_client().close(timeout=0)
-    real_init()  # back to an inactive client
+    real_init(default_integrations=False)  # back to an inactive client
 
 
 async def test_end_to_end_500_event_is_scrubbed(sentry_capture: _Capture) -> None:
@@ -296,3 +297,36 @@ async def test_end_to_end_500_event_is_scrubbed(sentry_capture: _Capture) -> Non
     dumped = json.dumps(event)
     assert NAME not in dumped and SECRET not in dumped
     assert "Asha" not in dumped
+
+
+def _integrity_error() -> Exception:
+    """What SQLAlchemy raises for an asyncpg unique violation: the DETAIL line echoes the row."""
+    from sqlalchemy.exc import IntegrityError
+
+    detail = "Key (org_id, lower(username))=(5f0c, asha.v) already exists."
+    orig = Exception(
+        f'duplicate key value violates unique constraint "uq_app_user_username"\nDETAIL:  {detail}'
+    )
+    try:
+        raise IntegrityError("INSERT INTO app_user ...", None, orig)
+    except IntegrityError as exc:
+        return exc
+
+
+def test_postgres_detail_never_reaches_sentry() -> None:
+    exc = _integrity_error()
+    assert "asha.v" in str(exc)  # the leak this guards against
+    event = before_send(_event(str(exc)), _hint(exc))
+    assert event is not None
+    assert "asha.v" not in json.dumps(event)
+    assert "uq_app_user_username" in event["exception"]["values"][0]["value"]
+
+
+def test_postgres_detail_never_reaches_json_logs() -> None:
+    exc = _integrity_error()
+    record = logging.LogRecord(
+        "app.x", logging.ERROR, __file__, 1, "failed: %s", (str(exc),), (type(exc), exc, None)
+    )
+    line = JsonFormatter().format(record)
+    assert "asha.v" not in line
+    assert "DETAIL: (removed)" in line

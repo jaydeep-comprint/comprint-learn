@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 access_log = logging.getLogger(ACCESS_LOGGER)
 
 REQUEST_ID_HEADER = b"x-request-id"
-_VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9-]{8,64}$")
+_VALID_REQUEST_ID = re.compile(r"[A-Za-z0-9-]{8,64}")
 INTERNAL_MESSAGE = "Something went wrong. Please try again."
 
 
@@ -42,7 +42,7 @@ def _incoming_request_id(scope: Scope) -> str | None:
                 text = value.decode("latin-1")
             except UnicodeDecodeError:  # pragma: no cover - latin-1 decodes any bytes
                 return None
-            return text if _VALID_REQUEST_ID.match(text) else None
+            return text if _VALID_REQUEST_ID.fullmatch(text) else None
     return None
 
 
@@ -52,10 +52,21 @@ def _state(scope: Scope) -> dict[str, Any]:
 
 
 def route_template(scope: Scope) -> str:
-    """The matched route's path template (`/api/v1/students/{student_id}`), else "(unmatched)"."""
+    """The matched route's full path template (`/api/v1/students/{student_id}`), else
+    "(unmatched)". FastAPI 0.143 nests included routers, so `route.path` is relative to its
+    router (`/students/{student_id}`): the prefix is the request path minus as many trailing
+    segments as the template has (no route uses a `{x:path}` parameter)."""
     route = scope.get("route")
-    path = getattr(route, "path", None)
-    return path if isinstance(path, str) else "(unmatched)"
+    template = getattr(route, "path", None)
+    if not isinstance(template, str):
+        return "(unmatched)"
+    path = str(scope.get("path") or "")
+    depth = template.rstrip("/").count("/")
+    segments = path.rstrip("/").split("/")
+    if depth and len(segments) > depth:
+        prefix = "/".join(segments[:-depth])
+        return f"{prefix}{template}"
+    return template
 
 
 class RequestIdMiddleware:
@@ -90,8 +101,10 @@ class RequestIdMiddleware:
         try:
             await self.app(scope, receive, send_with_id)
         finally:
+            state = _state(scope)
+            if state.get("client_disconnected"):
+                status = 499  # nginx's "client closed request": no response was sent
             if self.access_log_enabled:
-                state = _state(scope)
                 access_log.info(
                     "request",
                     extra={
@@ -135,6 +148,7 @@ class CatchAllMiddleware:
             # The client went away or the server is shutting down: not a fault to report.
             raise
         except ClientDisconnect:
+            _state(scope)["client_disconnected"] = True
             log.info("client disconnected before the request body was read")
         except Exception as exc:
             request_id = str(_state(scope).get("request_id") or request_id_var.get())
@@ -146,8 +160,9 @@ class CatchAllMiddleware:
                 log.warning("sentry capture failed")
             log.exception("unhandled error on %s %s", scope.get("method"), route_template(scope))
             if started:
-                # Headers are already out: nothing safe to send; the server closes the connection.
-                return
+                # Headers are already out: nothing safe to send. Re-raise so the server aborts
+                # the connection cleanly (already captured and logged above).
+                raise
             body = internal_error_body(request_id)
             await send(
                 {

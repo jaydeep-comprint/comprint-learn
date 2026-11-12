@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
+import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
@@ -35,6 +36,16 @@ KEPT_HEADERS = frozenset({"user-agent"})
 ACCESS_LOGGER = "app.access"
 # Breadcrumb categories the SDK may attach whose `data` can hold URLs with query strings.
 _HTTP_BREADCRUMBS = frozenset({"httplib", "httpx", "http"})
+
+
+# Postgres error text adds a DETAIL line that echoes row values, e.g. a unique violation's
+# `Key (org_id, lower(username))=(…, asha.v) already exists.` `hide_parameters` doesn't cover it.
+_PG_DETAIL = re.compile(r"(?m)^([ \t]*)DETAIL:.*$")
+
+
+def scrub_text(text: str) -> str:
+    """Remove Postgres DETAIL lines (they can hold names and usernames)."""
+    return _PG_DETAIL.sub(r"\1DETAIL: (removed)", text)
 
 
 # --- Sentry ---------------------------------------------------------------------------------
@@ -114,6 +125,8 @@ def _scrub_breadcrumb(crumb: dict[str, Any]) -> dict[str, Any] | None:
     # Log breadcrumbs carry the formatted message, which may hold ids but must hold nothing more;
     # drop their extra data.
     crumb.pop("data", None)
+    if isinstance(crumb.get("message"), str):
+        crumb["message"] = scrub_text(crumb["message"])
     return crumb
 
 
@@ -161,6 +174,18 @@ def before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] |
     if isinstance(crumbs, dict):
         values = crumbs.get("values") or []
         crumbs["values"] = [c for c in (_scrub_breadcrumb(dict(v)) for v in values) if c]
+
+    for value in (event.get("exception") or {}).get("values") or []:
+        if isinstance(value.get("value"), str):
+            value["value"] = scrub_text(value["value"])
+    logentry = event.get("logentry")
+    if isinstance(logentry, dict):
+        for key in ("message", "formatted"):
+            if isinstance(logentry.get(key), str):
+                logentry[key] = scrub_text(logentry[key])
+        logentry.pop("params", None)
+    if isinstance(event.get("message"), str):
+        event["message"] = scrub_text(event["message"])
 
     if exc is not None:
         summary = _validation_summary(exc)
@@ -212,14 +237,14 @@ class JsonFormatter(logging.Formatter):
             "ts": datetime.fromtimestamp(record.created, UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,
-            "msg": record.getMessage(),
+            "msg": scrub_text(record.getMessage()),
             "request_id": getattr(record, "request_id", request_id_var.get()),
         }
         for field in _ACCESS_FIELDS:
             if hasattr(record, field):
                 data[field] = getattr(record, field)
         if record.exc_info:
-            data["exc"] = self.formatException(record.exc_info)
+            data["exc"] = scrub_text(self.formatException(record.exc_info))
         return json.dumps(data, default=str)
 
 

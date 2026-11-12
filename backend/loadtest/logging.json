@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {"json": {"()": "app.core.observability.JsonFormatter"}},
+  "filters": {"rid": {"()": "app.core.observability.RequestIdFilter"}},
+  "handlers": {
+    "stderr": {"class": "logging.StreamHandler", "formatter": "json", "filters": ["rid"], "stream": "ext://sys.stderr"}
+  },
+  "root": {"level": "WARNING", "handlers": ["stderr"]},
+  "loggers": {
+    "app.access": {"level": "INFO", "handlers": ["stderr"], "propagate": false},
+    "uvicorn.error": {"level": "INFO", "handlers": ["stderr"], "propagate": false},
+    "uvicorn.access": {"level": "WARNING", "handlers": [], "propagate": false},
+    "sqlalchemy.pool": {"level": "WARNING", "handlers": ["stderr"], "propagate": false}
+  }
+}

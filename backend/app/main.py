@@ -76,7 +76,9 @@ def create_app() -> FastAPI:
             # Spec 014: the export's filename, when the SPA is on another origin.
             expose_headers=["Content-Disposition", "X-Request-ID", "Retry-After"],
         )
-    app.add_middleware(RequestIdMiddleware, access_log_enabled=settings.is_production)
+    app.add_middleware(
+        RequestIdMiddleware, access_log_enabled=settings.is_production or settings.access_log
+    )
     app.add_exception_handler(ApiProblem, _api_problem_handler)
     app.include_router(api_router, prefix="/api/v1")
     if settings.environment == "development":

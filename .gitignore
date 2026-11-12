@@ -33,3 +33,5 @@ coverage/
 
 # Spec 015: encrypted database backups and load-test output
 /backups/
+backend/loadtest/.seed.json
+backend/loadtest/out/

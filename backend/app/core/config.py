@@ -98,6 +98,8 @@ class Settings(BaseSettings):
     rate_limit_read_burst: int = 120
     # Proxies in front of the API that append to X-Forwarded-For. 0 = use the socket address.
     trusted_proxy_count: int = 0
+    # The per-request access log line (always on in production; the load test turns it on).
+    access_log: bool = False
 
     @field_validator("database_url")
     @classmethod

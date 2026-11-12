@@ -24,10 +24,12 @@ async def test_minted_tokens_pass_the_real_hs256_verifier() -> None:
     verifier = TokenVerifier(
         fetch_jwks=_no_jwks,
         issuer=f"{SUPABASE}/auth/v1",
-        hs256_secret="per-run-secret-0123456789abcdef",
+        hs256_secret="per-run-secret-0123456789abcdef-0123456789",
     )
     user = uuid.uuid4()
-    token = await verifier.verify(mint(user, "per-run-secret-0123456789abcdef", SUPABASE + "/"))
+    token = await verifier.verify(
+        mint(user, "per-run-secret-0123456789abcdef-0123456789", SUPABASE + "/")
+    )
     assert token.user_id == user
 
 
@@ -35,10 +37,14 @@ async def test_a_token_with_another_secret_is_rejected() -> None:
     from app.core.auth import Unauthenticated
 
     verifier = TokenVerifier(
-        fetch_jwks=_no_jwks, issuer=f"{SUPABASE}/auth/v1", hs256_secret="right"
+        fetch_jwks=_no_jwks,
+        issuer=f"{SUPABASE}/auth/v1",
+        hs256_secret="right-secret-0123456789abcdef-0123456789",
     )
     with pytest.raises(Unauthenticated):
-        await verifier.verify(mint(uuid.uuid4(), "wrong", SUPABASE))
+        await verifier.verify(
+            mint(uuid.uuid4(), "wrong-secret-0123456789abcdef-0123456789", SUPABASE)
+        )
 
 
 # --- pass criteria ------------------------------------------------------------------------------

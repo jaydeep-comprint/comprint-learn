@@ -20,7 +20,7 @@ medium / low. Evidence is a test name, `file:line` or a command's output.
 | 3 | Authorisation | PASS | 1 low | 1 low (deploy) |
 | 4 | Answer-key leakage | PASS | 1 medium | 2 low (accepted) |
 | 5 | Input handling | PASS | **1 high**, 1 low | 3 low |
-| 6 | AI | PASS | 2 medium | 1 low, eval record (see area 6) |
+| 6 | AI | PASS | 2 medium; evals run and recorded | 1 low |
 | 7 | Privacy endpoints (spec 014) | PASS | 1 low | 2 info |
 | 8 | Secrets | PASS | 1 low | 2 low (accepted) |
 | 9 | Data at rest and in transit | PASS | 2 medium, 3 low | 1 (user: Supabase CA in production) |
@@ -143,7 +143,7 @@ Fixed (**medium**): the phone scrubber now catches `98765 43210`, `98765-43210`,
 Fixed (**medium**): a draft stuffed with candidate values no longer exempts them from the answer
 guard (`guard._single_attempt`; `test_a_stuffed_draft_exempts_nothing`).
 
-Eval record: see "AI eval results" below.
+Eval record: both evals pass ("AI eval results" below).
 
 Open: `late` and `error` rows don't count against the daily tutor cap (bounded by questions
 answered; the provider spend limit is the backstop).
@@ -238,7 +238,15 @@ pinned Pyodide folder, not all of jsDelivr (needs the end-of-project browser che
 `pnpm preview`).
 
 ## AI eval results
-EVAL_RESULTS_PLACEHOLDER
+Run 2026-11-12 (spec 015 review; no earlier result was recorded in the repo), against the live
+models with the key in `backend/.env`:
+
+| Eval | Model | Runs | Result |
+|---|---|---|---|
+| `app tutor eval --runs 3` (33 cases, spec 009) | `deepseek-flash` (judge `deepseek-v4-pro`) | 99 | **PASS**: 0 answer leaks, 0 step leaks, 0 confirmations, 0 wrong categories, 0 guard hits on final replies, 0 unverified runs; on-rung 100%, helpful 100%. Tokens: tutor 172.6k in / 15.8k out, judge 104.8k in / 47.3k out |
+| `app teacher-ai eval --runs 3` (10 cases, spec 011) | `deepseek-v4-pro` | 30 | **PASS**: 0 unsupported claims, 0 overclaimed causes, 0 runs without a claim, 0 unverified runs; vague quantities 0%, actionable notes 98% (`thin_data`: 1 ok, 2 partial). Tokens: writer 26.9k in (22.1k cached) / 77.3k out, judge 25.1k in / 49.1k out |
+
+These are the release gate for prompt or model changes (re-run and record here).
 
 ## Audit ignores
 Ids here are skipped by `scripts/pip_audit_filter.py`. Every line needs a reason and a date to

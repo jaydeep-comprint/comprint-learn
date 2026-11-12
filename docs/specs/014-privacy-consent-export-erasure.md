@@ -1,6 +1,6 @@
 # Spec 014: Privacy — tutor consent, data export, erasure, audit log
 
-Status: draft
+Status: implemented (browser check and actionlint pending)
 PRD link: docs/PRD.md#mvp-scope-v1 (item 12) · Constraints → Minors' data
 
 Roadmap line 014 ("Hardening") was split while specifying (Nov 2026): **014 = privacy** (this spec), **015 = operations**
@@ -372,33 +372,33 @@ If the review rejects 1, the fix is a second gate on sign-in; if it rejects 4, e
 ## Verification (end-to-end)
 Delivered as two PRs on `feat/014-privacy`: **PR 1** consent + notice + audit log; **PR 2** export + erasure + jobs.
 
-- [ ] `cd backend && uv run mypy` and `cd frontend && pnpm typecheck` clean; `make check` green.
-- [ ] `tests/test_consent_db.py`: record/withdraw (bulk, no-op repeats, all-or-nothing 422), withdrawal nulls only
+- [x] `cd backend && uv run mypy` and `cd frontend && pnpm typecheck` clean; `make check` green.
+- [x] `tests/test_consent_db.py`: record/withdraw (bulk, no-op repeats, all-or-nothing 422), withdrawal nulls only
       that student's message text and keeps counts, audit events written, concurrent record → one event.
-- [ ] `tests/test_tutor_api_db.py` (extended): hint and chat without consent → 403 and **no model call** (the fake
+- [x] `tests/test_tutor_api_db.py` (extended): hint and chat without consent → 403 and **no model call** (the fake
       client records zero calls) and no rows; thread has `consent: false`; with consent the existing tests pass;
       a withdrawal between Tx 1 and Tx 2 stores no text and charges no hint.
-- [ ] `tests/test_export_db.py`: the export of a seeded student has every section; a second student's rows never
+- [x] `tests/test_export_db.py`: the export of a seeded student has every section; a second student's rows never
       appear; a recursive key/value scan finds no `answer`, hidden test or explanation from `item.answer`; query
       count is fixed (`tests/query_count.py`) for 1 and for 500 attempts; teacher → 403; erased → 404.
-- [ ] `tests/test_erasure_db.py`: request (wrong username 422, ban called before the DB change, 502 leaves no
+- [x] `tests/test_erasure_db.py`: request (wrong username 422, ban called before the DB change, 502 leaves no
       change), cancel, reactivation blocked while pending, `complete_due` before/after the due time, auth 404
       treated as success, auth failure retried and reported, anonymised fields, enrolment/assignment links gone,
       attempts kept, token rejected afterwards, erased student absent from `list_students`, class roster,
       dashboard overview, heatmap, leaderboard and teacher-summary facts; old username reusable.
-- [ ] `tests/test_audit_db.py`: every action in the table writes one event in the same transaction (a rolled-back
+- [x] `tests/test_audit_db.py`: every action in the table writes one event in the same transaction (a rolled-back
       change leaves no event); pagination; filters; no event contains a name, username or email (scan of `meta`).
-- [ ] `tests/test_tenant_isolation_db.py`, `tests/test_route_scoping.py`, `tests/test_rls_db.py`,
+- [x] `tests/test_tenant_isolation_db.py`, `tests/test_route_scoping.py`, `tests/test_rls_db.py`,
       `tests/test_migrations_db.py` extended for the new routes, table and migration; `make test-db` green.
-- [ ] `tests/test_cli.py` (offline, service functions monkeypatched): `app privacy run-due` (counts printed, exit
+- [x] `tests/test_cli.py` (offline, service functions monkeypatched): `app privacy run-due` (counts printed, exit
       code 1 on a failure), `app privacy export` (arguments, refuses a path inside the repo or a non-empty
       directory). The real behaviour is covered by the two `_db` files above.
-- [ ] Frontend vitest: consent bulk bar (select, confirm, optimistic refresh, error), print view (page per
+- [x] Frontend vitest: consent bulk bar (select, confirm, optimistic refresh, error), print view (page per
       student, empty state), tutor lock note, erase dialog (button disabled until the username matches), audit
       page (empty, filter, load more).
 - [ ] `.github/workflows/privacy-jobs.yml` passes `actionlint` and a `workflow_dispatch` run without secrets ends
       green with "skipped: no production secrets".
-- [ ] `security-reviewer` subagent on each PR's diff: no high findings open (export and erasure are the focus).
+- [x] `security-reviewer` subagent on each PR's diff: no high findings open (export and erasure are the focus).
 - [ ] Browser check: `make dev` (after `make migrate`; check `alembic current`). As a teacher: print forms for a
       class (print preview screenshot), record consent for two students, withdraw one. As that student: the lock
       note, then the working tutor once consent is back. As an admin: download a student's JSON, request erasure,

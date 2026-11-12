@@ -12,7 +12,7 @@ from datetime import datetime
 
 from app.api.deps import OrgScope
 from app.core.errors import not_found
-from app.models import AppUser, Course, Enrollment, SchoolClass, UserStatus
+from app.models import AppUser, Enrollment, SchoolClass, UserStatus
 from app.services import frontier, learn
 
 
@@ -33,7 +33,7 @@ class Student:
 class ClassCtx:
     cls: SchoolClass
     graph: learn._Graph
-    course: Course | None
+    course: learn.CourseInfo | None
     concepts: list[uuid.UUID]  # the class course's own concepts, in course order
     students: list[Student]  # in scope (or the one student asked for), by name
     states: dict[uuid.UUID, frontier.Frontier] = field(default_factory=dict)
@@ -60,11 +60,11 @@ class ClassCtx:
             return len(self.concepts)
 
 
-def class_course(graph: learn._Graph, school_class: SchoolClass) -> Course | None:
+def class_course(graph: learn._Graph, school_class: SchoolClass) -> learn.CourseInfo | None:
     return next((c for c in graph.courses.values() if c.subject == school_class.subject), None)
 
 
-def course_concepts(graph: learn._Graph, course: Course | None) -> list[uuid.UUID]:
+def course_concepts(graph: learn._Graph, course: learn.CourseInfo | None) -> list[uuid.UUID]:
     if course is None:
         return []
     own = [n for n in graph.nodes.values() if n.course_id == course.id]

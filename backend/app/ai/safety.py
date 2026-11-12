@@ -33,7 +33,7 @@ _KEYWORDS = re.compile(
 _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 # An Indian mobile number not part of a longer digit run, as students type it: 9876543210,
 # 98765 43210, 98765-43210, +91 98765 43210, 0091..., 09876543210 (spec 015 review).
-_MOBILE = re.compile(r"(?<![\d+])(?:(?:\+|00)91[\s-]?|0)?[6-9]\d{4}[\s-]?\d{5}(?!\d)")
+_MOBILE = re.compile(r"(?<![\d+.])(?:(?:\+|00)91[\s-]?|0)?[6-9]\d{4}[\s-]?\d{5}(?![\d.])")
 REMOVED = "[removed]"
 
 

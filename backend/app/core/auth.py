@@ -139,6 +139,13 @@ class TokenVerifier:
 
     async def _refresh(self, *, forced: bool) -> None:
         async with self._lock:
+            # Requests that queued behind a failed cold fetch fail fast too (spec 015 review).
+            if (
+                not self._keys
+                and self._cold_failed_at is not None
+                and self._clock() - self._cold_failed_at < COLD_RETRY_S
+            ):
+                raise AuthUnavailable
             fresh = self._fetched_at is not None and self._clock() - self._fetched_at < JWKS_TTL_S
             if not forced and fresh:
                 return  # another request refreshed while we waited for the lock

@@ -312,15 +312,20 @@ def length_leak(reply: str, word_limit: int) -> Leak | None:
 # --- entry point ----------------------------------------------------------------------------------
 
 
-DRAFT_MAX_NUMBERS = 3  # "3.2 * 10^5" is three numbers
+# One attempt has few distinct numbers ("2x^2 - 7x + 3": 2, 7, 3) and is short; a list of
+# candidates ("1 2 3 ... 50") isn't. Counted on the raw text: `numbers_in` also yields derived
+# values (fractions give numerator, denominator and value).
+DRAFT_MAX_NUMBERS = 8
 DRAFT_MAX_CHARS = 60
+_RAW_NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
 
 def _single_attempt(draft: str | None) -> str:
     """The draft, when it reads as one answer attempt; else nothing is exempt."""
     if not draft:
         return ""
-    if len(numbers_in(draft)) > DRAFT_MAX_NUMBERS or len(draft.strip()) > DRAFT_MAX_CHARS:
+    distinct = set(_RAW_NUMBER.findall(draft))
+    if len(distinct) > DRAFT_MAX_NUMBERS or len(draft.strip()) > DRAFT_MAX_CHARS:
         return ""
     return draft
 

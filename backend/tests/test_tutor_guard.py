@@ -1,5 +1,6 @@
 """The tutor's answer guard (spec 009), offline: numbers, expressions, MCQ, code, length."""
 
+import re
 from decimal import Decimal
 
 import pytest
@@ -197,3 +198,13 @@ def test_length_limits() -> None:
     assert before("word " * 121, facts) == {"length"}
     assert before("Do this:\n1. read it\n2. solve it", facts) == {"length"}
     assert before("- first\n- second", facts) == {"length"}
+
+
+@pytest.mark.parametrize(
+    "draft", ["2x^2 - 7x + 3", "2*x**2 + 3*x - 5", "3/4 + 1/2", "v = 5 + 2*3 = 11"]
+)
+def test_an_ordinary_algebra_draft_still_exempts_its_numbers(draft: str) -> None:
+    """Spec 015 review: one attempt keeps its exemption (only stuffed drafts lose it)."""
+    numbers = sorted(set(re.findall(r"\d+", draft)), key=len)
+    value = numbers[-1]
+    assert before(f"You wrote {value} in your working.", numeric(value), draft=draft) == set()

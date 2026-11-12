@@ -232,3 +232,8 @@ def test_before_mode_context_hides_answer_explanation_and_derived_values() -> No
         assert secret not in ctx.text, secret
     values = {f.value for f in ctx.facts.numbers}
     assert {Decimal(15), Decimal(60)} <= values  # ... but the guard knows them
+
+
+def test_scrub_pii_ignores_numbers_after_a_decimal_point() -> None:
+    for text in ("x = 0.98765 43210", "t = 1.62500-12500"):
+        assert safety.scrub_pii(text) == text

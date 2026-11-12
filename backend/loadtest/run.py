@@ -242,6 +242,7 @@ async def main(argv: list[str]) -> int:
     secret = secrets.token_urlsafe(32)
     env = child_env(settings, secret)
     api: asyncio.subprocess.Process | None = None
+    locust: asyncio.subprocess.Process | None = None
     try:
         print("loadtest: seeding the test database (schema rebuild + content + LOADTEST school)")
         seed = await asyncio.create_subprocess_exec(
@@ -304,14 +305,23 @@ async def main(argv: list[str]) -> int:
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(locust.wait(), timeout=2)
     finally:
-        # Always stop the API, also on Ctrl-C or a failed step.
-        if api is not None and api.returncode is None:
-            os.killpg(api.pid, signal.SIGTERM)
-            try:
-                await asyncio.wait_for(api.wait(), timeout=20)
-            except TimeoutError:
-                os.killpg(api.pid, signal.SIGKILL)
-        await lock.close()
+        # Always stop Locust and the API, also on Ctrl-C or a failed step; always release the lock.
+        try:
+            if locust is not None and locust.returncode is None:
+                with contextlib.suppress(ProcessLookupError):
+                    locust.terminate()
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(locust.wait(), timeout=20)
+            if api is not None and api.returncode is None:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(api.pid, signal.SIGTERM)
+                try:
+                    await asyncio.wait_for(api.wait(), timeout=20)
+                except TimeoutError:
+                    with contextlib.suppress(ProcessLookupError):
+                        os.killpg(api.pid, signal.SIGKILL)
+        finally:
+            await lock.close()
 
     if locust.returncode not in (0, 1) or not (OUT / "run_stats.csv").exists():
         # 1 = Locust saw failures (judged below); anything else is a crash.

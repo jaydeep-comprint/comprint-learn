@@ -19,6 +19,7 @@ from sqlalchemy import Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import OrgScope
+from app.content import cache as content_cache
 from app.grading import ALL_TYPES, QUICK_TYPES
 from app.models import (
     Chapter,
@@ -202,30 +203,37 @@ def open_remediations(
     )
 
 
-async def active_kps(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> list[KpView]:
-    """Active KPs of these concepts in position order, with whether each has questions (and
-    quick-check questions for reviews)."""
-    if not concept_ids:
-        return []
-    rows = (
+@dataclass(frozen=True)
+class _KpRows:
+    """Every active KP (global content, cached per process): `(id, slug, title, position)` by
+    concept, and the question types of each KP."""
+
+    by_concept: dict[uuid.UUID, list[tuple[uuid.UUID, str, str, int]]]
+    types: dict[uuid.UUID, frozenset[str]]
+    practice: frozenset[uuid.UUID]  # concepts with an active practice item (spec 006)
+
+
+async def _load_kp_rows(scope: OrgScope) -> _KpRows:
+    by_concept: dict[uuid.UUID, list[tuple[uuid.UUID, str, str, int]]] = {}
+    for kp_id, concept_id, slug, title, position in (
         await scope.session.execute(
             select(
                 KnowledgePoint.id,
                 KnowledgePoint.concept_id,
                 KnowledgePoint.slug,
                 KnowledgePoint.title,
-            )
-            .where(KnowledgePoint.concept_id.in_(concept_ids), KnowledgePoint.retired_at.is_(None))
-            .order_by(KnowledgePoint.concept_id, KnowledgePoint.position)
+                KnowledgePoint.position,
+            ).where(KnowledgePoint.retired_at.is_(None))
         )
-    ).all()
-    kp_ids = [r[0] for r in rows]
+    ).all():
+        by_concept.setdefault(concept_id, []).append((kp_id, slug, title, position))
+    for rows in by_concept.values():
+        rows.sort(key=lambda r: r[3])
     types: dict[uuid.UUID, set[str]] = {}
-    for kp_id, item_type in (
+    for item_kp_id, item_type in (
         await scope.session.execute(
             select(Item.kp_id, Item.type)
             .where(
-                Item.kp_id.in_(kp_ids),
                 Item.kind == ItemKind.kp_question,
                 Item.type.in_(ALL_TYPES),
                 Item.retired_at.is_(None),
@@ -233,16 +241,40 @@ async def active_kps(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> lis
             .distinct()
         )
     ).all():
-        if kp_id is not None:
-            types.setdefault(kp_id, set()).add(item_type.value)
+        if item_kp_id is not None:
+            types.setdefault(item_kp_id, set()).add(item_type.value)
+    practice = await scope.session.scalars(
+        select(Item.concept_id)
+        .where(Item.kind == ItemKind.practice, Item.retired_at.is_(None))
+        .distinct()
+    )
+    return _KpRows(
+        by_concept,
+        {k: frozenset(v) for k, v in types.items()},
+        frozenset(c for c in practice.all() if c is not None),
+    )
+
+
+async def _kp_rows(scope: OrgScope) -> _KpRows:
+    return await content_cache.cached(scope.session, "kp_rows", lambda: _load_kp_rows(scope))
+
+
+async def active_kps(scope: OrgScope, concept_ids: Collection[uuid.UUID]) -> list[KpView]:
+    """Active KPs of these concepts in position order (by concept id, as before), with whether
+    each has questions (and quick-check questions for reviews). Fresh objects every call: callers
+    fill in per-student state."""
+    if not concept_ids:
+        return []
+    cached = await _kp_rows(scope)
     out = []
-    for kp_id, concept_id, slug, title in rows:
-        kinds = types.get(kp_id, set())
-        if not kinds:
-            log.warning("KP %s has no questions; treating it as passed", kp_id)
-        out.append(
-            KpView(kp_id, concept_id, slug, title, bool(kinds), quick=bool(kinds & QUICK_TYPES))
-        )
+    for concept_id in sorted(set(concept_ids)):
+        for kp_id, slug, title, _position in cached.by_concept.get(concept_id, []):
+            kinds = cached.types.get(kp_id, frozenset())
+            if not kinds:
+                log.warning("KP %s has no questions; treating it as passed", kp_id)
+            out.append(
+                KpView(kp_id, concept_id, slug, title, bool(kinds), quick=bool(kinds & QUICK_TYPES))
+            )
     return out
 
 
@@ -250,16 +282,7 @@ async def practice_concepts(scope: OrgScope, concept_ids: Collection[uuid.UUID])
     """The concepts among `concept_ids` that have an active practice item (spec 006)."""
     if not concept_ids:
         return set()
-    rows = await scope.session.scalars(
-        select(Item.concept_id)
-        .where(
-            Item.concept_id.in_(concept_ids),
-            Item.kind == ItemKind.practice,
-            Item.retired_at.is_(None),
-        )
-        .distinct()
-    )
-    return set(rows.all())
+    return set(concept_ids) & (await _kp_rows(scope)).practice
 
 
 async def _practice_passed(

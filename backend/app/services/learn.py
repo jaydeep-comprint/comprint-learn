@@ -24,9 +24,11 @@ from typing import Any
 
 from sqlalchemy import any_, case, func, literal, select, text, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.dml import ReturningInsert
 
 from app.api.deps import OrgScope
+from app.content import cache as content_cache
 from app.core.errors import ApiProblem, forbidden, not_found
 from app.grading.mcq import ShownOptions
 from app.models import (
@@ -216,8 +218,13 @@ class _Graph:
 
 
 async def _graph(scope: OrgScope) -> _Graph:
-    """All active content concepts and edges: three small queries, whatever the course count."""
-    session = scope.session
+    """All active content concepts and edges (global content: cached per process, spec 015).
+    Read-only: never mutate the result."""
+    return await content_cache.cached(scope.session, "graph", lambda: _load_graph(scope.session))
+
+
+async def _load_graph(session: AsyncSession) -> _Graph:
+    """Four small queries, whatever the course count."""
     courses = {
         c.slug: c
         for c in (await session.scalars(select(Course).where(Course.retired_at.is_(None)))).all()

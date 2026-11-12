@@ -81,7 +81,7 @@ Run `make restore-check` (or the workflow) monthly and before the pilot. Record 
 
 | Date | Who | Source | Duration | Result |
 |---|---|---|---|---|
-| | | | | |
+| 2026-11-12 | Claude (spec 015 PR 2) | `make backup` of the **dev** project (Postgres 17.11, pg_dump 18.6) → `make restore-check` into a local Homebrew Postgres 17.11 | backup 5 s (224 KB + 3 KB encrypted), restore + checks 3 s | OK: `0013_privacy` = repo head, 37 tables with counts, 1 organization, RLS on every table, auth dump holds `auth.users` + `auth.identities`. Also checked: refuses a non-empty target, refuses a Supabase URL, a wrong passphrase fails. Auth-data load into a new Supabase project: not drilled |
 
 ## 5. Troubleshooting
 - **"could not read the server version"**: the Supabase free project is paused (idle ~1 week).

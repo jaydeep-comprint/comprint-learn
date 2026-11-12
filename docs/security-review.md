@@ -11,6 +11,11 @@ revisit; `pnpm audit` fails only at high and above, so lows are listed under "Kn
 | ID | Reason | Revisit |
 |---|---|---|
 
+## Secret-scan allow-list (`.gitleaksignore`)
+| Fingerprint | Reason | Date |
+|---|---|---|
+| `d27b06d…:backend/.env.example:generic-api-key:33` | False positive: `DEEPSEEK_API_KEY=` was empty and the rule read the next line (`TUTOR_ENABLED=true`, 18 chars) as its value. No key was ever committed; nothing to rotate | 2026-11-12 |
+
 ## Known lows (dependencies)
 | ID | Package | Why it stays | Revisit |
 |---|---|---|---|

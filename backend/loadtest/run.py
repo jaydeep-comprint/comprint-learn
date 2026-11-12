@@ -171,6 +171,11 @@ def server_times(log: Path) -> dict[str, dict[str, float]]:
     return out
 
 
+def _shape(name: str) -> str:
+    """`GET /api/v1/classes/[id]` and `GET /api/v1/classes/{class_id}` -> the same key."""
+    return re.sub(r"\[[^]]*\]|\{[^}]*\}", "*", name.split("?")[0])
+
+
 def report(args: argparse.Namespace, settings: Settings, summary: dict[str, Any]) -> str:
     rows, total = check.read_stats(OUT / "run_stats.csv")
     commit = subprocess.run(
@@ -192,10 +197,9 @@ def report(args: argparse.Namespace, settings: Settings, summary: dict[str, Any]
         "| Endpoint | Requests | p50 | p95 | p99 | Failures | Server p50 / p95 |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
-    server = summary["server_ms"]
+    server = {_shape(k): v for k, v in summary["server_ms"].items()}
     for r in sorted(rows, key=lambda r: -r.p95):
-        key = f"{r.method} /api/v1{r.name.replace('[c]/[k]', '{course}/{concept}')}"
-        s = server.get(key)
+        s = server.get(_shape(f"{r.method} /api/v1{r.name}"))
         st = f"{s['p50']:.0f} / {s['p95']:.0f}" if s else "-"
         lines.append(
             f"| {r.method} {r.name} | {r.requests} | {r.p50:.0f} | {r.p95:.0f} | {r.p99:.0f} | "

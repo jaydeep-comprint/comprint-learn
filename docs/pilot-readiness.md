@@ -42,6 +42,9 @@ Owner: platform owner. Checklist: docs/runbooks/deploy-checklist.md (written in 
 - [ ] A restore drill from a production backup is recorded in docs/runbooks/backup-restore.md.
 - [ ] Spend limits set in the DeepSeek console; tutor and summary caps confirmed.
 - [ ] docs/security-review.md is less than a month old on the day the pilot starts (repeat it otherwise).
+- [ ] API hosted in the database's region (Mumbai) with 2 workers × 6 DB connections and `DATABASE_SSL_ROOT_CERT`
+      set; `make loadtest` rerun against that setup (or the findings in docs/loadtest/2026-11-results.md accepted).
+- [ ] Security review open items owned by the user decided (docs/security-review.md, "Open" in areas 1, 9).
 
 ## 4. School onboarding (per school)
 - [ ] School created (`app org create`), teachers invited, classes and students created.

@@ -6,9 +6,12 @@
 // worker, loading its script, wasm and packages from jsDelivr.
 import type { Plugin } from "vite";
 
+import { PYODIDE_URL } from "../src/features/code/pyodideVersion";
 import { URL_PREFIX } from "./content-assets";
 
-export const PYODIDE_ORIGIN = "https://cdn.jsdelivr.net";
+/** Only the pinned Pyodide folder, not all of jsDelivr (which serves any npm package: with an
+ * HTML injection, a whole-host source would be a CSP bypass). Spec 015 security review. */
+export const PYODIDE_SOURCE = PYODIDE_URL;
 
 export type CspEnv = {
   VITE_API_BASE_URL?: string;
@@ -44,12 +47,12 @@ export function buildCsp(env: CspEnv): string {
     originOf(env.VITE_API_BASE_URL),
     originOf(env.VITE_SUPABASE_URL),
     sentryOrigin(env.VITE_SENTRY_DSN),
-    PYODIDE_ORIGIN,
+    PYODIDE_SOURCE,
   ].filter((v, i, all): v is string => v !== null && all.indexOf(v) === i);
   const directives: [string, string[]][] = [
     ["default-src", ["'self'"]],
     // Pyodide: its script from jsDelivr, and WebAssembly compilation.
-    ["script-src", ["'self'", PYODIDE_ORIGIN, "'wasm-unsafe-eval'"]],
+    ["script-src", ["'self'", PYODIDE_SOURCE, "'wasm-unsafe-eval'"]],
     ["worker-src", ["'self'", "blob:"]],
     // KaTeX, React Flow, Mermaid's SVG <style> and sonner set inline styles.
     ["style-src", ["'self'", "'unsafe-inline'"]],
@@ -72,6 +75,8 @@ export function spaHeaders(env: CspEnv): Record<string, string> {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "X-Frame-Options": "DENY",
+    // The SPA host's own HSTS may be off on a custom domain (spec 015 review, area 9).
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   };
 }
 

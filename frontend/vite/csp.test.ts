@@ -21,7 +21,11 @@ describe("buildCsp (spec 015)", () => {
   it("allows exactly the spec's sources", () => {
     const d = directives(buildCsp(ENV));
     expect(d["default-src"]).toEqual(["'self'"]);
-    expect(d["script-src"]).toEqual(["'self'", "https://cdn.jsdelivr.net", "'wasm-unsafe-eval'"]);
+    expect(d["script-src"]).toEqual([
+      "'self'",
+      "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/",
+      "'wasm-unsafe-eval'",
+    ]);
     expect(d["worker-src"]).toEqual(["'self'", "blob:"]);
     expect(d["style-src"]).toEqual(["'self'", "'unsafe-inline'"]);
     expect(d["img-src"]).toEqual(["'self'", "data:"]);
@@ -31,7 +35,7 @@ describe("buildCsp (spec 015)", () => {
       "https://api.example.org",
       "https://abcd.supabase.co",
       "https://o42.ingest.de.sentry.io",
-      "https://cdn.jsdelivr.net",
+      "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/",
     ]);
     expect(d["frame-src"]).toEqual(["'none'"]);
     expect(d["frame-ancestors"]).toEqual(["'none'"]);
@@ -43,7 +47,7 @@ describe("buildCsp (spec 015)", () => {
 
   it("leaves out unset or same-origin values and never leaks the DSN key", () => {
     const d = directives(buildCsp({ VITE_API_BASE_URL: "" }));
-    expect(d["connect-src"]).toEqual(["'self'", "https://cdn.jsdelivr.net"]);
+    expect(d["connect-src"]).toEqual(["'self'", "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/"]);
     expect(buildCsp(ENV)).not.toContain("public123");
   });
 
@@ -62,5 +66,6 @@ describe("buildHeadersFile", () => {
       "/content-assets/*\n  Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'\n  X-Content-Type-Options: nosniff",
     );
     expect(file).toContain("  X-Frame-Options: DENY");
+    expect(file).toContain("  Strict-Transport-Security: max-age=31536000; includeSubDomains");
   });
 });

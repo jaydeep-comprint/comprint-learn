@@ -1,5 +1,6 @@
 """App settings (env vars, then backend/.env) and database URL normalisation."""
 
+import ssl
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -54,6 +55,19 @@ def normalize_db_url(raw: str) -> tuple[str, dict[str, Any]]:
     return url, connect_args
 
 
+def with_root_cert(connect_args: dict[str, Any], cafile: str | None) -> dict[str, Any]:
+    """With a CA file, SSL connections verify the server certificate and host name against it
+    (Supabase's pooler chains to Supabase's own root CA: Dashboard -> Database -> SSL
+    Configuration). Without one, `ssl="require"` encrypts but doesn't verify (spec 015 review,
+    area 9: set it in production)."""
+    if cafile and connect_args.get("ssl"):
+        return {**connect_args, "ssl": ssl.create_default_context(cafile=cafile)}
+    return connect_args
+
+
+WEAK_SSLMODES = {"disable", "allow", "prefer"}
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
@@ -98,6 +112,8 @@ class Settings(BaseSettings):
     rate_limit_read_burst: int = 120
     # Proxies in front of the API that append to X-Forwarded-For. 0 = use the socket address.
     trusted_proxy_count: int = 0
+    # Spec 015 review: the CA that signs the database server certificate (verified when set).
+    database_ssl_root_cert: str | None = None
     # The per-request access log line (always on in production; the load test turns it on).
     access_log: bool = False
 
@@ -114,6 +130,7 @@ class Settings(BaseSettings):
         "deepseek_api_key",
         "sentry_dsn",
         "git_sha",
+        "database_ssl_root_cert",
         mode="before",
     )
     @classmethod
@@ -128,8 +145,10 @@ class Settings(BaseSettings):
         return v
 
     def db_connection(self) -> tuple[str, dict[str, Any]]:
-        """Normalised (url, connect_args) for `DATABASE_URL`."""
-        return normalize_db_url(self.database_url)
+        """Normalised (url, connect_args) for `DATABASE_URL` (certificate verified when
+        `DATABASE_SSL_ROOT_CERT` is set)."""
+        url, connect_args = normalize_db_url(self.database_url)
+        return url, with_root_cert(connect_args, self.database_ssl_root_cert)
 
     def require_supabase_url(self) -> str:
         """`SUPABASE_URL` without a trailing slash; raises if unset (checked only when used)."""
@@ -165,6 +184,19 @@ class Settings(BaseSettings):
             problems.append("CORS_ORIGINS must not contain '*' in production")
         if not self.app_url.startswith("https://"):
             problems.append("APP_URL must be an https:// URL in production")
+        # Spec 015 review (area 9): no plain http to Supabase (JWKS, service role key) or the
+        # AI provider (API key, chat text), and no database connection without SSL.
+        if self.supabase_url and not self.supabase_url.startswith("https://"):
+            problems.append("SUPABASE_URL must be an https:// URL in production")
+        if not self.tutor_base_url.startswith("https://"):
+            problems.append("TUTOR_BASE_URL must be an https:// URL in production")
+        query = urlsplit(self.database_url).query
+        mode = next((v for k, v in parse_qsl(query) if k == "sslmode"), None)
+        if (
+            mode in WEAK_SSLMODES
+            and (urlsplit(self.database_url).hostname or "") not in _LOCAL_HOSTS
+        ):
+            problems.append(f"DATABASE_URL must not use sslmode={mode} in production")
         return problems
 
     def db_port(self) -> int | None:

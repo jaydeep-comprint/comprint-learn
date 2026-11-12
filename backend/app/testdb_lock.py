@@ -5,9 +5,11 @@ together corrupts both. Each holds a session-level `pg_try_advisory_lock` on a d
 connection for its whole run; whoever comes second stops with `TestDbBusy`.
 """
 
+import os
+
 import asyncpg
 
-from app.core.config import normalize_db_url
+from app.core.config import normalize_db_url, with_root_cert
 
 # An arbitrary constant shared by the test suite and the load-test orchestrator.
 LOCK_KEY = 15_015_015
@@ -23,6 +25,7 @@ class TestDbBusy(RuntimeError):  # noqa: N818 - a state, like `TutorUnavailable`
 
 def asyncpg_dsn(url: str) -> tuple[str, dict[str, object]]:
     sa_url, connect_args = normalize_db_url(url)
+    connect_args = with_root_cert(connect_args, os.environ.get("DATABASE_SSL_ROOT_CERT") or None)
     return sa_url.replace("postgresql+asyncpg://", "postgresql://", 1), connect_args
 
 

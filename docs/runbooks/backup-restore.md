@@ -28,6 +28,9 @@ protects them.** Supabase free projects have no backups of their own.
    - `BACKUP_DATABASE_URL`: the production **Session pooler** URL (port 5432), the same form as
      `DATABASE_URL`.
    - `BACKUP_PASSPHRASE`: the passphrase from step 1.
+   - The connection is always SSL (`PGSSLMODE=require`; a URL with `sslmode=disable|allow|prefer`
+     is refused). To also verify the server certificate, set `DATABASE_SSL_ROOT_CERT` to the
+     Supabase CA file (Dashboard -> Database -> SSL Configuration) when running `make backup`.
 4. Actions → Backup → **Run workflow** on `main` (the `production` environment only allows
    `main`, so a run from a feature branch is rejected rather than "skipped"). Expect green with an artifact. Without the secrets the run is
    green and prints "skipped".
@@ -40,8 +43,9 @@ stop with an install hint if either is missing or too old.
 ## 2. Get a backup
 - From GitHub: Actions → Backup → the run → Artifacts → download `backup-<id>.zip`, unzip.
 - Verify: `shasum -a 256 -c SHA256SUMS`.
-- Decrypt (only when restoring; the plain dump then exists on disk, delete it after):
-  `gpg --decrypt public-<ts>.dump.gpg > public.dump` (asks for the passphrase).
+- Decrypt only when restoring, and prefer piping straight into `pg_restore` (section 3). If a
+  file is needed, keep it private and delete it after:
+  `(umask 077; gpg --decrypt public-<ts>.dump.gpg > public.dump)` (asks for the passphrase).
 
 ## 3. Full restore into a new Supabase project
 Use when the project is lost or a bad migration/import destroyed data. Expected time: 30–60 min.

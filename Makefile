@@ -65,7 +65,7 @@ audit: audit-py audit-js audit-secrets
 # pipefail: a failed `uv export` must not let pip-audit pass on empty input.
 audit-py:
 	set -o pipefail; cd $(BACKEND) && uv export --frozen --no-dev --no-emit-project --no-hashes --format requirements-txt \
-		| uvx pip-audit --requirement /dev/stdin --no-deps --disable-pip --format json \
+		| uvx pip-audit@2.10.1 --requirement /dev/stdin --no-deps --disable-pip --format json \
 		| python3 ../scripts/pip_audit_filter.py
 
 audit-js:

@@ -182,3 +182,43 @@ def test_production_guard_does_not_affect_the_cli(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("APP_URL", "http://not-https.example.org")
     get_settings.cache_clear()
     assert get_settings().production_problems()  # would refuse an API start, but loads fine
+
+
+@pytest.mark.parametrize(
+    ("env", "message"),
+    [
+        ({"SUPABASE_URL": "http://x.supabase.co"}, "SUPABASE_URL must be an https:// URL"),
+        ({"TUTOR_BASE_URL": "http://api.deepseek.com"}, "TUTOR_BASE_URL must be an https:// URL"),
+        (
+            {"DATABASE_URL": f"postgresql://{REMOTE}?sslmode=disable"},
+            "DATABASE_URL must not use sslmode=disable",
+        ),
+        (
+            {"DATABASE_URL": f"postgresql://{REMOTE}?sslmode=prefer"},
+            "DATABASE_URL must not use sslmode=prefer",
+        ),
+    ],
+)
+def test_production_guard_refuses_plain_transport(
+    monkeypatch: pytest.MonkeyPatch, env: dict[str, str], message: str
+) -> None:
+    """Spec 015 review (area 9)."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("APP_URL", "https://app.example.org")
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    get_settings.cache_clear()
+    assert any(message in p for p in get_settings().production_problems())
+
+
+def test_root_cert_makes_the_connection_verify(tmp_path: object) -> None:
+    import ssl
+
+    from app.core.config import with_root_cert
+
+    assert with_root_cert({"ssl": "require"}, None) == {"ssl": "require"}
+    assert with_root_cert({}, "/nope.crt") == {}  # local: no SSL, nothing to verify
+    cafile = ssl.get_default_verify_paths().cafile or ssl.get_default_verify_paths().openssl_cafile
+    ctx = with_root_cert({"ssl": "require"}, cafile)["ssl"]
+    assert isinstance(ctx, ssl.SSLContext)
+    assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname

@@ -271,3 +271,30 @@ async def test_a_maximal_code_submission_is_not_413() -> None:
     assert len(resp.request.content) < MAX_BODY_BYTES
     assert resp.status_code == 200, resp.text
     assert resp.json() == {"chars": 20_000}
+
+
+async def test_422_does_not_echo_the_input() -> None:
+    """Spec 015 review (area 10): passwords and names never come back in a 422 body."""
+    from pydantic import BaseModel, Field
+
+    class Body(BaseModel):
+        new_password: str = Field(min_length=8)
+        names: list[str] = Field(max_length=2)
+
+    get_settings.cache_clear()
+    app = create_app()
+
+    async def submit(body: Body) -> None:
+        return None
+
+    app.add_api_route("/api/v1/_t/validate", submit, methods=["POST"])
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        resp = await c.post(
+            "/api/v1/_t/validate",
+            json={"new_password": "hunter2", "names": ["Asha Verma", "Ravi K", "Gita S"]},
+        )
+    assert resp.status_code == 422
+    assert "hunter2" not in resp.text and "Asha" not in resp.text
+    detail = resp.json()["detail"]
+    assert {e["type"] for e in detail} == {"string_too_short", "too_long"}
+    assert all(set(e) <= {"type", "loc", "msg", "ctx"} for e in detail)

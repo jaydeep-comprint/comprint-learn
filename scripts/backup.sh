@@ -15,6 +15,18 @@ die() { echo "backup: $*" >&2; exit 1; }
 : "${BACKUP_DATABASE_URL:?BACKUP_DATABASE_URL is not set (Session pooler URL)}"
 : "${BACKUP_PASSPHRASE:?BACKUP_PASSPHRASE is not set}"
 
+# Never a plaintext connection (spec 015 review, area 9): libpq's default `prefer` falls back to
+# no SSL if the handshake fails. With the Supabase CA (DATABASE_SSL_ROOT_CERT) the server
+# certificate and host name are verified; without it the connection is still encrypted.
+case "$BACKUP_DATABASE_URL" in
+  *sslmode=disable*|*sslmode=allow*|*sslmode=prefer*) die "BACKUP_DATABASE_URL must not weaken sslmode" ;;
+esac
+if [[ -n "${DATABASE_SSL_ROOT_CERT:-}" ]]; then
+  export PGSSLMODE=verify-full PGSSLROOTCERT="$DATABASE_SSL_ROOT_CERT"
+else
+  export PGSSLMODE="${PGSSLMODE:-require}"
+fi
+
 command -v pg_dump >/dev/null || die "pg_dump not found. macOS: brew install libpq && brew link --force libpq; Ubuntu: apt install postgresql-client-<major> (PGDG)"
 command -v psql >/dev/null || die "psql not found (install it with pg_dump, see above)"
 command -v gpg >/dev/null || die "gpg not found. macOS: brew install gnupg; Ubuntu: apt install gnupg"

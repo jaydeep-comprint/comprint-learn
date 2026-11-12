@@ -3,6 +3,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -47,6 +49,14 @@ async def _api_problem_handler(_request: Request, exc: Exception) -> JSONRespons
     return JSONResponse(body, status_code=exc.status, headers=headers or None)
 
 
+async def _validation_handler(_request: Request, exc: Exception) -> JSONResponse:
+    """FastAPI's 422 shape without `input`: it echoed passwords and pasted lists of children's
+    names back in the body (spec 015 security review, area 10)."""
+    assert isinstance(exc, RequestValidationError)
+    detail = [{k: v for k, v in err.items() if k not in ("input", "url")} for err in exc.errors()]
+    return JSONResponse({"detail": jsonable_encoder(detail)}, status_code=422)
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     problems = settings.production_problems()
@@ -70,7 +80,8 @@ def create_app() -> FastAPI:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins,
-            allow_credentials=True,
+            # Bearer tokens, no cookies: credentialed CORS isn't needed (review area 10).
+            allow_credentials=False,
             allow_methods=["*"],
             allow_headers=["*"],
             # Spec 014: the export's filename, when the SPA is on another origin.
@@ -80,6 +91,7 @@ def create_app() -> FastAPI:
         RequestIdMiddleware, access_log_enabled=settings.is_production or settings.access_log
     )
     app.add_exception_handler(ApiProblem, _api_problem_handler)
+    app.add_exception_handler(RequestValidationError, _validation_handler)
     app.include_router(api_router, prefix="/api/v1")
     if settings.environment == "development":
         from app.api.v1 import debug

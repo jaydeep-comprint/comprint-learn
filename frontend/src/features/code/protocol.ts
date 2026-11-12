@@ -1,10 +1,7 @@
 /** Messages between the page and the Pyodide worker (spec 006). */
 import type { TestOutput } from "@/lib/types";
 
-/** Pinned, never "latest": the one place the Pyodide version lives. Served by jsDelivr and then
- * browser-cached. */
-export const PYODIDE_VERSION = "314.0.7";
-export const PYODIDE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
+export { PYODIDE_URL, PYODIDE_VERSION } from "./pyodideVersion";
 
 export type LoadStage = "script" | "runtime" | "setup";
 

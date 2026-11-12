@@ -359,7 +359,7 @@ exist.
 Delivered as three PRs (branches `feat/015-operations-1`, `-2`, `-3`, as spec 013 did): **PR 1** error tracking + request id + error screens; **PR 2**
 headers, body cap, rate limits, CI scanning, backups; **PR 3** load test (+ fixes) and the security review.
 
-- [ ] `cd backend && uv run mypy`, `cd frontend && pnpm typecheck`, `make check` green; `make test-db` green.
+- [x] `cd backend && uv run mypy`, `cd frontend && pnpm typecheck`, `make check` green; `make test-db` green (194 passed, 2026-11-12).
 - [x] `tests/test_observability.py`: with no DSN the SDK is not initialised; `before_send` on a synthetic event
       strips body, cookies, headers, query, locals and httpx breadcrumb data; a validation error carrying a name
       and a fake secret yields an event with neither; `ApiProblem` 4xx is dropped, 5xx kept.

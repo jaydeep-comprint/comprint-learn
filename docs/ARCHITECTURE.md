@@ -20,6 +20,7 @@
 | Error tracking | Sentry SaaS free, EU region (`sentry-sdk[fastapi]`, `@sentry/react`); off without a DSN. Scrubbed in `app/core/observability.py` and `src/lib/observability.ts` (spec 015) | Stack traces + request ids without running our own stack; runbook `docs/runbooks/errors.md` |
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
 | JS tooling | pnpm, eslint, prettier, vitest, Playwright (e2e) | Standard |
+| Backups | Nightly `pg_dump` (custom format) of `public` + auth users, AES256 `gpg`, restore-checked in a scratch Postgres, 14-day GitHub artifacts (`.github/workflows/backup.yml`, spec 015) | Supabase free has no backups; RPO 24 h, RTO 1 h (`docs/runbooks/backup-restore.md`) |
 | Hosting | Free tiers: Supabase (DB + Auth), Cloudflare Pages or Vercel (SPA), Render free or Fly.io/Railway (~$5/mo) for the API, GitHub Actions, Sentry free | POC budget ~$50 total (see Cost budget) |
 
 ## Cost budget (POC, ~$50 total)
@@ -234,6 +235,17 @@ docs/         PRD, architecture, roadmap, specs, plans
   templates and stack traces only: `before_send` strips bodies, cookies, headers (except user-agent), query strings,
   frame variables and validation inputs; `ApiProblem` < 500 is never reported, ≥ 500 is one issue per code. Production
   logs are one JSON line per record. Provider errors in `app/ai/` are raised `from None` (no chained httpx exception).
+- **Rate limits, headers, body cap** (spec 015, `app/core/ratelimit.py`, `app/core/middleware.py`): in-process token
+  buckets **per signed-in user** (never per IP: a lab shares one), checked in the auth dependency right after the token
+  verifies and before the `app_user` lookup. Writes 120/min (burst 40), reads 600/min (burst 120); export 5/h per
+  admin, bulk student creation 10/h, consent bulk 30/min on top. Missing or invalid tokens: 300/min per IP
+  (`TRUSTED_PROXY_COUNT` picks the address from `X-Forwarded-For`). Over the limit → 429 `rate_limited` +
+  `Retry-After`; per process, so N workers allow up to N times. A request whose body fails validation (422) still
+  takes a token (FastAPI resolves dependencies first). Every API response gets nosniff, `no-referrer`, `DENY`, CORP
+  `same-site`, `no-store` on `/api/*`, a deny-all CSP on JSON and HSTS in production; bodies over 256 KB → 413
+  `payload_too_large`. The SPA's CSP is generated from one source (`frontend/vite/csp.ts`) into `dist/_headers` and
+  `vite preview`. In production the API refuses to start with `*` in `CORS_ORIGINS` or a non-https `APP_URL`, and
+  serves no `/docs`.
 - **Sessions**: Supabase revokes refresh tokens on a password change, but issued access tokens live until expiry, so the
   API also rejects tokens whose `iat` is before `app_user.sessions_valid_after` (set on admin reset, in-app password change and
   deactivation; a staff email-recovery reset goes straight to Supabase and doesn't set it).

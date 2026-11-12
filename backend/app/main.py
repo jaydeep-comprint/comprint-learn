@@ -9,7 +9,12 @@ from fastapi.responses import JSONResponse
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import ApiProblem
-from app.core.middleware import CatchAllMiddleware, RequestIdMiddleware
+from app.core.middleware import (
+    BodyCapMiddleware,
+    CatchAllMiddleware,
+    RequestIdMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.core.observability import capture_exception, configure_logging, init_sentry
 from app.db.session import dispose_engine
 
@@ -44,6 +49,9 @@ async def _api_problem_handler(_request: Request, exc: Exception) -> JSONRespons
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    problems = settings.production_problems()
+    if problems:
+        raise RuntimeError("Refusing to start: " + "; ".join(problems))
     configure_logging(settings)
     init_sentry(settings)
     docs = not settings.is_production
@@ -56,6 +64,8 @@ def create_app() -> FastAPI:
     )
     # Starlette wraps in reverse: the last added is the outermost.
     app.add_middleware(CatchAllMiddleware)
+    app.add_middleware(BodyCapMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware, hsts=settings.is_production)
     if settings.cors_origins:
         app.add_middleware(
             CORSMiddleware,

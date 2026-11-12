@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.config import get_settings
 from app.core.errors import ApiProblem
-from app.core.middleware import INTERNAL_MESSAGE
+from app.core.middleware import INTERNAL_MESSAGE, MAX_BODY_BYTES
 from app.core.observability import JsonFormatter, RequestIdFilter
 from app.main import create_app
 
@@ -161,3 +161,113 @@ def test_route_template_of_real_routes_keeps_the_prefix() -> None:
         tmpl("/courses/{slug}/graph", "/api/v1/courses/m/graph") == "/api/v1/courses/{slug}/graph"
     )
     assert route_template({"path": "/x"}) == "(unmatched)"
+
+
+# --- PR 2: security headers and the body cap ------------------------------------------------
+
+BASE_HEADERS = {
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
+    "cross-origin-resource-policy": "same-site",
+}
+JSON_CSP = "default-src 'none'; frame-ancestors 'none'"
+
+
+@pytest.mark.parametrize("path", ["/api/v1/_t/ok", "/api/v1/_t/boom", "/api/v1/nope"])
+async def test_security_headers_on_every_response(client: AsyncClient, path: str) -> None:
+    resp = await client.get(path)
+    for name, value in BASE_HEADERS.items():
+        assert resp.headers[name] == value, name
+    assert resp.headers["cache-control"] == "no-store"
+    assert resp.headers["content-security-policy"] == JSON_CSP
+    assert "strict-transport-security" not in resp.headers
+
+
+async def test_route_cache_control_is_kept_and_non_json_gets_no_csp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi.responses import PlainTextResponse
+
+    get_settings.cache_clear()
+    app = create_app()
+
+    async def text() -> PlainTextResponse:
+        return PlainTextResponse("hi", headers={"Cache-Control": "private, max-age=60"})
+
+    app.add_api_route("/api/v1/_t/text", text)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.get("/api/v1/_t/text")
+    assert resp.headers["cache-control"] == "private, max-age=60"
+    assert "content-security-policy" not in resp.headers
+    assert resp.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_hsts_only_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("APP_URL", "https://app.example.org")
+    monkeypatch.setattr("app.main.configure_logging", lambda _s: None)
+    get_settings.cache_clear()
+    async with AsyncClient(transport=ASGITransport(app=_app()), base_url="http://test") as c:
+        resp = await c.get("/api/v1/_t/ok")
+    assert resp.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+
+
+def _echo_app() -> FastAPI:
+    from pydantic import BaseModel
+
+    class Code(BaseModel):
+        code: str
+        outputs: list[dict[str, str]]
+
+    app = _app()
+
+    async def submit(body: Code) -> dict[str, int]:
+        return {"chars": len(body.code)}
+
+    app.add_api_route("/api/v1/_t/submit", submit, methods=["POST"])
+    return app
+
+
+async def test_413_from_content_length() -> None:
+    get_settings.cache_clear()
+    async with AsyncClient(transport=ASGITransport(app=_echo_app()), base_url="http://t") as c:
+        resp = await c.post(
+            "/api/v1/_t/submit",
+            content=b"x" * (MAX_BODY_BYTES + 1),
+            headers={"Content-Type": "application/json"},
+        )
+    assert resp.status_code == 413
+    assert resp.json() == {"code": "payload_too_large", "message": "That's too large to send."}
+    assert resp.headers["x-request-id"]
+    assert resp.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_413_for_an_oversized_chunked_body() -> None:
+    get_settings.cache_clear()
+
+    async def chunks() -> AsyncIterator[bytes]:
+        yield b'{"code": "'
+        for _ in range(5):
+            yield b"x" * 64 * 1024
+        yield b'", "outputs": []}'
+
+    async with AsyncClient(transport=ASGITransport(app=_echo_app()), base_url="http://t") as c:
+        resp = await c.post(
+            "/api/v1/_t/submit", content=chunks(), headers={"Content-Type": "application/json"}
+        )
+    assert "content-length" not in {k.lower() for k in resp.request.headers}
+    assert resp.status_code == 413
+    assert resp.json()["code"] == "payload_too_large"
+
+
+async def test_a_maximal_code_submission_is_not_413() -> None:
+    """20 000 chars of code (the grader's cap) plus realistic outputs for 30 tests."""
+    get_settings.cache_clear()
+    code = ("    x = some_function(a, b) + 1  # comment\n" * 500)[:20_000]
+    outputs = [{"value": json.dumps([[i, i * 2.5, "some text"]] * 20)} for i in range(30)]
+    async with AsyncClient(transport=ASGITransport(app=_echo_app()), base_url="http://t") as c:
+        resp = await c.post("/api/v1/_t/submit", json={"code": code, "outputs": outputs})
+    assert len(resp.request.content) < MAX_BODY_BYTES
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"chars": 20_000}

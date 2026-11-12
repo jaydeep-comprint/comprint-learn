@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
 from app.api.deps import StaffScope
+from app.core.ratelimit import limit
 from app.schemas.tenancy import (
     ClassIn,
     ClassOut,
@@ -71,6 +72,7 @@ async def list_class_students(class_id: uuid.UUID, scope: StaffScope) -> list[Cl
     "/{class_id}/students",
     response_model=list[CreatedStudentOut],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(limit("bulk_students"))],
 )
 async def create_students(
     class_id: uuid.UUID, body: CreateStudentsIn, scope: StaffScope, admin: AdminApi

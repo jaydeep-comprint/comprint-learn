@@ -138,3 +138,47 @@ async def test_docs_routes_off_in_production(monkeypatch: pytest.MonkeyPatch, pa
 
     assert await status("development") == 200
     assert await status("production") == 404
+
+
+@pytest.mark.parametrize(
+    ("env", "message"),
+    [
+        ({"CORS_ORIGINS": "https://a.example.org,*"}, "CORS_ORIGINS must not contain '*'"),
+        ({"APP_URL": "http://app.example.org"}, "APP_URL must be an https:// URL"),
+    ],
+)
+def test_production_guard_refuses_bad_settings(
+    monkeypatch: pytest.MonkeyPatch, env: dict[str, str], message: str
+) -> None:
+    from app.main import create_app
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("APP_URL", "https://app.example.org")
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr("app.main.configure_logging", lambda _s: None)
+    get_settings.cache_clear()
+    with pytest.raises(RuntimeError, match=re.escape(message)):
+        create_app()
+
+
+def test_production_guard_accepts_same_origin_and_legacy_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.main import create_app
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("APP_URL", "https://app.example.org")
+    monkeypatch.setenv("CORS_ORIGINS", "")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "legacy-hs256-secret")
+    monkeypatch.setattr("app.main.configure_logging", lambda _s: None)
+    get_settings.cache_clear()
+    create_app()
+
+
+def test_production_guard_does_not_affect_the_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The guard lives in create_app only: CLI commands still load settings."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("APP_URL", "http://not-https.example.org")
+    get_settings.cache_clear()
+    assert get_settings().production_problems()  # would refuse an API start, but loads fine

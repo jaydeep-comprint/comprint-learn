@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.deps import AdminScope, StaffScope
 from app.core.errors import forbidden
+from app.core.ratelimit import limit
 from app.models import AuditAction
 from app.schemas.privacy import ConsentIn, EraseIn
 from app.schemas.tenancy import StudentOut, StudentPatch, TempPasswordOut
@@ -27,7 +28,9 @@ async def list_students(
     return await tenancy.list_students(scope, q, class_id)
 
 
-@router.post("/consent", response_model=list[StudentOut])
+@router.post(
+    "/consent", response_model=list[StudentOut], dependencies=[Depends(limit("consent_bulk"))]
+)
 async def set_consent(body: ConsentIn, scope: StaffScope) -> list[StudentOut]:
     """Spec 014: record or withdraw AI-tutor consent for 1-200 students (any teacher)."""
     return await consent.apply(scope, body.student_ids, body.action)
@@ -54,7 +57,7 @@ async def reset_password(
 # --- spec 014: right of access and erasure (admins) ---------------------------------------------
 
 
-@router.get("/{student_id}/export")
+@router.get("/{student_id}/export", dependencies=[Depends(limit("export"))])
 async def export_student(student_id: uuid.UUID, scope: AdminScope) -> JSONResponse:
     """Everything stored about the student, as a JSON attachment. The audit event commits before
     the body is returned: no audit row, no download."""

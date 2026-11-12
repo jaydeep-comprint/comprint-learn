@@ -1,7 +1,7 @@
 """Pure ASGI middleware (spec 015), not `BaseHTTPMiddleware`, so streaming and cancellation work.
 
 Order, outermost first (see `app.main.create_app`):
-request id → CORS → catch-all → app.
+request id → CORS → security headers → body cap → catch-all → app.
 
 - `RequestIdMiddleware`: every request gets an id (a well-formed incoming `X-Request-ID`, else a
   new uuid4 hex), returned as `X-Request-ID`, kept in a contextvar for logs and Sentry, and in
@@ -9,6 +9,10 @@ request id → CORS → catch-all → app.
 - `CatchAllMiddleware`: an unhandled exception becomes `500 {"code": "internal", ...}` with the
   request id, never a stack trace; reported to Sentry and logged. It sits inside CORS, so the 500
   still carries the CORS headers (an `add_exception_handler(Exception)` would run outside them).
+- `SecurityHeadersMiddleware`: nosniff, no-referrer, DENY framing, CORP, `no-store` on `/api/*`, a
+  deny-all CSP on JSON responses and HSTS in production.
+- `BodyCapMiddleware`: bodies over 256 KB → 413 `payload_too_large`, from `Content-Length` and
+  while reading chunked bodies.
 """
 
 from __future__ import annotations
@@ -146,6 +150,8 @@ class CatchAllMiddleware:
 
         try:
             await self.app(scope, receive, tracking_send)
+        except BodyTooLarge:
+            raise  # `BodyCapMiddleware` (outside) answers 413
         except asyncio.CancelledError:
             # The client went away or the server is shutting down: not a fault to report.
             _state(scope)["client_disconnected"] = True
@@ -179,3 +185,118 @@ class CatchAllMiddleware:
                 }
             )
             await send({"type": "http.response.body", "body": body})
+
+
+# --- security headers ------------------------------------------------------------------------
+
+_BASE_HEADERS: list[tuple[bytes, bytes]] = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"referrer-policy", b"no-referrer"),
+    (b"x-frame-options", b"DENY"),
+    (b"cross-origin-resource-policy", b"same-site"),
+]
+_JSON_CSP = (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'")
+_HSTS = (b"strict-transport-security", b"max-age=31536000; includeSubDomains")
+_NO_STORE = (b"cache-control", b"no-store")
+
+
+class SecurityHeadersMiddleware:
+    def __init__(self, app: ASGIApp, *, hsts: bool = False) -> None:
+        self.app = app
+        self.hsts = hsts
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        is_api = str(scope.get("path", "")).startswith("/api/")
+
+        async def send_with_headers(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                present = {k.lower() for k, _ in headers}
+                extra = [h for h in _BASE_HEADERS if h[0] not in present]
+                if is_api and b"cache-control" not in present:
+                    extra.append(_NO_STORE)
+                content_type = next((v for k, v in headers if k.lower() == b"content-type"), b"")
+                if content_type.startswith(b"application/json") and _JSON_CSP[0] not in present:
+                    extra.append(_JSON_CSP)
+                if self.hsts:
+                    extra.append(_HSTS)
+                message = {**message, "headers": headers + extra}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+# --- body cap --------------------------------------------------------------------------------
+
+MAX_BODY_BYTES = 256 * 1024
+TOO_LARGE_BODY = json.dumps(
+    {"code": "payload_too_large", "message": "That's too large to send."}
+).encode()
+
+
+class BodyTooLarge(BaseException):  # a signal, caught by `BodyCapMiddleware`
+    """A `BaseException`: FastAPI turns any `Exception` raised while reading the body into a
+    400 "error parsing the body", which would hide the 413."""
+
+
+class BodyCapMiddleware:
+    """The largest legitimate body is a code submission (≤ 20 000 chars + test outputs)."""
+
+    def __init__(self, app: ASGIApp, *, max_bytes: int = MAX_BODY_BYTES) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def _reject(self, send: Send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 413,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(TOO_LARGE_BODY)).encode()),
+                    (b"connection", b"close"),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": TOO_LARGE_BODY})
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        for name, value in scope.get("headers") or []:
+            if name == b"content-length":
+                try:
+                    declared = int(value)
+                except ValueError:
+                    declared = -1
+                if declared > self.max_bytes:
+                    await self._reject(send)
+                    return
+        received = 0
+        started = False
+
+        async def capped_receive() -> Message:
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:
+                    raise BodyTooLarge
+            return message
+
+        async def tracking_send(message: Message) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, capped_receive, tracking_send)
+        except BodyTooLarge:
+            if started:  # pragma: no cover - a body is read before any response
+                raise
+            await self._reject(send)

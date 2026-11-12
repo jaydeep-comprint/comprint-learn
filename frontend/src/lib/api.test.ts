@@ -136,3 +136,27 @@ describe("request ids and error messages (spec 015)", () => {
     expect(retryUnlessClientError(2, new ApiError(503, "/x"))).toBe(false);
   });
 });
+
+describe("429 (spec 015)", () => {
+  beforeEach(() => {
+    vi.spyOn(redirect, "go").mockImplementation(() => {});
+    supabase.signOut.mockClear();
+  });
+
+  it("with a session: an error with the rate-limit text, still signed in", async () => {
+    vi.stubGlobal("fetch", respond(429, { code: "rate_limited", message: "x" }));
+    const error = (await apiFetch("/api/v1/x").catch((e: unknown) => e)) as ApiError;
+    expect(error.status).toBe(429);
+    expect(errorMessage(error)).toBe("Too many requests. Wait a moment and try again.");
+    expect(supabase.signOut).not.toHaveBeenCalled();
+    expect(redirect.go).not.toHaveBeenCalled();
+  });
+
+  it("without a session: treated as signed out", async () => {
+    supabase.getAccessToken.mockResolvedValueOnce(null);
+    vi.stubGlobal("fetch", respond(429, { code: "rate_limited", message: "x" }));
+    await apiFetch("/api/v1/x").catch(() => {});
+    expect(supabase.signOut).toHaveBeenCalled();
+    expect(redirect.go).toHaveBeenCalledWith("/login");
+  });
+});

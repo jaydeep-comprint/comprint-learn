@@ -1,0 +1,15 @@
+# Spec 015: gitleaks configuration. Default rules, plus allow-listed TEST FIXTURE paths only:
+# never disable a rule. A real secret found in history: rotate it first, then allow-list that
+# commit here with a line in docs/security-review.md (id, reason, date).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures with fake keys and tokens"
+paths = [
+  '''^backend/tests/''',
+  '''^frontend/src/test/''',
+  '''^frontend/src/.*\.test\.tsx?$''',
+  '''^frontend/vite/.*\.test\.ts$''',
+  '''(^|/)\.env\.example$''',
+]

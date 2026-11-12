@@ -30,3 +30,6 @@ coverage/
 
 # Content review packs (spec 013): contain every answer and hidden test
 /review-packs/
+
+# Spec 015: encrypted database backups and load-test output
+/backups/

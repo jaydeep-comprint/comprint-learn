@@ -53,7 +53,7 @@ class DeepSeekTeacherClient:
         try:
             c = await complete_json(self.chat, request)
         except TutorUnavailable as exc:
-            raise TeacherAIUnavailable(str(exc)) from exc
+            raise TeacherAIUnavailable(str(exc)) from None
         return TeacherCall(
             output=parse(c.text) if c.stop_reason == "stop" else None,
             text=c.text,

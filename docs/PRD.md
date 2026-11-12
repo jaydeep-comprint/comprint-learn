@@ -81,6 +81,9 @@ Build order and spec numbers: docs/ROADMAP.md.
   verifiable parental consent when the school keeps the signed form; (3) pseudonymised class statistics for teacher
   summaries need no parental consent; (4) anonymised learning rows (including submitted answers and code) are no longer
   personal data.
+  Error tracking (spec 015) is a third data flow: Sentry (EU region) receives stack traces, request ids and the ids
+  `user.id`, `org_id` and role only (no names, answers, code, chat text, bodies, cookies or IP addresses); the review
+  must cover it too.
 - Every school's data is isolated from every other school (multi-tenant).
 - AI cost must stay low per student per month: use a small model by default, rate-limit, and cache.
 - **Budget: ~$50 total for the POC/MVP** (hosting + AI API). Use free tiers everywhere, set a hard spend limit in the

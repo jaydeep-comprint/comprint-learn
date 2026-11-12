@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     teacher_ai_enabled: bool = True
     teacher_ai_model: str = "deepseek-v4-pro"
     teacher_ai_judge_model: str = "deepseek-v4-pro"  # eval only
+    # Spec 015: error tracking. Unset = Sentry is never initialised (always in tests).
+    sentry_dsn: SecretStr | None = None
+    git_sha: str | None = None  # Sentry `release`, set by the deploy
 
     @field_validator("database_url")
     @classmethod
@@ -96,7 +99,12 @@ class Settings(BaseSettings):
         return v
 
     @field_validator(
-        "supabase_service_role_key", "supabase_jwt_secret", "deepseek_api_key", mode="before"
+        "supabase_service_role_key",
+        "supabase_jwt_secret",
+        "deepseek_api_key",
+        "sentry_dsn",
+        "git_sha",
+        mode="before",
     )
     @classmethod
     def _empty_secret_is_unset(cls, v: object) -> object:
@@ -132,6 +140,10 @@ class Settings(BaseSettings):
     def teacher_ai_available(self) -> bool:
         """Independent of `tutor_enabled`: only the shared key is common."""
         return self.teacher_ai_enabled and self.deepseek_api_key is not None
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
 
     def db_port(self) -> int | None:
         try:

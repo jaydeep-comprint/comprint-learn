@@ -520,8 +520,10 @@ async def test_an_unexpected_error_closes_the_pending_row(db_app: DbApp) -> None
     s = w.physics_student
     q = await kp1_question(db_app, s)
     db_app.tutor.queue(RuntimeError("bug"))
-    with pytest.raises(RuntimeError):
-        await call(db_app, s, "POST", tutor_url(q, "/hint"))
+    # Spec 015: an unhandled error is the catch-all's 500, never a stack trace.
+    code, body = await call(db_app, s, "POST", tutor_url(q, "/hint"))
+    assert code == 500
+    assert body["code"] == "internal" and body["request_id"]
     [row] = await rows(db_app, s)
     assert row.status == TutorStatus.error
     db_app.tutor.queue(("ok", "Look at the worked example."))

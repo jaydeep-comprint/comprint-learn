@@ -1,5 +1,6 @@
 import type { RouteObject } from "react-router";
 
+import { RouteError } from "@/components/errors/RouteError";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
 import { RequireAuth, RequireRole } from "@/features/auth/guards";
@@ -13,7 +14,7 @@ import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { HomePage } from "@/pages/HomePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
-export const routes: RouteObject[] = [
+const appRoutes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
   { path: "/accept-invite", element: <SetPasswordPage mode="invite" /> },
   { path: "/reset-password", element: <SetPasswordPage mode="reset" /> },
@@ -172,3 +173,6 @@ export const routes: RouteObject[] = [
     ],
   },
 ];
+
+/** Spec 015: one pathless root so every route shares the error screen. */
+export const routes: RouteObject[] = [{ errorElement: <RouteError />, children: appRoutes }];

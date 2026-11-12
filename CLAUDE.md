@@ -28,6 +28,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 - Answer keys and hidden tests never go to the client. Maths answers are checked server side (SymPy).
 - All AI model calls go through backend/app/ai/. Tutor: DeepSeek (`deepseek-flash`, decided Nov 2026); teacher summaries: DeepSeek too (`deepseek-v4-pro`, spec 011).
 - Students are minors: store as little personal data as possible, and never log personal details in AI prompts or analytics.
+- Nothing personal in logs or Sentry (spec 015): ids, route templates and stack traces only; never names, answers, code, chat text, bodies or query strings.
 - Never edit `.env*` files or lockfiles by hand (a hook blocks this).
 - Prefer existing patterns and libraries in the codebase over adding new dependencies.
 

@@ -76,9 +76,9 @@ async def run_summary(fs: FactSet, client: TeacherClient, model: str) -> Summary
     try:
         async with asyncio.timeout(teacher_limits.WALL_CLOCK_S):
             return await run.go(fs, client, model)
-    except TimeoutError as exc:
+    except TimeoutError:
         if run.result.calls == 0:
-            raise TeacherAIUnavailable("timeout") from exc
+            raise TeacherAIUnavailable("timeout") from None
         run.result.dropped.append(("reply", "timed out"))
         return run.finish()
 

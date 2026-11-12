@@ -26,6 +26,7 @@ class _Out(BaseModel):
 
 
 class OrgOut(_Out):
+    id: uuid.UUID  # spec 015: the frontend's Sentry `org_id` tag
     name: str
     code: str
 

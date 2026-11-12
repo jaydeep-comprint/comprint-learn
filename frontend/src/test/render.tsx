@@ -34,7 +34,7 @@ export const teacherMe: Me = {
   is_admin: false,
   username: null,
   must_change_password: false,
-  org: { name: "Test School", code: "TST" },
+  org: { id: "00000000-0000-0000-0000-0000000000aa", name: "Test School", code: "TST" },
 };
 
 export const adminMe: Me = { ...teacherMe, is_admin: true };

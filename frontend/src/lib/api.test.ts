@@ -7,7 +7,8 @@ const supabase = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/supabase", () => supabase);
 
-import { ApiError, apiFetch, redirect } from "@/lib/api";
+import { ApiError, apiFetch, redirect, retryUnlessClientError } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 
 function respond(status: number, body?: unknown) {
   return vi.fn().mockResolvedValue(
@@ -80,5 +81,58 @@ describe("apiFetch", () => {
       message: "At most 60 students at a time.",
     });
     expect(redirect.go).not.toHaveBeenCalled();
+  });
+});
+
+describe("request ids and error messages (spec 015)", () => {
+  beforeEach(() => {
+    vi.spyOn(redirect, "go").mockImplementation(() => {});
+  });
+
+  it("takes request_id from the body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      respond(500, {
+        code: "internal",
+        message: "Something went wrong. Please try again.",
+        request_id: "ab12cd34ef56",
+      }),
+    );
+    const error = (await apiFetch("/api/v1/x").catch((e: unknown) => e)) as ApiError;
+    expect(error.requestId).toBe("ab12cd34ef56");
+    expect(errorMessage(error)).toBe("Something went wrong. Please try again. (code ab12cd34)");
+  });
+
+  it("falls back to the X-Request-ID header", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("upstream error", {
+          status: 502,
+          headers: { "X-Request-ID": "ffee0011aa" },
+        }),
+      ),
+    );
+    const error = (await apiFetch("/api/v1/x").catch((e: unknown) => e)) as ApiError;
+    expect(error.requestId).toBe("ffee0011aa");
+    expect(errorMessage(error)).toBe("Something went wrong. Try again. (code ffee0011)");
+  });
+
+  it("has fixed texts for 429 and 413 and no code for 4xx", () => {
+    expect(errorMessage(new ApiError(429, "/x", "rate_limited", "whatever"))).toBe(
+      "Too many requests. Wait a moment and try again.",
+    );
+    expect(errorMessage(new ApiError(413, "/x", "payload_too_large"))).toBe(
+      "That's too large to send.",
+    );
+    const notFound = new ApiError(404, "/x", "not_found", "Not found.", undefined, "abcdef123456");
+    expect(errorMessage(notFound)).toBe("Not found.");
+  });
+
+  it("never retries a 4xx, retries a 5xx twice", () => {
+    expect(retryUnlessClientError(0, new ApiError(429, "/x"))).toBe(false);
+    expect(retryUnlessClientError(0, new ApiError(404, "/x"))).toBe(false);
+    expect(retryUnlessClientError(0, new ApiError(503, "/x"))).toBe(true);
+    expect(retryUnlessClientError(2, new ApiError(503, "/x"))).toBe(false);
   });
 });

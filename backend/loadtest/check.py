@@ -81,6 +81,10 @@ def evaluate(rows: list[Row], total: Row, summary: dict[str, Any] | None = None)
     if total.p99 >= OVERALL_P99_MS:
         misses.append(f"overall p99 {total.p99:.0f} ms ≥ {OVERALL_P99_MS} ms")
     if summary is not None:
+        # A task exception (e.g. the answer key unreachable) isn't a request failure in Locust's
+        # stats, but the scenario didn't run as written: never a pass.
+        if summary.get("task_exceptions"):
+            misses.append(f"{summary['task_exceptions']} Locust task exception(s)")
         if summary.get("pool_errors"):
             misses.append(f"{summary['pool_errors']} pool error line(s) in the API log")
         peak, limit_conns = summary.get("peak_db_connections"), summary.get("db_connection_limit")

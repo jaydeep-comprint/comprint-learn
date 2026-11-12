@@ -128,6 +128,16 @@ async def round_trip_ms(url: str) -> float:
         await conn.close()
 
 
+def task_exceptions(path: Path) -> int:
+    """Locust's run_exceptions.csv: the total count of exceptions raised inside tasks."""
+    if not path.exists():
+        return 0
+    import csv
+
+    with path.open(newline="") as f:
+        return sum(int(row["Count"]) for row in csv.DictReader(f))
+
+
 def server_times(log: Path) -> dict[str, dict[str, float]]:
     """Server-side ms per `METHOD path-template` from the API's access log lines."""
     per: dict[str, list[float]] = defaultdict(list)
@@ -287,6 +297,7 @@ async def main(argv: list[str]) -> int:
         "peak_db_connections": peak,
         "db_connection_limit": args.workers * (settings.db_pool_size + settings.db_max_overflow),
         "pool_errors": len(POOL_ERRORS.findall(log_text)),
+        "task_exceptions": task_exceptions(OUT / "run_exceptions.csv"),
         "server_ms": server_times(OUT / "api.log"),
     }
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2))

@@ -34,9 +34,22 @@ def connect(url: str) -> Any:
         host=parts.hostname or "localhost",
         port=parts.port or 5432,
         database=(parts.path or "/postgres").lstrip("/") or "postgres",
-        ssl_context=None if local else ssl.create_default_context(),
+        ssl_context=None if local else _verified_tls(),
         timeout=30,
     )
+
+
+def _verified_tls() -> ssl.SSLContext:
+    """Supabase's pooler chains to Supabase's own root CA (Dashboard -> Database -> SSL
+    Configuration -> Download certificate): verify against it (DATABASE_SSL_ROOT_CERT)."""
+    import os
+
+    cafile = os.environ.get("DATABASE_SSL_ROOT_CERT")
+    if not cafile:
+        raise RuntimeError(
+            "Set DATABASE_SSL_ROOT_CERT to the Supabase CA certificate file (see loadtest/README)."
+        )
+    return ssl.create_default_context(cafile=cafile)
 
 
 def _json(value: Any) -> Any:

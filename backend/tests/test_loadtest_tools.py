@@ -220,3 +220,9 @@ def test_worked_out_answers_grade_as_intended_for_every_item() -> None:
                         check_part(item.type, answer, values, public.get("options"))
                     checked += 1
     assert checked > 300
+
+
+def test_task_exceptions_fail_the_run(tmp_path: Path) -> None:
+    good = _csv(tmp_path, [("GET", "/me", 10, 0, 5, 10, 20), ("", "Aggregated", 10, 0, 5, 10, 20)])
+    rows, total = check.read_stats(good)
+    assert check.evaluate(rows, total, {"task_exceptions": 198}) == ["198 Locust task exception(s)"]

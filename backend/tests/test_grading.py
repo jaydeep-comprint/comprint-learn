@@ -260,3 +260,36 @@ def test_simplified_accepts_when_out_of_time(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(expression._limiter, "run", lambda *_a: None)
     simplified = {"value": "x + 1", "variables": ["x"], "sympy_mode": "simplified"}
     assert expr(simplified, "1 + x").correct
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "(999999999999999999999999999999^100+1)^(1/2)",
+        "x^(1/2)+(999999999999999999999999999999^100+1)^(1/3)",
+        "sqrt(999999999999999999999999999999^100*999999999999999999999999999999^100"
+        "*999999999999999999999999999999^100+7)",
+        "(2^1000+1)^(0.5)",
+        "(sqrt(2)+999999999999999999999999999999^20)^(1/2)",
+    ],
+)
+def test_roots_of_huge_numbers_are_refused_fast(text: str) -> None:
+    """Spec 015 security review (area 5): these stalled the API (factorint) for seconds to
+    minutes, holding the GIL. Refused while parsing, well under a tenth of a second."""
+    import time
+
+    from app.content.params import ExpressionError
+    from app.grading.expression import parse_student
+
+    started = time.perf_counter()
+    with pytest.raises(ExpressionError):
+        parse_student(text, ["x"])
+    assert time.perf_counter() - started < 0.1
+
+
+def test_ordinary_roots_still_parse() -> None:
+    from app.grading.expression import parse_student
+
+    assert str(parse_student("sqrt(2)", [])) == "sqrt(2)"
+    assert str(parse_student("(x^2+1)^(1/2)", ["x"])) == "sqrt(x**2 + 1)"
+    assert str(parse_student("27^(1/3)", [])) == "3"

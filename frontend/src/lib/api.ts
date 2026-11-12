@@ -113,7 +113,8 @@ async function authedFetch(path: string, options: FetchOptions = {}): Promise<Re
 
   if (!response.ok) {
     const error = await errorFromResponse(response, path);
-    if (response.status === 401) {
+    // Spec 015: a 429 without a session is the per-IP limit on bad tokens: treat as signed out.
+    if (response.status === 401 || (response.status === 429 && !token)) {
       await signOut();
       redirect.go("/login");
     } else if (error.code === "password_change_required") {
@@ -127,7 +128,8 @@ async function authedFetch(path: string, options: FetchOptions = {}): Promise<Re
 /**
  * Call the API with the signed-in user's bearer token.
  *
- * 401 → sign out and go to /login. 403 `password_change_required` → go to /change-password.
+ * 401 (or 429 with no session) → sign out and go to /login. 403 `password_change_required` →
+ * go to /change-password.
  */
 export async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const response = await authedFetch(path, options);

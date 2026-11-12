@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import AuthUnavailable, TokenVerifier, Unauthenticated, get_token_verifier
 from app.core.errors import ApiProblem, forbidden, not_found, unauthenticated
 from app.core.observability import set_user_context
+from app.core.ratelimit import check_unauthenticated, check_user
 from app.db.session import get_session
 from app.models import AppUser, Role, TenantMixin, UserStatus
 
@@ -57,13 +58,17 @@ async def get_current_user_allow_password_change(
     Only `GET /me` and `POST /me/password` may use this (tests/test_route_scoping.py enforces it).
     """
     if creds is None:
+        check_unauthenticated(request)  # spec 015: per-IP, missing or invalid tokens only
         raise unauthenticated()
     try:
         token = await verifier.verify(creds.credentials)
     except Unauthenticated as exc:
+        check_unauthenticated(request)
         raise unauthenticated() from exc
     except AuthUnavailable as exc:
         raise ApiProblem(503, "auth_unavailable", "Sign-in is unavailable; try again.") from exc
+    # Spec 015: the per-user bucket, before the user lookup so a flood costs no query.
+    check_user(request, token.user_id)
 
     # Identity lookup by the verified token's `sub` (the only by-id query outside OrgScope).
     user = await session.get(AppUser, token.user_id)

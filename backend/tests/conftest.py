@@ -19,6 +19,9 @@ os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "test-service-role-key"
 os.environ["DEEPSEEK_API_KEY"] = "test-deepseek-key"
 os.environ["TUTOR_ENABLED"] = "true"
 os.environ["TEACHER_AI_ENABLED"] = "true"
+# Spec 015: the limiter is off in tests; test_ratelimit.py switches it on.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
+os.environ["TRUSTED_PROXY_COUNT"] = "0"
 
 import pytest
 from httpx import ASGITransport, AsyncClient

@@ -1,0 +1,100 @@
+name: Backup
+
+# Spec 015: nightly at 01:00 IST, an encrypted dump of the database, restore-tested in a scratch
+# Postgres, kept 14 days as an artifact. Does nothing until the secrets exist (the same gate as
+# ci.yml / privacy-jobs.yml). A failed backup or restore check fails the run (GitHub emails the
+# repo owner). Runbook: docs/runbooks/backup-restore.md.
+on:
+  schedule:
+    - cron: "30 19 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    # Secrets live in the `production` environment (deployments limited to `main`).
+    environment: production
+    steps:
+      - name: Check for backup secrets
+        id: gate
+        run: >-
+          echo "present=${{ secrets.BACKUP_DATABASE_URL != '' && secrets.BACKUP_PASSPHRASE != '' }}"
+          >> "$GITHUB_OUTPUT"
+
+      - name: Skip without backup secrets
+        if: steps.gate.outputs.present != 'true'
+        run: echo "skipped - no BACKUP_DATABASE_URL / BACKUP_PASSPHRASE secrets"
+
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.present == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Server version
+        id: server
+        if: steps.gate.outputs.present == 'true'
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          # The runner's psql is enough to ask the server its version.
+          major=$(psql "$BACKUP_DATABASE_URL" -XAtc "SHOW server_version" | cut -d. -f1)
+          echo "major=$major" >> "$GITHUB_OUTPUT"
+          echo "server major: $major"
+
+      - name: Install postgresql-client (server major, from PGDG)
+        if: steps.gate.outputs.present == 'true'
+        env:
+          MAJOR: ${{ steps.server.outputs.major }}
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "postgresql-client-$MAJOR"
+          echo "/usr/lib/postgresql/$MAJOR/bin" >> "$GITHUB_PATH"
+
+      - name: make backup
+        if: steps.gate.outputs.present == 'true'
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: make backup
+
+      - name: Start a scratch Postgres (same major)
+        if: steps.gate.outputs.present == 'true'
+        env:
+          MAJOR: ${{ steps.server.outputs.major }}
+        run: |
+          docker run -d --name scratch -e POSTGRES_PASSWORD=scratch -p 55432:5432 "postgres:$MAJOR"
+          for _ in $(seq 60); do
+            docker exec scratch pg_isready -U postgres >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "scratch Postgres did not start" >&2
+          exit 1
+
+      - name: make restore-check
+        if: steps.gate.outputs.present == 'true'
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          RESTORE_DATABASE_URL: postgresql://postgres:scratch@localhost:55432/postgres
+        run: make restore-check FILE="$(ls backups/public-*.dump.gpg | tail -1)"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.present == 'true'
+        with:
+          name: backup-${{ github.run_id }}
+          path: |
+            backups/*.dump.gpg
+            backups/SHA256SUMS
+          retention-days: 14
+          if-no-files-found: error

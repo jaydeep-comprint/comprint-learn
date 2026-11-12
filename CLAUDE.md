@@ -14,6 +14,7 @@ Stack: FastAPI + SQLAlchemy + Postgres (backend/), React + TS + Vite (frontend/)
 - Content: `make content-check` (offline validator, part of `make check`; `--strict` via `uv run app content check`) · `make content-import` (`ARGS=--dry-run` to preview). Format: content/README.md
 - Onboard a school: `cd backend && uv run app org create --name "..." --code ABC --admin-email ... --admin-name "..."` (`app org list`)
 - Full check (what the Stop hook and CI run): `make check`
+- Security scan (network): `make audit` (pip-audit, pnpm audit, gitleaks). Backups: `make backup`, `make restore-check FILE=...` (docs/runbooks/backup-restore.md)
 
 ## Workflow
 - New features start from a spec in docs/specs/ (use `/spec`). Implement in a fresh session, plan first.

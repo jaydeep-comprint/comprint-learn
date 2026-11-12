@@ -90,6 +90,14 @@ class Settings(BaseSettings):
     # Spec 015: error tracking. Unset = Sentry is never initialised (always in tests).
     sentry_dsn: SecretStr | None = None
     git_sha: str | None = None  # Sentry `release`, set by the deploy
+    # Spec 015: per-user rate limits (app/core/ratelimit.py). Off in unit tests.
+    rate_limit_enabled: bool = True
+    rate_limit_write_per_min: int = 120
+    rate_limit_write_burst: int = 40
+    rate_limit_read_per_min: int = 600
+    rate_limit_read_burst: int = 120
+    # Proxies in front of the API that append to X-Forwarded-For. 0 = use the socket address.
+    trusted_proxy_count: int = 0
 
     @field_validator("database_url")
     @classmethod
@@ -144,6 +152,18 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    def production_problems(self) -> list[str]:
+        """Settings a production API must not start with (checked by `create_app` only, so CLI
+        commands are unaffected). Empty CORS_ORIGINS stays valid (a same-origin deployment)."""
+        if not self.is_production:
+            return []
+        problems = []
+        if "*" in self.cors_origins:
+            problems.append("CORS_ORIGINS must not contain '*' in production")
+        if not self.app_url.startswith("https://"):
+            problems.append("APP_URL must be an https:// URL in production")
+        return problems
 
     def db_port(self) -> int | None:
         try:

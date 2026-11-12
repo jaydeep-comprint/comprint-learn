@@ -119,3 +119,22 @@ def test_missing_supabase_settings_raise_clear_errors(monkeypatch: pytest.Monkey
         s.require_supabase_url()
     with pytest.raises(RuntimeError, match="SUPABASE_SERVICE_ROLE_KEY is not set"):
         s.require_service_role_key()
+
+
+@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json"])
+async def test_docs_routes_off_in_production(monkeypatch: pytest.MonkeyPatch, path: str) -> None:
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import create_app
+
+    async def status(env: str) -> int:
+        monkeypatch.setenv("ENVIRONMENT", env)
+        monkeypatch.setenv("APP_URL", "https://app.example.org")
+        monkeypatch.setattr("app.main.configure_logging", lambda _s: None)
+        get_settings.cache_clear()
+        transport = ASGITransport(app=create_app())
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
+            return (await c.get(path)).status_code
+
+    assert await status("development") == 200
+    assert await status("production") == 404

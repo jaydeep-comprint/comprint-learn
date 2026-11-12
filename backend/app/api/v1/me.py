@@ -23,7 +23,7 @@ async def get_me(user: AnyUser, session: SessionDep) -> MeOut:
         is_admin=me.is_admin,
         username=me.username,
         must_change_password=me.must_change_password,
-        org=OrgOut(name=org.name, code=org.code),
+        org=OrgOut(id=org.id, name=org.name, code=org.code),
     )
 
 

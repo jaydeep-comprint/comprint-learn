@@ -93,13 +93,13 @@ class ChatClient:
             last = attempt == MAX_RETRIES
             try:
                 response = await self._http.post("/chat/completions", json=request)
-            except httpx.TimeoutException as exc:
+            except httpx.TimeoutException:
                 if last:
-                    raise TutorUnavailable("timeout") from exc
+                    raise TutorUnavailable("timeout") from None
                 continue
-            except httpx.TransportError as exc:
+            except httpx.TransportError:
                 if last:
-                    raise TutorUnavailable("connection") from exc
+                    raise TutorUnavailable("connection") from None
                 continue
             if response.status_code in RETRY_STATUSES and not last:
                 continue
@@ -107,8 +107,8 @@ class ChatClient:
                 raise TutorUnavailable(f"status {response.status_code}")
             try:
                 data: dict[str, Any] = response.json()
-            except ValueError as exc:
-                raise TutorUnavailable("invalid response") from exc
+            except ValueError:
+                raise TutorUnavailable("invalid response") from None
             return data
         raise TutorUnavailable("unreachable")  # pragma: no cover
 
@@ -136,8 +136,8 @@ async def complete_json(chat: ChatClient, request: dict[str, Any]) -> Completion
             choice = data["choices"][0]
             text = choice["message"].get("content") or ""
             finish = choice.get("finish_reason")
-        except (KeyError, IndexError, TypeError, AttributeError) as exc:
-            raise TutorUnavailable("unexpected response shape") from exc
+        except (KeyError, IndexError, TypeError, AttributeError):
+            raise TutorUnavailable("unexpected response shape") from None
         # DeepSeek's JSON mode sometimes returns blank content with finish "stop": transient,
         # so ask again here rather than spend the guard's one retry on it.
         if text.strip() or finish != "stop":

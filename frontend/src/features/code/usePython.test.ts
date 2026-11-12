@@ -121,3 +121,15 @@ describe("usePython", () => {
     expect(hook.result.current.status.state).toBe("loading");
   });
 });
+
+describe("Pyodide load failures (spec 015)", () => {
+  it("are reported once per page session, without code", async () => {
+    const observability = await import("@/lib/observability");
+    const spy = vi.spyOn(observability, "reportOnce").mockImplementation(() => {});
+    FakeWorker.all = [];
+    const hook = renderHook(() => usePython(() => new FakeWorker()));
+    act(() => FakeWorker.all[0]!.emit({ type: "load_error", message: "network" }));
+    expect(hook.result.current.status).toEqual({ state: "error", message: "network" });
+    expect(spy).toHaveBeenCalledWith("pyodide-load-error", "Python (Pyodide) failed to load");
+  });
+});

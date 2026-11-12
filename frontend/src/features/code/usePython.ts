@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { reportOnce } from "@/lib/observability";
 import type { TestOutput } from "@/lib/types";
 
 import type { LoadStage, RunTest, WorkerIn, WorkerOut } from "./protocol";
@@ -88,6 +89,10 @@ export function usePython(factory: WorkerFactory = defaultWorkerFactory) {
           setStatus({ state: "ready" });
           break;
         case "load_error":
+          // Spec 015: a failed Pyodide load is a fault (blocked CDN, old browser); report it
+          // once per page session, never with the student's code. Student code errors are
+          // results (`progress` outputs), never reported.
+          reportOnce("pyodide-load-error", "Python (Pyodide) failed to load");
           setStatus({ state: "error", message: message.message });
           finish({ error: CRASHED });
           break;

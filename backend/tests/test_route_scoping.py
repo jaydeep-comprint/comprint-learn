@@ -7,6 +7,7 @@ import inspect
 from collections.abc import Callable, Iterator
 from typing import Any
 
+import pytest
 from fastapi.dependencies.models import Dependant
 from fastapi.routing import iter_route_contexts
 
@@ -15,6 +16,7 @@ from app.api.deps import (
     get_current_user,
     get_current_user_allow_password_change,
 )
+from app.core.config import get_settings
 from app.main import create_app
 
 PUBLIC = {("GET", "/api/v1/health")}
@@ -22,6 +24,18 @@ PUBLIC = {("GET", "/api/v1/health")}
 PASSWORD_CHANGE_ALLOWED = {("GET", "/api/v1/me"), ("POST", "/api/v1/me/password")}
 # Routes that authenticate but read only global (platform-owned) content, so skip OrgScope.
 GLOBAL_CONTENT = {("GET", "/api/v1/courses"), ("GET", "/api/v1/courses/{slug}/graph")}
+
+
+DEBUG_ROUTE = ("GET", "/api/v1/debug/boom")
+
+
+@pytest.fixture(autouse=True, params=["test", "development"])
+def environment(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
+    """Walk the app as built for tests and for development (which adds the debug route)."""
+    env: str = request.param
+    monkeypatch.setenv("ENVIRONMENT", env)
+    get_settings.cache_clear()
+    return env
 
 
 def _calls(dep: Dependant) -> Iterator[Callable[..., Any]]:
@@ -97,3 +111,8 @@ def test_global_content_routes_exist_and_skip_scope() -> None:
     for key in GLOBAL_CONTENT:
         assert key in routes, key
         assert not any(_builds_scope(c) for c in _calls(routes[key])), key
+
+
+def test_debug_route_only_in_development(environment: str) -> None:
+    keys = {(m, p) for m, p, _ in _routes()}
+    assert (DEBUG_ROUTE in keys) == (environment == "development")

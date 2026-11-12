@@ -9,14 +9,30 @@ export class ApiError extends Error {
   readonly code: string | undefined;
   /** The parsed JSON body, if any (e.g. `prereqs` on `concept_locked`). */
   readonly body: unknown;
+  /** Spec 015: the request id (body `request_id`, else the `X-Request-ID` header). */
+  readonly requestId: string | undefined;
 
-  constructor(status: number, path: string, code?: string, message?: string, body?: unknown) {
+  constructor(
+    status: number,
+    path: string,
+    code?: string,
+    message?: string,
+    body?: unknown,
+    requestId?: string,
+  ) {
     super(message ?? `${path} failed with HTTP ${status}`);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.body = body;
+    this.requestId = requestId;
   }
+}
+
+/** The global query `retry` (spec 015): 4xx (403, 404, 409, 429...) are answers, not glitches. */
+export function retryUnlessClientError(count: number, error: unknown): boolean {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
+  return count < 2;
 }
 
 /** Full-page redirects (also clear in-memory state such as the query cache). Tests replace `go`. */
@@ -32,7 +48,14 @@ export async function apiGet<T>(path: string): Promise<T> {
     headers: { Accept: "application/json" },
   });
   if (!response.ok) {
-    throw new ApiError(response.status, path);
+    throw new ApiError(
+      response.status,
+      path,
+      undefined,
+      undefined,
+      undefined,
+      response.headers.get("X-Request-ID") ?? undefined,
+    );
   }
   return (await response.json()) as T;
 }
@@ -49,12 +72,19 @@ async function errorFromResponse(response: Response, path: string): Promise<ApiE
   let code: string | undefined;
   let message: string | undefined;
   let body: unknown;
+  let requestId = response.headers.get("X-Request-ID") ?? undefined;
   try {
     body = await response.json();
     if (body && typeof body === "object") {
-      const b = body as { code?: unknown; message?: unknown; detail?: unknown };
+      const b = body as {
+        code?: unknown;
+        message?: unknown;
+        detail?: unknown;
+        request_id?: unknown;
+      };
       if (typeof b.code === "string") code = b.code;
       if (typeof b.message === "string") message = b.message;
+      if (typeof b.request_id === "string") requestId = b.request_id;
       // FastAPI validation errors: {detail: [{msg}]}
       if (!message && Array.isArray(b.detail) && b.detail[0]?.msg) {
         message = String(b.detail[0].msg).replace(/^Value error, /, "");
@@ -63,7 +93,7 @@ async function errorFromResponse(response: Response, path: string): Promise<ApiE
   } catch {
     // Not JSON: keep the generic message.
   }
-  return new ApiError(response.status, path, code, message, body);
+  return new ApiError(response.status, path, code, message, body, requestId);
 }
 
 /** A signed-in request; non-2xx → `ApiError` (401 signs out, a temp password redirects). */

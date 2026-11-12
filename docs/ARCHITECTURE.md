@@ -17,6 +17,7 @@
 | Maths answer checking | SymPy (server side, `app/grading/`): student expressions go through the safe AST walker, never `parse_expr`; `simplify` runs in a time-limited process pool (1 s, numeric fallback) | Checks equivalent expressions and numbers with tolerance and units |
 | Spaced repetition | `fsrs` (py-fsrs 6.3), one module-level `Scheduler` in `app/services/srs.py` (retention 0.9, no learning steps, no fuzzing) | Modern scheduler with fewer reviews than SM-2 |
 | AI | Tutor (spec 009): **DeepSeek** (`deepseek-flash`) over its OpenAI-compatible API with `httpx`, JSON mode, automatic prefix caching, a server-side answer guard (`app/ai/guard.py`) on every reply (decided Nov 2026; first specified as Claude Haiku). Teacher summaries (spec 011): DeepSeek `deepseek-v4-pro` on the same client and key, JSON mode, a server-side citation guard (decided Nov 2026; first planned as Claude Sonnet). All model calls only in `backend/app/ai/` | Low cost per student; better reasoning where needed |
+| Error tracking | Sentry SaaS free, EU region (`sentry-sdk[fastapi]`, `@sentry/react`); off without a DSN. Scrubbed in `app/core/observability.py` and `src/lib/observability.ts` (spec 015) | Stack traces + request ids without running our own stack; runbook `docs/runbooks/errors.md` |
 | Python tooling | uv, ruff, mypy, pytest | Fast and standard |
 | JS tooling | pnpm, eslint, prettier, vitest, Playwright (e2e) | Standard |
 | Hosting | Free tiers: Supabase (DB + Auth), Cloudflare Pages or Vercel (SPA), Render free or Fly.io/Railway (~$5/mo) for the API, GitHub Actions, Sentry free | POC budget ~$50 total (see Cost budget) |
@@ -227,6 +228,12 @@ docs/         PRD, architecture, roadmap, specs, plans
 - **Erased students** appear nowhere per-student: `get_student` 404s, `list_students` and auth exclude them, and
   their enrolment and assignment links are gone. Their anonymous id may remain in `teacher_summary.pseudonyms`
   (rendered as "a student no longer in this class").
+- **Errors** (spec 015): every response carries `X-Request-ID`. An unhandled exception becomes
+  `500 {"code": "internal", "message", "request_id"}` (never a stack trace, in any environment), caught inside our own
+  ASGI middleware (`app/core/middleware.py`) so CORS and the request id still apply. Sentry and the logs get ids, route
+  templates and stack traces only: `before_send` strips bodies, cookies, headers (except user-agent), query strings,
+  frame variables and validation inputs; `ApiProblem` < 500 is never reported, ≥ 500 is one issue per code. Production
+  logs are one JSON line per record. Provider errors in `app/ai/` are raised `from None` (no chained httpx exception).
 - **Sessions**: Supabase revokes refresh tokens on a password change, but issued access tokens live until expiry, so the
   API also rejects tokens whose `iat` is before `app_user.sessions_valid_after` (set on admin reset, in-app password change and
   deactivation; a staff email-recovery reset goes straight to Supabase and doesn't set it).

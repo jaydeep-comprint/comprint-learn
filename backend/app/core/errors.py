@@ -10,6 +10,7 @@ class ApiProblem(Exception):  # noqa: N818 - "problem" as in RFC 9457
         code: str,
         message: str | None = None,
         extra: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message or code)
         self.status = status
@@ -17,6 +18,8 @@ class ApiProblem(Exception):  # noqa: N818 - "problem" as in RFC 9457
         self.message = message
         # Extra body fields (e.g. `prereqs` on `concept_locked`). Never personal data.
         self.extra = extra or {}
+        # Extra response headers (e.g. `Retry-After` on 429).
+        self.headers = headers or {}
 
 
 def not_found() -> ApiProblem:

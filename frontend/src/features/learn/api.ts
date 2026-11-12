@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, retryUnlessClientError } from "@/lib/api";
 import type {
   AnswerResult,
   CheckSubmitted,
@@ -27,11 +27,8 @@ export const learnKeys = {
   remediationQuestion: (id: string) => ["learn", "remediation", id, "question"] as const,
 };
 
-/** 403/404 are answers, not glitches: don't retry them. */
-export function retryUnlessClientError(count: number, error: unknown): boolean {
-  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
-  return count < 2;
-}
+/** Moved to `@/lib/api` (spec 015: now the global query `retry`); re-exported for callers. */
+export { retryUnlessClientError };
 
 export function useStudentCourses() {
   return useQuery({

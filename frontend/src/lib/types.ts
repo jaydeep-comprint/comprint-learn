@@ -11,7 +11,7 @@ export type Me = {
   is_admin: boolean;
   username: string | null;
   must_change_password: boolean;
-  org: { name: string; code: string };
+  org: { id: string; name: string; code: string };
 };
 
 export type Teacher = {

@@ -11,13 +11,14 @@ import uuid
 from dataclasses import dataclass
 from typing import Annotated, Any, TypeVar, cast
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import AuthUnavailable, TokenVerifier, Unauthenticated, get_token_verifier
 from app.core.errors import ApiProblem, forbidden, not_found, unauthenticated
+from app.core.observability import set_user_context
 from app.db.session import get_session
 from app.models import AppUser, Role, TenantMixin, UserStatus
 
@@ -46,6 +47,7 @@ class CurrentUser:
 
 
 async def get_current_user_allow_password_change(
+    request: Request,
     session: SessionDep,
     verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
     creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
@@ -76,6 +78,12 @@ async def get_current_user_allow_password_change(
         # First authenticated request after accepting the invite.
         user.status = UserStatus.active
         await session.commit()
+    # Ids only, for the access log and Sentry (spec 015).
+    request.state.user_id = str(user.id)
+    request.state.org_id = str(user.org_id)
+    set_user_context(
+        user_id=str(user.id), org_id=str(user.org_id), role=user.role.value, is_admin=user.is_admin
+    )
     return CurrentUser(
         id=user.id,
         org_id=user.org_id,

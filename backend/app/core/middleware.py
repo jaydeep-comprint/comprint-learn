@@ -104,6 +104,8 @@ class RequestIdMiddleware:
             state = _state(scope)
             if state.get("client_disconnected"):
                 status = 499  # nginx's "client closed request": no response was sent
+            elif state.get("aborted"):
+                status = 500  # started, then failed: the client got a broken response
             if self.access_log_enabled:
                 access_log.info(
                     "request",
@@ -146,6 +148,7 @@ class CatchAllMiddleware:
             await self.app(scope, receive, tracking_send)
         except asyncio.CancelledError:
             # The client went away or the server is shutting down: not a fault to report.
+            _state(scope)["client_disconnected"] = True
             raise
         except ClientDisconnect:
             _state(scope)["client_disconnected"] = True
@@ -162,6 +165,7 @@ class CatchAllMiddleware:
             if started:
                 # Headers are already out: nothing safe to send. Re-raise so the server aborts
                 # the connection cleanly (already captured and logged above).
+                _state(scope)["aborted"] = True
                 raise
             body = internal_error_body(request_id)
             await send(

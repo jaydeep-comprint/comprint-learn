@@ -40,12 +40,14 @@ _HTTP_BREADCRUMBS = frozenset({"httplib", "httpx", "http"})
 
 # Postgres error text adds a DETAIL line that echoes row values, e.g. a unique violation's
 # `Key (org_id, lower(username))=(…, asha.v) already exists.` `hide_parameters` doesn't cover it.
-_PG_DETAIL = re.compile(r"(?m)^([ \t]*)DETAIL:.*$")
+# A DETAIL can span lines ("Failing row contains (...)" with student code or chat text), so remove
+# everything up to the next section SQLAlchemy/asyncpg add (HINT, [SQL:, (Background on) or the end.
+_PG_DETAIL = re.compile(r"(?ms)^([ \t]*)DETAIL:.*?(?=^[ \t]*(?:HINT:|\[SQL:|\(Background on)|\Z)")
 
 
 def scrub_text(text: str) -> str:
-    """Remove Postgres DETAIL lines (they can hold names and usernames)."""
-    return _PG_DETAIL.sub(r"\1DETAIL: (removed)", text)
+    """Remove Postgres DETAIL sections (they echo row values: names, usernames, code)."""
+    return _PG_DETAIL.sub(r"\1DETAIL: (removed)\n", text)
 
 
 # --- Sentry ---------------------------------------------------------------------------------

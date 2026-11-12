@@ -330,3 +330,22 @@ def test_postgres_detail_never_reaches_json_logs() -> None:
     line = JsonFormatter().format(record)
     assert "asha.v" not in line
     assert "DETAIL: (removed)" in line
+
+
+def test_multiline_postgres_detail_is_removed_entirely() -> None:
+    from app.core.observability import scrub_text
+
+    text = (
+        'new row violates check constraint "ck_attempt"\n'
+        'DETAIL:  Failing row contains (1, def f():\n    return "Asha Verma", 2).\n'
+        "[SQL: INSERT INTO attempt ...]\n"
+        "(Background on this error at: https://sqlalche.me/e/21/gkpj)"
+    )
+    out = scrub_text(text)
+    assert "Asha" not in out and "return" not in out
+    assert out.startswith('new row violates check constraint "ck_attempt"\nDETAIL: (removed)\n')
+    assert "[SQL: INSERT INTO attempt ...]" in out
+    # DETAIL as the last section (asyncpg's own str()).
+    assert scrub_text("dup key\nDETAIL:  Key (username)=(asha\nv) exists.") == (
+        "dup key\nDETAIL: (removed)\n"
+    )

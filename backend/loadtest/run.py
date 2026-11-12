@@ -62,6 +62,8 @@ def child_env(settings: Settings, secret: str) -> dict[str, str]:
         **os.environ,
         "ENVIRONMENT": "test",
         "DATABASE_URL": settings.test_database_url,
+        # From backend/.env too: Locust (tokens' issuer) and the API must agree on it.
+        "SUPABASE_URL": settings.supabase_url,
         "SUPABASE_JWT_SECRET": secret,
         "TUTOR_ENABLED": "false",
         "TEACHER_AI_ENABLED": "false",
@@ -255,6 +257,10 @@ async def main(argv: list[str]) -> int:
                 os.killpg(api.pid, signal.SIGKILL)
         await lock.close()
 
+    if locust.returncode not in (0, 1) or not (OUT / "run_stats.csv").exists():
+        # 1 = Locust saw failures (judged below); anything else is a crash.
+        print(f"loadtest: Locust exited with {locust.returncode} (see above)", file=sys.stderr)
+        return 1
     log_text = (OUT / "api.log").read_text(errors="replace")
     summary = {
         "round_trip_ms": rtt,

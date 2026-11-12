@@ -1,4 +1,5 @@
 # Repo-level commands. `make check` is the offline quality gate (the Claude Stop hook and CI run it).
+SHELL := /bin/bash
 BACKEND := backend
 FRONTEND := frontend
 
@@ -61,8 +62,9 @@ migrate:
 # An ignore needs a line in docs/security-review.md ("## Audit ignores": id, reason, revisit date).
 audit: audit-py audit-js audit-secrets
 
+# pipefail: a failed `uv export` must not let pip-audit pass on empty input.
 audit-py:
-	cd $(BACKEND) && uv export --frozen --no-dev --no-emit-project --no-hashes --format requirements-txt \
+	set -o pipefail; cd $(BACKEND) && uv export --frozen --no-dev --no-emit-project --no-hashes --format requirements-txt \
 		| uvx pip-audit --requirement /dev/stdin --no-deps --disable-pip --format json \
 		| python3 ../scripts/pip_audit_filter.py
 

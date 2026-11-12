@@ -11,5 +11,4 @@ paths = [
   '''^frontend/src/test/''',
   '''^frontend/src/.*\.test\.tsx?$''',
   '''^frontend/vite/.*\.test\.ts$''',
-  '''(^|/)\.env\.example$''',
 ]

@@ -221,7 +221,7 @@ class SecurityHeadersMiddleware:
                 content_type = next((v for k, v in headers if k.lower() == b"content-type"), b"")
                 if content_type.startswith(b"application/json") and _JSON_CSP[0] not in present:
                     extra.append(_JSON_CSP)
-                if self.hsts:
+                if self.hsts and _HSTS[0] not in present:
                     extra.append(_HSTS)
                 message = {**message, "headers": headers + extra}
             await send(message)

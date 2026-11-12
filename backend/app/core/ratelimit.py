@@ -10,7 +10,8 @@
 - Over the limit → 429 `rate_limited` with `Retry-After` (seconds).
 
 Limits are per process: with N workers the effective limit is up to N times. Buckets idle for
-10 minutes are dropped. `RATE_LIMIT_ENABLED=false` switches everything off (the test default).
+10 minutes are dropped once they would have refilled anyway (so hourly buckets keep their
+state). `RATE_LIMIT_ENABLED=false` switches everything off (the test default).
 """
 
 import math
@@ -68,6 +69,12 @@ EXPENSIVE: dict[str, Limit] = {
 class _Bucket:
     tokens: float
     updated: float
+    limit: Limit
+
+    def full_at(self) -> float:
+        """When the bucket is back to capacity: dropping it earlier would refill it for free
+        (an hourly bucket idle for 10 minutes is still far from full)."""
+        return self.updated + (self.limit.capacity - self.tokens) / self.limit.per_second
 
 
 class RateLimiter:
@@ -82,7 +89,7 @@ class RateLimiter:
         self._sweep(now)
         bucket = self.buckets.get((kind, key))
         if bucket is None:
-            bucket = self.buckets[(kind, key)] = _Bucket(limit.capacity, now)
+            bucket = self.buckets[(kind, key)] = _Bucket(limit.capacity, now, limit)
         else:
             elapsed = max(0.0, now - bucket.updated)
             bucket.tokens = min(limit.capacity, bucket.tokens + elapsed * limit.per_second)
@@ -96,7 +103,9 @@ class RateLimiter:
         if now - self._last_sweep < SWEEP_EVERY_S:
             return
         self._last_sweep = now
-        idle = [k for k, b in self.buckets.items() if now - b.updated >= IDLE_S]
+        idle = [
+            k for k, b in self.buckets.items() if now - b.updated >= IDLE_S and now >= b.full_at()
+        ]
         for k in idle:
             del self.buckets[k]
 

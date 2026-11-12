@@ -34,7 +34,8 @@ decrypt() {
 }
 
 echo "restore-check: restoring $file"
-q "drop schema if exists public cascade; create schema public;" >/dev/null
+# The dump (pg_dump --schema=public) creates the schema itself, so only drop the empty one.
+q "drop schema if exists public cascade;" >/dev/null
 # Supabase roles referenced by the dump may not exist in a plain Postgres: --no-owner,
 # --no-privileges (and the dump was taken with both).
 decrypt "$file" | pg_restore --exit-on-error --no-owner --no-privileges -d "$RESTORE_DATABASE_URL"

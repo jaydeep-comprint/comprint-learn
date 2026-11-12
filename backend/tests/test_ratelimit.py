@@ -337,3 +337,18 @@ def test_expensive_routes_use_their_buckets() -> None:
     assert "limit_export" in found[("GET", "/api/v1/students/{student_id}/export")]
     assert "limit_bulk_students" in found[("POST", "/api/v1/classes/{class_id}/students")]
     assert "limit_consent_bulk" in found[("POST", "/api/v1/students/consent")]
+
+
+def test_hourly_buckets_survive_the_idle_sweep() -> None:
+    """Export is 5/hour: using all 5, waiting 11 minutes and asking again must still be limited."""
+    clock = FakeClock()
+    rl = RateLimiter(clock)
+    export = EXPENSIVE["export"]
+    assert all(rl.hit("export", "admin", export) is None for _ in range(5))
+    clock.now += 11 * 60  # past IDLE_S and a sweep; only ~0.9 token refilled
+    rl.hit("read", "someone", Limit.per_minute(600, 120))  # triggers the sweep
+    assert ("export", "admin") in rl.buckets
+    assert rl.hit("export", "admin", export) is not None
+    clock.now += 60 * 60  # an hour later it's full again, and droppable
+    rl.hit("read", "someone", Limit.per_minute(600, 120))
+    assert ("export", "admin") not in rl.buckets

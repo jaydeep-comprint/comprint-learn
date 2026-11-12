@@ -28,7 +28,8 @@ protects them.** Supabase free projects have no backups of their own.
    - `BACKUP_DATABASE_URL`: the production **Session pooler** URL (port 5432), the same form as
      `DATABASE_URL`.
    - `BACKUP_PASSPHRASE`: the passphrase from step 1.
-4. Actions → Backup → **Run workflow**. Expect green with an artifact. Without the secrets the run is
+4. Actions → Backup → **Run workflow** on `main` (the `production` environment only allows
+   `main`, so a run from a feature branch is rejected rather than "skipped"). Expect green with an artifact. Without the secrets the run is
    green and prints "skipped".
 5. Record a restore drill (section 4) within the first week.
 
@@ -49,8 +50,10 @@ Use when the project is lost or a bad migration/import destroyed data. Expected 
 2. Settings: Authentication → **turn off "Allow new users to sign up"**; set Site URL and the
    redirect allow-list to `APP_URL` (docs/runbooks/deploy-checklist.md).
 3. Restore the public schema (no `alembic upgrade` needed: the dump has the schema and
-   `alembic_version`):
+   `alembic_version`). The dump creates `public` itself, so drop the new project's empty one first
+   (a brand-new project only: check it has no tables):
    ```
+   psql "<new Session pooler URL>" -c "drop schema public cascade;"
    gpg --decrypt public-<ts>.dump.gpg \
      | pg_restore --exit-on-error --no-owner --no-privileges -d "<new Session pooler URL>"
    ```
@@ -59,8 +62,10 @@ Use when the project is lost or a bad migration/import destroyed data. Expected 
    columns, but check the project's auth schema version first:
    ```
    gpg --decrypt auth-<ts>.dump.gpg \
-     | pg_restore --data-only --disable-triggers --no-owner -d "<new URL>"
+     | pg_restore --data-only --no-owner -d "<new URL>"
    ```
+   (`--disable-triggers` needs a superuser, which Supabase's `postgres` role is not; load
+   `auth.users` before `auth.identities`, the dump's order.)
    If it fails on a column mismatch, users can still be recovered: teachers re-invite (same email
    → same row), and students get new passwords from "Reset password" (their `app_user` rows and
    learning history are intact). Record what happened here.

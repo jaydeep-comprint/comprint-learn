@@ -218,7 +218,9 @@ def test_root_cert_makes_the_connection_verify(tmp_path: object) -> None:
 
     assert with_root_cert({"ssl": "require"}, None) == {"ssl": "require"}
     assert with_root_cert({}, "/nope.crt") == {}  # local: no SSL, nothing to verify
-    cafile = ssl.get_default_verify_paths().cafile or ssl.get_default_verify_paths().openssl_cafile
+    import certifi
+
+    cafile = certifi.where()  # always installed (httpx); the system bundle path varies by OS
     ctx = with_root_cert({"ssl": "require"}, cafile)["ssl"]
     assert isinstance(ctx, ssl.SSLContext)
     assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname

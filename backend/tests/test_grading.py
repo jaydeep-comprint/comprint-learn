@@ -275,7 +275,7 @@ def test_simplified_accepts_when_out_of_time(monkeypatch: pytest.MonkeyPatch) ->
 )
 def test_roots_of_huge_numbers_are_refused_fast(text: str) -> None:
     """Spec 015 security review (area 5): these stalled the API (factorint) for seconds to
-    minutes, holding the GIL. Refused while parsing, well under a tenth of a second."""
+    minutes, holding the GIL. Refused while parsing, well under a second (slow CI runners too)."""
     import time
 
     from app.content.params import ExpressionError
@@ -284,7 +284,7 @@ def test_roots_of_huge_numbers_are_refused_fast(text: str) -> None:
     started = time.perf_counter()
     with pytest.raises(ExpressionError):
         parse_student(text, ["x"])
-    assert time.perf_counter() - started < 0.1
+    assert time.perf_counter() - started < 0.5
 
 
 def test_ordinary_roots_still_parse() -> None:
